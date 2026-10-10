@@ -1,0 +1,45 @@
+slug,name,state,lat,lng,types,activities,climate,best_months,min_nights,stay_budget_inr,stay_mid_inr,stay_premium_inr,food_per_day_inr,local_per_day_inr,source_url,collected_on,review_status,cost_source_url,cost_collected_on,cost_review_status
+agra,Agra,Uttar Pradesh,27.18,78.01,heritage,forts_palaces|museums|food_trails,warm,10|11|12|1|2|3,1,900,2200,6000,500,300,https://en.wikipedia.org/wiki/Agra,2026-10-10,draft,,,draft
+ajmer,Ajmer,Rajasthan,26.45,74.64,spiritual|heritage,temples|museums,warm,10|11|12|1|2|3,1,800,2000,5000,450,250,https://en.wikipedia.org/wiki/Ajmer,2026-10-10,draft,,,draft
+almora,Almora,Uttarakhand,29.6,79.66,hill_station|mountain,trekking|museums|temples,mild,3|4|5|6|9|10|11,2,1100,2600,6000,500,300,https://en.wikipedia.org/wiki/Almora,2026-10-10,draft,,,draft
+alwar,Alwar,Rajasthan,27.56,76.63,heritage|city,forts_palaces|museums|wildlife_safari,warm,10|11|12|1|2,1,900,2200,5500,450,250,https://en.wikipedia.org/wiki/Alwar,2026-10-10,draft,,,draft
+amritsar,Amritsar,Punjab,31.63,74.87,spiritual|city,temples|food_trails|shopping,warm,10|11|12|1|2|3,2,900,2400,6000,550,350,https://en.wikipedia.org/wiki/Amritsar,2026-10-10,draft,,,draft
+auli,Auli,Uttarakhand,30.53,79.57,mountain|adventure,skiing|trekking|camping,cold,11|12|1|2|3|4,2,1500,3500,9000,700,400,https://en.wikipedia.org/wiki/Auli,2026-10-10,draft,,,draft
+bharatpur,Bharatpur,Rajasthan,27.22,77.49,wildlife|heritage,wildlife_safari|museums,warm,10|11|12|1|2|3,1,900,2300,5500,450,250,https://en.wikipedia.org/wiki/Bharatpur,2026-10-10,draft,,,draft
+bhimtal,Bhimtal,Uttarakhand,29.35,79.56,lake|hill_station,boating|trekking|yoga_wellness,mild,3|4|5|6|9|10|11,2,1200,3000,7500,600,350,https://en.wikipedia.org/wiki/Bhimtal,2026-10-10,draft,,,draft
+bikaner,Bikaner,Rajasthan,28.02,73.31,heritage|desert,forts_palaces|museums|food_trails,warm,10|11|12|1|2,2,900,2400,6500,500,300,https://en.wikipedia.org/wiki/Bikaner,2026-10-10,draft,,,draft
+bir,Bir,Himachal Pradesh,32.04,76.72,adventure|mountain,paragliding|trekking|camping|yoga_wellness,cold,3|4|5|6|10|11,2,1000,2600,6500,550,350,https://en.wikipedia.org/wiki/Bir_Billing,2026-10-10,draft,,,draft
+bundi,Bundi,Rajasthan,25.44,75.64,heritage,forts_palaces|museums,warm,10|11|12|1|2,1,800,2000,5000,450,250,https://en.wikipedia.org/wiki/Bundi,2026-10-10,draft,,,draft
+chail,Chail,Himachal Pradesh,30.97,77.2,hill_station,trekking|camping|temples,cold,3|4|5|6|9|10,2,1300,3200,8000,600,350,https://en.wikipedia.org/wiki/Chail,2026-10-10,draft,,,draft
+chakrata,Chakrata,Uttarakhand,30.7,77.87,hill_station|adventure,trekking|camping,cold,3|4|5|6|9|10|11,2,1100,2600,6000,500,300,https://en.wikipedia.org/wiki/Chakrata,2026-10-10,draft,,,draft
+dalhousie,Dalhousie,Himachal Pradesh,32.53,75.97,hill_station|mountain,trekking|boating|shopping,cold,3|4|5|6|9|10|11,2,1200,3000,7500,600,350,https://en.wikipedia.org/wiki/Dalhousie,2026-10-10,draft,,,draft
+dehradun,Dehradun,Uttarakhand,30.32,78.03,city|hill_station,museums|temples|food_trails,mild,1|2|3|4|5|6|9|10|11|12,1,1000,2600,6500,550,300,https://en.wikipedia.org/wiki/Dehradun,2026-10-10,draft,,,draft
+dhanaulti,Dhanaulti,Uttarakhand,30.42,78.25,hill_station|adventure,camping|trekking,cold,3|4|5|6|9|10|11|12,2,1200,2800,6500,500,300,https://en.wikipedia.org/wiki/Dhanaulti,2026-10-10,draft,,,draft
+dharamshala,Dharamshala,Himachal Pradesh,32.22,76.32,mountain|spiritual|hill_station,trekking|temples|yoga_wellness|food_trails,cold,3|4|5|6|9|10|11,2,1100,2800,7500,600,350,https://en.wikipedia.org/wiki/Dharamshala,2026-10-10,draft,,,draft
+gwalior,Gwalior,Madhya Pradesh,26.22,78.18,heritage|city,forts_palaces|museums,warm,10|11|12|1|2|3,1,900,2200,5500,450,250,https://en.wikipedia.org/wiki/Gwalior,2026-10-10,draft,,,draft
+haridwar,Haridwar,Uttarakhand,29.95,78.16,spiritual,temples|yoga_wellness,warm,2|3|4|9|10|11|12,1,800,2000,5000,450,250,https://en.wikipedia.org/wiki/Haridwar,2026-10-10,draft,,,draft
+jaipur,Jaipur,Rajasthan,26.91,75.79,heritage|city,forts_palaces|museums|shopping|food_trails,warm,10|11|12|1|2|3,2,1000,2600,8000,550,350,https://en.wikipedia.org/wiki/Jaipur,2026-10-10,draft,,,draft
+jim-corbett,Jim Corbett National Park,Uttarakhand,29.53,78.77,wildlife|adventure,wildlife_safari|trekking,mild,11|12|1|2|3|4|5|6,2,1500,3800,9500,700,400,https://en.wikipedia.org/wiki/Jim_Corbett_National_Park,2026-10-10,draft,,,draft
+jodhpur,Jodhpur,Rajasthan,26.24,73.02,heritage|desert,forts_palaces|museums|food_trails|shopping,warm,10|11|12|1|2,2,950,2500,7500,500,300,https://en.wikipedia.org/wiki/Jodhpur,2026-10-10,draft,,,draft
+kanatal,Kanatal,Uttarakhand,30.41,78.33,hill_station|adventure,camping|trekking,cold,3|4|5|6|9|10|11,2,1300,3200,8000,600,350,https://en.wikipedia.org/wiki/Kanatal,2026-10-10,draft,,,draft
+kasauli,Kasauli,Himachal Pradesh,30.9,76.96,hill_station,trekking|temples|shopping,cold,3|4|5|6|9|10|11,2,1300,3200,8000,600,350,https://en.wikipedia.org/wiki/Kasauli,2026-10-10,draft,,,draft
+kasol,Kasol,Himachal Pradesh,32.01,77.31,adventure|mountain,trekking|camping|food_trails,cold,3|4|5|6|10|11,2,900,2400,6000,550,350,https://en.wikipedia.org/wiki/Kasol,2026-10-10,draft,,,draft
+kurukshetra,Kurukshetra,Haryana,29.97,76.88,spiritual|heritage,temples|museums,warm,10|11|12|1|2|3,1,800,2000,5000,400,250,https://en.wikipedia.org/wiki/Kurukshetra,2026-10-10,draft,,,draft
+lansdowne,Lansdowne,Uttarakhand,29.84,78.68,hill_station,trekking|boating|camping,mild,3|4|5|6|9|10|11,2,1100,2700,6500,500,300,https://en.wikipedia.org/wiki/Lansdowne,2026-10-10,draft,,,draft
+lucknow,Lucknow,Uttar Pradesh,26.85,80.95,city|heritage,food_trails|museums|shopping|forts_palaces,warm,10|11|12|1|2|3,2,900,2400,6500,550,350,https://en.wikipedia.org/wiki/Lucknow,2026-10-10,draft,,,draft
+manali,Manali,Himachal Pradesh,32.24,77.19,mountain|adventure|hill_station,trekking|paragliding|skiing|rafting|camping,cold,3|4|5|6|10|11|12,3,1200,3200,9000,650,400,https://en.wikipedia.org/wiki/Manali,2026-10-10,draft,,,draft
+mathura,Mathura,Uttar Pradesh,27.49,77.67,spiritual|heritage,temples|museums,warm,10|11|12|1|2|3,1,800,2000,5000,450,250,https://en.wikipedia.org/wiki/Mathura,2026-10-10,draft,,,draft
+mukteshwar,Mukteshwar,Uttarakhand,29.47,79.65,hill_station|adventure,trekking|camping|paragliding,cold,3|4|5|6|9|10|11,2,1300,3200,8000,550,350,https://en.wikipedia.org/wiki/Mukteshwar,2026-10-10,draft,,,draft
+mussoorie,Mussoorie,Uttarakhand,30.46,78.06,hill_station,trekking|shopping|food_trails|boating,mild,3|4|5|6|9|10|11|12,2,1300,3200,8500,600,350,https://en.wikipedia.org/wiki/Mussoorie,2026-10-10,draft,,,draft
+nainital,Nainital,Uttarakhand,29.38,79.46,lake|hill_station,boating|trekking|shopping|temples,mild,3|4|5|6|9|10|11,2,1200,3200,8500,600,350,https://en.wikipedia.org/wiki/Nainital,2026-10-10,draft,,,draft
+narkanda,Narkanda,Himachal Pradesh,31.27,77.46,hill_station|adventure,skiing|trekking|camping,cold,11|12|1|2|3|4,2,1200,3000,7500,550,350,https://en.wikipedia.org/wiki/Narkanda,2026-10-10,draft,,,draft
+neemrana,Neemrana,Rajasthan,27.98,76.38,heritage,forts_palaces|yoga_wellness,warm,10|11|12|1|2|3,1,2500,6000,14000,600,300,https://en.wikipedia.org/wiki/Neemrana,2026-10-10,draft,,,draft
+orchha,Orchha,Madhya Pradesh,25.35,78.64,heritage,forts_palaces|temples|rafting,warm,10|11|12|1|2|3,1,900,2300,6000,450,300,https://en.wikipedia.org/wiki/Orchha,2026-10-10,draft,,,draft
+pushkar,Pushkar,Rajasthan,26.49,74.55,spiritual|lake,temples|shopping|camping,warm,10|11|12|1|2|3,1,800,2200,6000,500,300,https://en.wikipedia.org/wiki/Pushkar,2026-10-10,draft,,,draft
+ranikhet,Ranikhet,Uttarakhand,29.64,79.43,hill_station,trekking|temples|yoga_wellness,mild,3|4|5|6|9|10|11,2,1100,2800,7000,550,300,https://en.wikipedia.org/wiki/Ranikhet,2026-10-10,draft,,,draft
+ranthambore,Ranthambore,Rajasthan,26.02,76.5,wildlife,wildlife_safari|forts_palaces,warm,10|11|12|1|2|3|4,2,1400,3600,10000,600,350,https://en.wikipedia.org/wiki/Ranthambore_National_Park,2026-10-10,draft,,,draft
+rishikesh,Rishikesh,Uttarakhand,30.09,78.27,spiritual|adventure,rafting|yoga_wellness|temples|camping|trekking,mild,2|3|4|5|9|10|11|12,2,900,2400,7000,550,350,https://en.wikipedia.org/wiki/Rishikesh,2026-10-10,draft,,,draft
+sariska,Sariska,Rajasthan,27.34,76.44,wildlife,wildlife_safari|temples,warm,10|11|12|1|2|3,1,1100,2800,8000,500,300,https://en.wikipedia.org/wiki/Sariska_Tiger_Reserve,2026-10-10,draft,,,draft
+shimla,Shimla,Himachal Pradesh,31.1,77.17,hill_station|city,trekking|shopping|museums|temples,cold,3|4|5|6|9|10|11|12,2,1300,3400,9500,650,400,https://en.wikipedia.org/wiki/Shimla,2026-10-10,draft,,,draft
+udaipur,Udaipur,Rajasthan,24.58,73.71,lake|heritage|city,boating|forts_palaces|museums|shopping,warm,9|10|11|12|1|2,2,1100,3000,9000,550,350,https://en.wikipedia.org/wiki/Udaipur,2026-10-10,draft,,,draft
+vrindavan,Vrindavan,Uttar Pradesh,27.58,77.7,spiritual,temples|yoga_wellness,warm,10|11|12|1|2|3,1,800,2000,5500,450,250,https://en.wikipedia.org/wiki/Vrindavan,2026-10-10,draft,,,draft

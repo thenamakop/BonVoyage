@@ -14,10 +14,10 @@ Each requirement from the MoSCoW document, with its trace and sprint. Add the is
 | R8 | Several packages with itemised group and per-person costs | Must | Transport & Cost; Accommodation & Package | Table 8 | Generate Trip Packages, 5.0 | S3 |  |  |
 | R9 | Organiser sets origin, duration, budget and radius | Must | User & Group Management | Table 5 | Manage Trip Group, 1.0 | S1 |  |  |
 | R10 | Preference privacy and salted credential hashes | Must | User & Group Management; Preference Management | 3.4, 3.5 | D1 and D3 | S1 |  |  |
-| R11 | Relational persistence with referential integrity | Must | all modules | 3.4 | D1 to D6 | S0 onwards |  |  |
+| R11 | Relational persistence with referential integrity | Must | all modules | 3.4 | D1 to D6 | S0 onwards |  | packages/db/src/catalogue/catalogue.test.ts |
 | R12 | Grounded day-wise itinerary | Should | AI Itinerary Generator | Table 9 | Generate Itinerary, 6.0 | S4 |  |  |
 | R13 | Accept, modify or reject generated output | Should | Trip & Feedback | 2.2, Table 9 | Review & Decide on Itinerary, 7.0 | S4 |  |  |
-| R14 | Cached or curated fallback, labelled by provenance | Should | External Data Integration | 3.5, Table 8 | 5.0 and D4 | S3 |  |  |
+| R14 | Cached or curated fallback, labelled by provenance | Should | External Data Integration | 3.5, Table 8 | 5.0 and D4 | S3 |  | packages/db/src/catalogue/catalogue.test.ts |
 | R15 | Screens within 3 s, shortlist within 10 s | Should | all modules | 3.3 | none | Buffer |  |  |
 | R16 | One mediating module with caching and quota control | Should | External Data Integration | 3.1.3 | 4.0, 5.0 and 6.0 | S2 |  |  |
 | R17 | Fairness across recommendation rounds | Could | Recommendation Engine | none | Recommend Destinations | deferred |  |  |
