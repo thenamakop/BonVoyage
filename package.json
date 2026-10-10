@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:unit": "vitest run --project unit --project web",
     "test:watch": "vitest",
+    "vercel-build": "tsx scripts/vercel-proof.ts",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:up": "docker compose up -d --wait db db-test",
     "db:down": "docker compose down",
