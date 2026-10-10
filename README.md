@@ -11,7 +11,6 @@
   <img alt="PostgreSQL 18" src="https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white">
   <img alt="pnpm 10" src="https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white">
   <img alt="Deployed on Vercel" src="https://img.shields.io/badge/Deployed_on-Vercel-000000?logo=vercel&logoColor=white">
-  After the first production deploy, add a live link here, for example:
   <a href="https://bonvoyage-orpin.vercel.app/"><img alt="Open the app" src="https://img.shields.io/badge/Open_the_app-0D3A3D?logo=googlechrome&logoColor=white"></a></p>
 
 **[Quick start](#quick-start)** · **[How it decides](#how-it-decides)** · **[Architecture](#architecture)** · **[Roadmap](#roadmap)** · **[Documentation](#documentation)**
@@ -19,7 +18,7 @@
 </div>
 
 > [!NOTE]
-> BonVoyage is a Software Engineering course project at BML Munjal University, under active development for submission on **10 November 2026**. The [roadmap](#roadmap) shows what is built and what is next.
+> BonVoyage is a Software Engineering course project at BML Munjal University, under active development. The [roadmap](#roadmap) shows what is built and what is next.
 
 ## What is BonVoyage?
 
