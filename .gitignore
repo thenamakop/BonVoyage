@@ -1,3 +1,11 @@
 .env
 .env.*
 !.env.example
+node_modules
+dist
+coverage
+.vercel
+*.tsbuildinfo
+packages/integrations/spikes/**/out/
+.DS_Store
+Thumbs.db

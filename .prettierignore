@@ -1,0 +1,7 @@
+pnpm-lock.yaml
+dist
+coverage
+.vercel
+docs
+*.md
+packages/db/migrations
