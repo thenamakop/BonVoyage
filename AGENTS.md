@@ -49,7 +49,7 @@ Never resolve a conflict silently. Name it in your summary.
 | Database | PostgreSQL with Drizzle ORM and versioned SQL migrations (Docker locally, Neon when deployed) |
 | Validation | zod schemas in `packages/shared`, used by both web and api |
 | Auth | Better Auth, email and password, sessions in Postgres |
-| Distances | Google Routes API (Compute Routes, Compute Route Matrix) and Geocoding API |
+| Distances | RoutingProvider in packages/integrations: curated hub road distance, else haversine x 1.3 labelled estimated (ADR-007). A Google Routes adapter only if a key is added. |
 | Language model | Gemini on the free tier, behind the `LlmClient` interface |
 | Tests | Vitest |
 | Hosting | One Vercel project serving the SPA and the API under `/api` |
@@ -59,8 +59,8 @@ Do not add frameworks or swap libraries: no Next.js, no Turborepo, no second UI 
 ## 4. Repository layout
 
 ```text
-apps/web/             React SPA; on Vercel it also hosts the /api function
-apps/api/             Express app: src/app.ts exports it, src/server.ts listens locally
+apps/web/             React SPA (Vite)
+apps/api/             Express app: src/app.ts exports it, src/server.ts listens locally; src/vercel-entry.ts is the Vercel function entry (added in S0-3)
   src/modules/        users-groups, preferences, filtering, recommendation, transport-cost,
                       packages, itinerary, trip-feedback, notifications, integration
 packages/engine/      PURE logic: feasibility, group-fit score, fairness, trip state machine
@@ -80,18 +80,20 @@ docs/                 See section 2
 
 ## 5. Commands
 
-Some of these exist only after the scaffold (runbook prompt A1). If a command is missing, check whether the scaffold has been merged before inventing a replacement.
+Some of these exist only after the scaffold (prompt S0-2). If a command is missing, check whether the scaffold has been merged before inventing a replacement.
 
 | Command | What it does |
 | --- | --- |
 | `pnpm install` | Install dependencies |
-| `docker compose up -d db` | Start local Postgres on port 5432 (tests use `db-test` on 5433) |
+| `pnpm db:up` | Start local Postgres on port 5432 and the test database `db-test` on 5433 (waits until both are healthy) |
 | `pnpm dev` | Run web on :5173 and api on :4000; Vite proxies `/api` to the api |
 | `pnpm lint` / `pnpm typecheck` / `pnpm test` | The three checks every change must pass |
+| `pnpm test:unit` | Unit and web tests only (no database needed) |
+| `pnpm verify` | Format check, lint, type-check, tests and build in one go |
 | `pnpm build` | Production build |
 | `pnpm db:migrate` / `pnpm db:seed` / `pnpm db:reset` / `pnpm db:studio` | Database tasks (`db:reset` is local only) |
 | `pnpm catalogue:check` | Validate the destination catalogue CSVs |
-| `pnpm --filter @bonvoyage/<package> test` | Test one package |
+| `pnpm vitest run --project <unit\|web\|integration> <path>` | Run one test project or file (one root Vitest config, so packages have no test script) |
 
 Health check: `curl -s http://localhost:5173/api/health` returns `{"status":"ok","db":"ok"}`.
 
@@ -128,7 +130,7 @@ These come from the SRS and the runbook. Breaking one is a bug, even if tests pa
 - **Units:** money in whole rupees (integer `_inr` columns), distance in kilometres, duration in minutes, dates as ISO `YYYY-MM-DD`, timestamps in UTC.
 - **Spelling:** keep the British spelling used in the SRS and the enums (`organiser`, `finalised`, `catalogue`), and keep enum values exactly as listed in the runbook.
 - **Trip statuses:** `draft`, `collecting_preferences`, `ready_for_recommendation`, `shortlisted`, `packages_proposed`, `package_selected`, `itinerary_proposed`, `finalised`, `in_progress`, `completed`, `cancelled`.
-- **Error format:** every API error returns `{ "error": { "code": "SNAKE_CASE_CODE", "message": "plain sentence" } }` with the right HTTP status (400 validation, 401, 403, 404, 409 illegal transition, 422 business rule, 503 dependency down).
+- **Error format:** every API error returns `{ "error": { "code": "SNAKE_CASE_CODE", "message": "plain sentence", "fields": { "field": "message" } } }` (`fields` is optional and maps field names to messages, used for 400 validation errors, SRS 3.2.1) with the right HTTP status (400 validation, 401, 403, 404, 409 illegal transition, 422 business rule, 503 dependency down).
 - **Glossary:** *common availability window* is the intersection of every member's dates. *Hard constraint* means radius, budget, duration or dates. *Soft preference* means types, activities, climate. *Provenance* is where a number came from.
 
 ## 8. Code style
@@ -166,7 +168,7 @@ These come from the SRS and the runbook. Breaking one is a bug, even if tests pa
 - Keys live in `.env`, which is gitignored. Never print, log, echo or commit a key or the contents of `.env`.
 - Never paste keys into code, fixtures, test snapshots, docs or commit messages.
 - When adding a new variable, add its name (no value) to `.env.example`.
-- Routes API requests always send an `X-Goog-FieldMask` with only the fields used (normally `routes.distanceMeters,routes.duration`).
+- If a Routes adapter is ever added: Routes API requests always send an `X-Goog-FieldMask` with only the fields used (normally `routes.distanceMeters,routes.duration`).
   - Do not request traffic-aware routing.
   - Prefer one Compute Route Matrix call over many Compute Routes calls.
 - Prompts to Gemini contain destination facts only: no member names, emails, user IDs or personal budgets. The free tier may use prompts to improve Google's products.
