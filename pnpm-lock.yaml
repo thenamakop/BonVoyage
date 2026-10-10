@@ -154,15 +154,24 @@ importers:
 
   packages/db:
     dependencies:
+      '@bonvoyage/engine':
+        specifier: workspace:*
+        version: link:../engine
       '@bonvoyage/shared':
         specifier: workspace:*
         version: link:../shared
+      csv-parse:
+        specifier: ^6.1.0
+        version: 6.2.1
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(@types/pg@8.23.1)(pg@8.23.1)
       pg:
         specifier: ^8.23.1
         version: 8.23.1
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
     devDependencies:
       '@types/pg':
         specifier: ^8.23.1
@@ -1473,6 +1482,9 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  csv-parse@6.2.1:
+    resolution: {integrity: sha512-LRLMV+UCyfMokp8Wb411duBf1gaBKJfOfBWU9eHMJ+b+cJYZsNu3AFmjJf3+yPGd59Exz1TsMjaSFyxnYB9+IQ==}
 
   data-urls@8.0.0:
     resolution: {integrity: sha512-JQUCCK+/CAGbGGx618PlFZMXH81Jtj7t73CHv9dd/zVWvxgGT2zLFRjnKb+Ng46GIwcy+f7f88qd4duqllK+WQ==}
@@ -3879,6 +3891,8 @@ snapshots:
   css.escape@1.5.1: {}
 
   csstype@3.2.3: {}
+
+  csv-parse@6.2.1: {}
 
   data-urls@8.0.0(@noble/hashes@1.8.0):
     dependencies:

@@ -1,0 +1,7 @@
+slug,name,state,lat,lng,source_url,collected_on,review_status
+delhi,Delhi,Delhi,28.6139,77.2090,https://en.wikipedia.org/wiki/Delhi,2026-10-10,draft
+gurugram,Gurugram,Haryana,28.4595,77.0266,https://en.wikipedia.org/wiki/Gurgaon,2026-10-10,draft
+noida,Noida,Uttar Pradesh,28.5355,77.3910,https://en.wikipedia.org/wiki/Noida,2026-10-10,draft
+faridabad,Faridabad,Haryana,28.4089,77.3178,https://en.wikipedia.org/wiki/Faridabad,2026-10-10,draft
+chandigarh,Chandigarh,Chandigarh,30.7333,76.7794,https://en.wikipedia.org/wiki/Chandigarh,2026-10-10,draft
+jaipur,Jaipur,Rajasthan,26.9124,75.7873,https://en.wikipedia.org/wiki/Jaipur,2026-10-10,draft

@@ -1,0 +1,22 @@
+destination_slug,poi_key,name,category,typical_minutes,open_time,close_time,closed_days,entry_fee_inr,lat,lng,source_url,collected_on,review_status
+rishikesh,laxman-jhula,Laxman Jhula,sight,45,,,,0,30.102,78.285,,2026-10-10,draft
+rishikesh,ram-jhula,Ram Jhula,sight,45,,,,0,30.1133,78.284,,2026-10-10,draft
+rishikesh,triveni-ghat,Triveni Ghat,temple,90,05:00,21:00,,0,30.098,78.29,,2026-10-10,draft
+rishikesh,beatles-ashram,The Beatles Ashram (Chaurasi Kutia),sight,120,10:00,16:00,,600,30.1175,78.2795,,2026-10-10,draft
+rishikesh,neelkanth-temple,Neelkanth Mahadev Temple,temple,90,05:00,18:00,,0,30.074,78.342,,2026-10-10,draft
+rishikesh,ganga-rafting,Ganga rafting run (Brahmapuri to NIM beach),adventure,180,08:00,16:00,,1000,30.121,78.293,,2026-10-10,draft
+rishikesh,parmarth-ganga-aarti,Parmarth Niketan Ganga aarti,temple,60,18:00,19:00,,0,30.116,78.287,,2026-10-10,draft
+jaipur,amber-fort,Amber Fort,fort_palace,150,08:00,17:30,,550,26.9855,75.8513,,2026-10-10,draft
+jaipur,hawa-mahal,Hawa Mahal,sight,60,09:00,16:30,,200,26.9239,75.8267,,2026-10-10,draft
+jaipur,city-palace,City Palace,fort_palace,120,09:30,17:00,,1000,26.9258,75.8237,,2026-10-10,draft
+jaipur,jantar-mantar,Jantar Mantar,sight,75,09:00,16:30,,200,26.9247,75.8246,,2026-10-10,draft
+jaipur,nahargarh-fort,Nahargarh Fort,viewpoint,120,10:00,17:30,,200,26.937,75.8155,,2026-10-10,draft
+jaipur,jal-mahal,Jal Mahal,sight,30,,,,0,26.9535,75.8463,,2026-10-10,draft
+jaipur,johari-bazaar,Johari Bazaar,market,120,10:00,21:00,,0,26.92,75.826,,2026-10-10,draft
+mussoorie,gun-hill,Gun Hill,viewpoint,90,10:00,18:00,,0,30.46,78.06,,2026-10-10,draft
+mussoorie,kempty-falls,Kempty Falls,nature,120,08:00,17:00,,0,30.483,78.035,,2026-10-10,draft
+mussoorie,mall-road,Mall Road,market,120,,,,0,30.459,78.066,,2026-10-10,draft
+mussoorie,camels-back-road,Camel Back Road walk,nature,90,,,,0,30.457,78.071,,2026-10-10,draft
+mussoorie,lal-tibba,Lal Tibba viewpoint,viewpoint,60,08:00,18:00,,0,30.465,78.087,,2026-10-10,draft
+mussoorie,company-garden,Company Garden,nature,90,09:00,18:00,,50,30.452,78.052,,2026-10-10,draft
+mussoorie,george-everest,George Everest house,viewpoint,120,10:00,17:00,,0,30.453,78.016,,2026-10-10,draft

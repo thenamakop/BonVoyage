@@ -25,7 +25,8 @@
     "db:migrate": "pnpm --filter @bonvoyage/db migrate",
     "db:migrate:remote": "pnpm --filter @bonvoyage/db migrate:remote",
     "db:reset": "pnpm --filter @bonvoyage/db reset",
-    "db:studio": "pnpm --filter @bonvoyage/db studio"
+    "db:studio": "pnpm --filter @bonvoyage/db studio",
+    "catalogue:check": "pnpm --filter @bonvoyage/db catalogue:check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

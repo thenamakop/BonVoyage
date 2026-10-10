@@ -1,0 +1,37 @@
+{
+  "fuel_price_inr_per_litre": {
+    "value": 102.12,
+    "unit": "INR/litre",
+    "source_url": "https://www.goodreturns.in/petrol-price-in-delhi-s10.html",
+    "collected_on": "2026-10-10",
+    "review_status": "draft"
+  },
+  "car_km_per_litre": {
+    "value": 15,
+    "unit": "km/litre",
+    "source_url": "",
+    "collected_on": "2026-10-10",
+    "review_status": "draft"
+  },
+  "toll_inr_per_km": {
+    "value": 1.6,
+    "unit": "INR/km",
+    "source_url": "",
+    "collected_on": "2026-10-10",
+    "review_status": "draft"
+  },
+  "persons_per_car": {
+    "value": 4,
+    "unit": "persons",
+    "source_url": "",
+    "collected_on": "2026-10-10",
+    "review_status": "draft"
+  },
+  "car_rental_inr_per_day": {
+    "value": 2500,
+    "unit": "INR/day",
+    "source_url": "",
+    "collected_on": "2026-10-10",
+    "review_status": "draft"
+  }
+}
