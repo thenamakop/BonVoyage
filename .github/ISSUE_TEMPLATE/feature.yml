@@ -1,0 +1,66 @@
+name: Feature
+description: A requirement or part of a requirement to build
+labels: ['type:feature']
+body:
+  - type: dropdown
+    id: requirement
+    attributes:
+      label: Requirement
+      options:
+        - R1
+        - R2
+        - R3
+        - R4
+        - R5
+        - R6
+        - R7
+        - R8
+        - R9
+        - R10
+        - R11
+        - R12
+        - R13
+        - R14
+        - R15
+        - R16
+        - R17
+        - R18
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options:
+        - users-groups
+        - preferences
+        - filtering
+        - recommendation
+        - transport-cost
+        - packages
+        - itinerary
+        - trip-feedback
+        - notifications
+        - integration
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Copy them from the SRS tables.
+    validations:
+      required: true
+  - type: dropdown
+    id: sprint
+    attributes:
+      label: Sprint
+      options:
+        - S0
+        - S1
+        - S2
+        - S3
+        - S4
+        - Buffer
+    validations:
+      required: true

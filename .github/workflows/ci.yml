@@ -1,0 +1,59 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: bonvoyage
+          POSTGRES_PASSWORD: bonvoyage
+          POSTGRES_DB: bonvoyage_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U bonvoyage -d bonvoyage_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      TEST_DATABASE_URL: postgres://bonvoyage:bonvoyage@localhost:5433/bonvoyage_test
+      DATABASE_URL: postgres://bonvoyage:bonvoyage@localhost:5433/bonvoyage_test
+      LIVE_APIS: 'off'
+      APP_URL: http://localhost:5173
+      BETTER_AUTH_SECRET: ci-only-fake-secret-not-used-anywhere-else-0000
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm vercel-build
+      - run: pnpm smoke:function
+      - name: No keys in the repo
+        run: |
+          if git grep -nE 'AIza[0-9A-Za-z_-]{35}|AQ\.[0-9A-Za-z_-]{20,}'; then
+            echo "A key-like string was found in the repository."
+            exit 1
+          fi

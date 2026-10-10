@@ -91,6 +91,9 @@ Some of these exist only after the scaffold (prompt S0-2). If a command is missi
 | `pnpm test:unit` | Unit and web tests only (no database needed) |
 | `pnpm verify` | Format check, lint, type-check, tests and build in one go |
 | `pnpm build` | Production build |
+| `pnpm vercel-build` | Write the Vercel Build Output API directory `.vercel/output` (static SPA plus one bundled api function) |
+| `pnpm smoke:function` | Smoke-test the bundled function in `.vercel/output` (needs `DATABASE_URL`) |
+| `pnpm db:migrate:remote --target preview\|production` | Check or migrate a Neon branch from the laptop (only when a task says so) |
 | `pnpm db:migrate` / `pnpm db:seed` / `pnpm db:reset` / `pnpm db:studio` | Database tasks (`db:reset` is local only) |
 | `pnpm catalogue:check` | Validate the destination catalogue CSVs |
 | `pnpm vitest run --project <unit\|web\|integration> <path>` | Run one test project or file (one root Vitest config, so packages have no test script) |
@@ -160,7 +163,7 @@ These come from the SRS and the runbook. Breaking one is a bug, even if tests pa
 
 - Change the schema only in `packages/db`, then generate a migration with drizzle-kit and commit the SQL.
 - **Never edit a migration that is already on `master`.** Fixes are new migrations.
-- Never run migrations, seeds or resets against Neon unless the task explicitly says so.
+- Never run migrations, seeds or resets against Neon unless the task explicitly says so, and then only through `pnpm db:migrate:remote`.
 - Deleting a trip must cascade to its members, preferences, packages and itineraries.
 
 ## 11. Secrets and data
