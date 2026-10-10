@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360" role="img" aria-labelledby="bv-title bv-desc">
+  <title id="bv-title">BonVoyage</title>
+  <desc id="bv-desc">Group trips, decided together. A collaborative trip planner for 2 to 8 travellers in India, by road and rail, with prices in rupees. Three travellers' routes meet at one agreed destination.</desc>
+  <defs>
+    <linearGradient id="bv-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A1C26"/>
+      <stop offset="1" stop-color="#0D3A3D"/>
+    </linearGradient>
+    <radialGradient id="bv-glow" cx="0.84" cy="0.54" r="0.55">
+      <stop offset="0" stop-color="#2EC4B6" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#2EC4B6" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="bv-clip">
+      <rect width="1280" height="360" rx="24"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#bv-clip)">
+    <rect width="1280" height="360" fill="url(#bv-bg)"/>
+    <rect width="1280" height="360" fill="url(#bv-glow)"/>
+
+    <!-- Radius rings around the destination: the search radius every trip starts from -->
+    <g fill="none" stroke="#FFFFFF" stroke-opacity="0.07" stroke-width="1.5">
+      <circle cx="1100" cy="186" r="96"/>
+      <circle cx="1100" cy="186" r="152"/>
+      <circle cx="1100" cy="186" r="208"/>
+      <circle cx="1100" cy="186" r="264"/>
+      <circle cx="1100" cy="186" r="320"/>
+    </g>
+
+    <!-- Three travellers' routes converging on one destination -->
+    <g fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 11">
+      <path d="M842 96 C 930 96, 972 168, 1046 176" stroke="#F4A340"/>
+      <path d="M812 192 C 900 192, 970 188, 1046 188" stroke="#7FE3D8"/>
+      <path d="M852 284 C 940 284, 980 214, 1046 200" stroke="#FF8A7A"/>
+    </g>
+    <g>
+      <circle cx="822" cy="96" r="24" fill="#F4A340" fill-opacity="0.18"/>
+      <circle cx="822" cy="96" r="12" fill="#F4A340"/>
+      <circle cx="792" cy="192" r="24" fill="#7FE3D8" fill-opacity="0.18"/>
+      <circle cx="792" cy="192" r="12" fill="#7FE3D8"/>
+      <circle cx="832" cy="284" r="24" fill="#FF8A7A" fill-opacity="0.18"/>
+      <circle cx="832" cy="284" r="12" fill="#FF8A7A"/>
+    </g>
+
+    <!-- Destination pin with a tick: the place the whole group agreed on -->
+    <path d="M1100 136 a50 50 0 0 1 50 50 c0 38 -50 86 -50 86 s-50 -48 -50 -86 a50 50 0 0 1 50 -50 z" fill="#F4A340"/>
+    <circle cx="1100" cy="186" r="22" fill="#0D3A3D"/>
+    <path d="M1090 186 l7 7 l14 -15" fill="none" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- Wordmark and tagline -->
+    <g font-family="'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif">
+      <text x="80" y="104" font-size="16" font-weight="600" letter-spacing="3.2" fill="#F4A340">COLLABORATIVE TRIP PLANNER</text>
+      <text x="76" y="188" font-size="84" font-weight="700" letter-spacing="-1.5" fill="#FFFFFF">Bon<tspan fill="#7FE3D8">Voyage</tspan></text>
+      <text x="80" y="236" font-size="28" fill="#CFE3E1">Group trips, decided together.</text>
+
+      <g font-size="15" font-weight="500" fill="#E6F2F1" text-anchor="middle">
+        <rect x="80" y="270" width="176" height="36" rx="18" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.2"/>
+        <text x="168" y="293">2 to 8 travellers</text>
+        <rect x="268" y="270" width="148" height="36" rx="18" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.2"/>
+        <text x="342" y="293">Road and rail</text>
+        <rect x="428" y="270" width="148" height="36" rx="18" fill="#FFFFFF" fill-opacity="0.08" stroke="#FFFFFF" stroke-opacity="0.2"/>
+        <text x="502" y="293">Prices in INR</text>
+      </g>
+    </g>
+  </g>
+</svg>
