@@ -1,0 +1,8 @@
+# users-groups
+
+- SRS module: User & Group Management
+- Academic owner: Maulik and Parth (Kushagra owns the web screens for every module)
+- Requirements served (from docs/traceability.md): R1, R2, R9, R10, R11
+- Layering: router, then service, then repository. Routers validate input and call services; services hold the use-case logic; repositories hold the Drizzle queries.
+
+Implemented by Maulik with coding agents.

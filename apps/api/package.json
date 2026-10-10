@@ -1,0 +1,28 @@
+{
+  "name": "@bonvoyage/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/server.ts | pino-pretty",
+    "build": "tsx ../../scripts/bundle-api.ts --entry src/server.ts --out dist/server.mjs",
+    "start": "node --enable-source-maps dist/server.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bonvoyage/db": "workspace:*",
+    "@bonvoyage/shared": "workspace:*",
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.1"
+  }
+}
