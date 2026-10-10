@@ -12,6 +12,7 @@
   "dependencies": {
     "@bonvoyage/db": "workspace:*",
     "@bonvoyage/shared": "workspace:*",
+    "@vercel/functions": "^3.9.11",
     "express": "^5.3.0",
     "helmet": "^8.3.0",
     "pino": "^10.4.0",
