@@ -9,6 +9,7 @@
   "scripts": {
     "generate": "drizzle-kit generate",
     "migrate": "tsx scripts/migrate.ts",
+    "migrate:remote": "tsx scripts/migrate-remote.ts",
     "reset": "tsx scripts/reset.ts",
     "studio": "drizzle-kit studio",
     "typecheck": "tsc -p tsconfig.json"
