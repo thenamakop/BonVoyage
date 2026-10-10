@@ -1,0 +1,37 @@
+name: bonvoyage
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: bonvoyage
+      POSTGRES_PASSWORD: bonvoyage
+      POSTGRES_DB: bonvoyage
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - bonvoyage-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bonvoyage -d bonvoyage']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  db-test:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: bonvoyage
+      POSTGRES_PASSWORD: bonvoyage
+      POSTGRES_DB: bonvoyage_test
+    ports:
+      - '127.0.0.1:5433:5432'
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U bonvoyage -d bonvoyage_test']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  bonvoyage-pgdata:
