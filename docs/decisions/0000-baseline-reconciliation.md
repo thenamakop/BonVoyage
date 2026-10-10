@@ -1,6 +1,6 @@
 # 0000: Baseline reconciliation
 
-Status: Proposed · Date: 2026-10-08 · Agreed by: (team members reply "agreed")
+Status: Accepted · Date: 2026-10-08 · Agreed by: Maulik (solo developer), 2026-10-10
 
 Disagreements found between the baseline documents, and how they are resolved.
 
