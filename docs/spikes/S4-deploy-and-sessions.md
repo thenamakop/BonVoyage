@@ -17,10 +17,12 @@ Sessions: the check on a real phone moves to Sprint 1 issue 1 (sign-in screens),
 | Measure | Value |
 | --- | --- |
 | Function bundle size (`index.mjs`) | 2.42 MB (2536412 bytes), plus a 4.1 MB source map |
-| Build duration (Vercel build log) | to be filled at step 18 |
-| First `/api/health` request | to be filled at step 18 |
-| Warm `/api/health` request | to be filled at step 18 |
+| Build duration (Vercel build log) | 23 s (`Build Completed in /vercel/output [23s]`, no build cache, preview of 5f9f766 on 2026-10-10) |
+| First `/api/health` request | 143 ms (200, browser cache disabled, first request after the redeploy) |
+| Warm `/api/health` request | about 150 ms typical (five reloads: 139, 152, 156, 157, 206 ms) |
+
+Measured from Maulik's browser in India against the preview, function region sin1, Neon preview branch in aws-ap-southeast-1.
 
 ## Decision
 
-Pending the numbers above. The mechanism itself is decided in ADR-010.
+Keep the ADR-010 design. The preview served the SPA and every `/api/*` route from `.vercel/output` with one bundled function, and `/api/health` answered in about 150 ms, well inside the SRS 3.3 target of 3 s per screen. The sessions check on a phone moves to Sprint 1 issue 1.
