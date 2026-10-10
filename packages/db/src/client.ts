@@ -9,6 +9,9 @@ export function createDb(url: string) {
     idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 5_000,
   });
+  // An idle client whose connection drops emits 'error' on the pool; unhandled, it crashes the
+  // process. probeDb reports the outage and later queries reconnect.
+  pool.on('error', () => undefined);
   const db = drizzle({ client: pool, casing: 'snake_case', schema });
   return { db, pool };
 }

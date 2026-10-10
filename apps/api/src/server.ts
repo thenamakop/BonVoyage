@@ -5,6 +5,9 @@ import { env } from './env';
 
 const logger = pino({ level: env.LOG_LEVEL });
 const { db, pool } = createDb(env.DATABASE_URL);
+pool.on('error', (err) => {
+  logger.warn({ message: err.message }, 'idle database client error');
+});
 const app = createApp({ db, pool, logger });
 
 const server = app.listen(env.PORT, () => {

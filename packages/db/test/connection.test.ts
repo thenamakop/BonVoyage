@@ -16,6 +16,10 @@ describe('probeDb', () => {
     expect(await probeDb(live.pool)).toBe(true);
   });
 
+  it('does not crash when an idle client errors', () => {
+    expect(() => dead.pool.emit('error', new Error('connection terminated'))).not.toThrow();
+  });
+
   it('resolves false within 3 seconds when nothing listens', async () => {
     const started = Date.now();
     expect(await probeDb(dead.pool)).toBe(false);
