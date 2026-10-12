@@ -1,15 +1,7 @@
 import { HealthOk } from '@bonvoyage/shared';
 import { useQuery } from '@tanstack/react-query';
 import { fetchJson } from '../../lib/api';
-
-export function describeHealth(
-  isPending: boolean,
-  isSuccess: boolean,
-): { ok: boolean; text: string } {
-  if (isPending) return { ok: true, text: 'Checking the service' };
-  if (isSuccess) return { ok: true, text: 'All systems normal' };
-  return { ok: false, text: 'Service problem' };
-}
+import { describeHealth } from './health-status';
 
 export function HealthIndicator() {
   const health = useQuery({

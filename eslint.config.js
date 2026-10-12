@@ -35,7 +35,8 @@ export default defineConfig(
     },
   },
   {
-    files: ['scripts/**', '*/*/scripts/**'],
+    // CLI entry points print to the console by design.
+    files: ['scripts/**', '*/*/scripts/**', 'packages/*/spikes/**'],
     rules: { 'no-console': 'off' },
   },
   {
