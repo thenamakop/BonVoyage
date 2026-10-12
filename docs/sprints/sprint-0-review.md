@@ -1,22 +1,22 @@
 # Sprint 0 review (8 to 12 October 2026)
 
-**Result: Pass with spill.** G3, G4 and G8 all pass. Three items wait on Maulik (G2 tag confirmation, G5 preview check, G11 key-rotation confirmation); each has a spill issue in Sprint 1.
+**Result: Pass.** All 13 gate items pass. Three spill issues (#43, #44, #45) were opened for items that needed Maulik's confirmation and were closed the same day once the evidence arrived.
 
 ## Gate
 
 | Item | Check | Evidence | Result | Follow-up issue |
 | --- | --- | --- | --- | --- |
 | G1 | Baseline, design, all decisions Accepted | `git grep "^Status:" docs/decisions` → 14/14 `Status: Accepted`; `ls docs/baseline docs/design` → SRS, MoSCoW, design PNGs/drawio present | pass | — |
-| G2 | `design-baseline-v1` tag on first baseline commit | `git rev-parse refs/tags/design-baseline-v1` → missing; `git log --diff-filter=A -- docs/baseline` → `2fbd3e9 chore: unpack docs layout… (#1)`; handed to Maulik | not run: waiting for Maulik | #43 |
+| G2 | `design-baseline-v1` tag on first baseline commit | `git log --diff-filter=A -- docs/baseline` → `2fbd3e9 chore: unpack docs layout… (#1)`; Maulik confirmed; tag pushed (`git rev-parse refs/tags/design-baseline-v1` → resolves) | pass | #43 (closed) |
 | G3 | Fresh clone installs, migrates, seeds, verifies | `bv-gate` clone: `pnpm install --frozen-lockfile` ok, `db:up` healthy, `db:migrate` applied, `db:seed` → 4 users, 44 destinations, trip in collecting_preferences, `pnpm verify` exit 0 (193 tests + 2 todo) | pass | — |
 | G4 | CI green on master; PR-only with required check | `gh run list --branch master` → last 5 all success; ruleset `master` (24831622): active, `pull_request`+`required_status_checks` (ci), no bypass actors | pass | — |
-| G5 | Preview and production answer /api/health from Neon | production `curl -s https://bonvoyage-orpin.vercel.app/api/health` → `{"status":"ok","db":"ok"}` 200 in 0.52 s; preview pending Maulik opening a preview URL logged in | partial: waiting for Maulik | #44 |
+| G5 | Preview and production answer /api/health from Neon | production `curl -s https://bonvoyage-orpin.vercel.app/api/health` → `{"status":"ok","db":"ok"}` 200 in 0.52 s; preview `/api/health` checked by Maulik → ok | pass | #44 (closed) |
 | G6 | No pending Neon migrations | `db:migrate:remote --status`: preview 1 recorded / 0 pending; production 1 recorded / 0 pending | pass | — |
 | G7 | `catalogue:check` 0 errors; stage progress; CAT issues | 0 errors, 42 warnings, 1 info; stage A 0/50, B 0/253, C 0/21; issues #37 (A), #38 (B), #39 (C) open | pass | — |
 | G8 | Trip state machine 100 % branch coverage | `vitest --coverage.include=trip-state.ts --thresholds.100` → 149 tests pass; statements/branches/functions/lines all 100 % | pass | — |
 | G9 | Scoring spec + golden fixture committed, self-check passes | `docs/specs/scoring.md`, `packages/engine/src/scoring/golden.{fixture,test}.ts` present; golden.test.ts 4 pass + 2 todo | pass | — |
 | G10 | Spike notes S2 and S4 merged; S1, S3 recorded not run | `ls docs/spikes` → `S2-grounded-itinerary.md`, `S4-deploy-and-sessions.md`; S1 skipped (no routing key, ADR-007), S3 skipped (curated data is the decision, ADR-006) | pass | — |
-| G11 | No key or .env in history; Gemini key rotated | `git log -p --all \| grep -cE 'AIza…|AQ\.…'` → 0; `git log --all -- .env .env.neon` → empty; rotation confirmation pending | partial: waiting for Maulik | #45 |
+| G11 | No key or .env in history; Gemini key rotated | `git log -p --all \| grep -cE 'AIza…|AQ\.…'` → 0; `git log --all -- .env .env.neon` → empty; Maulik confirmed the Gemini key was rotated | pass | #45 (closed) |
 | G12 | Wireframes planned as Sprint 1 issue | issue #36 "Wireframes for the five SRS 3.1.1 screens…" open, on S1 board, estimate 2 | pass | — |
 | G13 | Sprint 1 issues estimated, assigned, on board | milestone "Sprint 1 (12-18 Oct)": 14 issues, all assigned thenamakop; project items: S1 tasks estimated (5/3/2 pts), Sprint field set | pass | — |
 
@@ -52,15 +52,16 @@
 
 ## Time per prompt
 
-Actuals recorded against the time boxes (Maulik to fill — pending reply):
+Wall-clock is measured as first commit on the PR branch to merge time (`gh pr view <n> --json commits,mergedAt`). It includes waits and breaks, so it overstates effort where a session idled. Maulik's active-time notes follow each row. Sprint 0 slipped one day (ended 12 Oct instead of 11 Oct) because of the Sunday pause.
 
-| Prompt | Time box | Actual |
-| --- | --- | --- |
-| S0-1 decision records | — | pending |
-| S0-2 scaffold | — | pending |
-| S0-3 CI and deploy | — | pending |
-| S0-4 catalogue | — | pending |
-| S0-5 schema, auth, seed | — | pending |
-| S0-6 state machine | — | pending |
-| S0-7 itinerary spike | 3 h | pending |
-| S0-9 exit gate | 45 min | pending |
+| Prompt | PR | Wall-clock (includes waits and breaks) | Active-time note (Maulik) |
+| --- | --- | --- | --- |
+| S0-1 decision records | #2 | ~0.1 h | ran overnight on 10 Oct; about 1 h active |
+| S0-2 scaffold | #4 | ~0.4 h | about 45 min active |
+| S0-3 CI and deploy | #5 | ~3.0 h | about 3 h, including Vercel and GitHub dashboard steps |
+| S0-4 catalogue | #9 | ~2.3 h | paused over Sunday 11 Oct — wall-clock is not real effort; estimate 2.5 h |
+| S0-5 schema, auth, seed | #10 | ~2.5 h | about 3 h; ran in parallel with S0-8 on 12 Oct |
+| S0-6 state machine | #41 | ~0.1 h | (commit-to-merge window; work happened in the same session) |
+| S0-7 itinerary spike | #42 | ~0.1 h | mostly waiting on Gemini — 129 s per call and rate limits, not work |
+| S0-8 backlog | #40 | ~0.1 h | about 1.5 h active, plus waiting for answers |
+| S0-9 exit gate | #46 | ~1 h (estimate) | this review |
