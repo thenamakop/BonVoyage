@@ -1,5 +1,5 @@
 import type { Db } from '@bonvoyage/db';
-import { destination, hub, trip, tripMember, user } from '@bonvoyage/db/schema';
+import { destination, hub, trip, tripMember, tripTransition, user } from '@bonvoyage/db/schema';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { MembershipRow, TripRow } from './access';
 
@@ -86,6 +86,46 @@ export async function countActiveMembers(db: Db, tripIds: string[]): Promise<Map
     .where(and(inArray(tripMember.tripId, tripIds), eq(tripMember.status, 'active')))
     .groupBy(tripMember.tripId);
   return new Map(rows.map((r) => [r.tripId, r.n]));
+}
+
+/** created_at of the trip's newest transition row, or null. */
+export async function newestTransitionAt(db: Db, tripId: string): Promise<Date | null> {
+  const rows = await db
+    .select({ at: tripTransition.createdAt })
+    .from(tripTransition)
+    .where(eq(tripTransition.tripId, tripId))
+    .orderBy(desc(tripTransition.createdAt))
+    .limit(1);
+  return rows[0]?.at ?? null;
+}
+
+export interface ActivityRow {
+  id: string;
+  transitionId: string;
+  event: string;
+  fromStatus: TripRow['status'] | null;
+  toStatus: TripRow['status'];
+  createdAt: Date;
+  actorName: string | null;
+}
+
+/** The newest transition rows with the actor's name; emails are never selected. */
+export async function listActivity(db: Db, tripId: string, limit: number): Promise<ActivityRow[]> {
+  return db
+    .select({
+      id: tripTransition.id,
+      transitionId: tripTransition.transitionId,
+      event: tripTransition.event,
+      fromStatus: tripTransition.fromStatus,
+      toStatus: tripTransition.toStatus,
+      createdAt: tripTransition.createdAt,
+      actorName: user.name,
+    })
+    .from(tripTransition)
+    .leftJoin(user, eq(user.id, tripTransition.actorUserId))
+    .where(eq(tripTransition.tripId, tripId))
+    .orderBy(desc(tripTransition.createdAt), desc(tripTransition.id))
+    .limit(limit);
 }
 
 export async function lockTripStatus(
