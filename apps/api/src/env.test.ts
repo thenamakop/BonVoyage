@@ -1,5 +1,16 @@
-import { describe, expect, it } from 'vitest';
-import { parseEnv } from './env';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import type { parseEnv as ParseEnv } from './env';
+
+// env.ts runs parseEnv(process.env) at import time, so the variables it needs
+// are stubbed BEFORE the module is imported — the test works with no .env.
+
+let parseEnv: typeof ParseEnv;
+
+beforeAll(async () => {
+  vi.stubEnv('DATABASE_URL', 'postgres://u:p@localhost:5433/db_test');
+  vi.stubEnv('BETTER_AUTH_SECRET', 'test-secret-test-secret-test-secret');
+  ({ parseEnv } = await import('./env'));
+});
 
 const base = {
   DATABASE_URL: 'postgres://u:p@localhost:5433/db_test',

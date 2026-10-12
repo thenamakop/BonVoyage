@@ -41,7 +41,7 @@ describe('runSeed', () => {
 
     const demo = await db.select().from(trip).where(eq(trip.title, 'Long weekend in the hills'));
     expect(demo).toHaveLength(1);
-    expect(demo[0]!.status).toBe('draft');
+    expect(demo[0]!.status).toBe('collecting_preferences');
 
     const members = await db
       .select({ n: sql<number>`count(*)::int` })

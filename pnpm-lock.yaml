@@ -65,6 +65,9 @@ importers:
       '@bonvoyage/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@bonvoyage/engine':
+        specifier: workspace:*
+        version: link:../../packages/engine
       '@bonvoyage/shared':
         specifier: workspace:*
         version: link:../../packages/shared
