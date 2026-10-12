@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { MAX_MEMBERS, type TripDetail, type TripMember } from '@bonvoyage/shared';
-import { Alert } from '../../components/ui/Alert';
-import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { useLeaveTrip, useRemoveMember } from '../../features/invitations/api';
-import { ApiError } from '../../lib/api';
+import { Alert } from '../../../components/ui/Alert';
+import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
+import { useLeaveTrip, useRemoveMember } from '../../../features/invitations/api';
+import { ApiError } from '../../../lib/api';
 
 // Roster (wireframe 06, S1-3). The organiser can remove a member and a member
 // can leave while the trip is draft or collecting preferences; removed
@@ -52,7 +52,10 @@ export function Roster({ trip }: { trip: TripDetail }) {
 
   const open = trip.status === 'draft' || trip.status === 'collecting_preferences';
   const isOrganiser = trip.myRole === 'organiser';
-  const canLeave = open && !isOrganiser && trip.myStatus === 'active';
+  // Leave follows the server's availableActions, like every dashboard button.
+  const canLeave = trip.availableActions.some((a) => a.action === 'leaveTrip' && a.enabled);
+  // Submission state means nothing before the trip opens for preferences.
+  const showSubmitted = trip.status !== 'draft';
   const active = trip.members.filter((m) => m.status === 'active');
   const removed = trip.members.filter((m) => m.status === 'excluded');
   const error = remove.error ?? leave.error;
@@ -62,7 +65,18 @@ export function Roster({ trip }: { trip: TripDetail }) {
       <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
         <span className="text-sm text-slate-900">{m.name}</span>
         <span className="flex items-center gap-2">
-          <Badge>{m.role === 'organiser' ? 'Organiser' : 'Member'}</Badge>
+          {m.role === 'organiser' ? <Badge>Organiser</Badge> : null}
+          {showSubmitted ? (
+            m.submitted ? (
+              <Badge tone="success">
+                <span aria-hidden="true">✓&nbsp;</span>Submitted
+              </Badge>
+            ) : (
+              <Badge tone="warning">
+                <span aria-hidden="true">…&nbsp;</span>Waiting
+              </Badge>
+            )
+          ) : null}
           {isOrganiser && open && m.role !== 'organiser' && confirmRemove !== m.userId ? (
             <Button
               variant="ghost"

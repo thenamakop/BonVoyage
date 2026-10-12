@@ -100,7 +100,7 @@ Ten decisions are made once, written as ADRs and not reopened mid-sprint. They k
 | --- | --- | --- |
 | 001 | TypeScript for web, API, engine and scripts | One toolchain and one set of shared types and validation schemas; the synopsis allows Express (C2) |
 | 002 | pnpm workspace monorepo: `apps/web`, `apps/api`, `packages/engine`, `packages/integrations`, `packages/db`, `packages/shared` | The engine stays pure, with no I/O, so feasibility and scoring are unit-tested in isolation |
-| 003 | Web: React and TypeScript on Vite, React Router, TanStack Query, Tailwind CSS | Synopsis Table 3; a 10-second poll on the trip dashboard meets the SRS 3.3 no-reload rule |
+| 003 | Web: React and TypeScript on Vite, React Router, TanStack Query, Tailwind CSS | Synopsis Table 3; an 8-second poll on the trip dashboard meets the SRS 3.3 no-reload rule (10 s at first, see ADR-003) |
 | 004 | API: Node.js 24 LTS and Express 5, REST and JSON under `/api` | SRS 3.1.4. Node 24 has security support until 30 April 2028, while Node 26 is still Upcoming LTS ([endoflife.date](https://endoflife.date/nodejs)) |
 | 005 | PostgreSQL with Drizzle ORM and versioned SQL migrations; no PostGIS | SRS 3.4 needs referential integrity and cascades; a catalogue under 500 rows needs only a haversine function |
 | 006 | Hotels, buses and trains come from the curated catalogue, with every figure labelled by its source | Amadeus announced that its [Self-Service APIs](https://www.phocuswire.com/amadeus-shut-down-self-service-apis-portal-developers) (SRS references \[8\] and \[9\]) would be decommissioned on 17 July 2026, with keys disabled; Booking.com Demand needs partner access (SRS reference \[10\]) |
@@ -386,7 +386,7 @@ Sprint 1 goal: an organiser signs up, creates a trip with origin, duration, budg
 | 2 | Create a trip with origin, duration, budget and radius (T1) | R2, R9 | Parth |
 | 3 | Shareable invitation link, join flow and roster (T2) | R2 | Parth |
 | 4 | Preference form; a submission completes T3 | R3 | Kushagra |
-| 5 | Trip dashboard with submission status and a 10-second poll | R3 | Kushagra |
+| 5 | Trip dashboard with submission status and an 8-second poll | R3 | Kushagra |
 | 6 | Access rules: a profile is readable by its owner only; the group sees aggregates | R10 | Maulik |
 | 7 | Catalogue CSV import and an administrator re-import command | R11 | Manan |
 | 8 | API tests for issues 1 to 7 against Docker Postgres | R11 | Parth |

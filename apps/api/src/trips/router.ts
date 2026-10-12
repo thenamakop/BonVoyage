@@ -1,5 +1,10 @@
 import type { Db } from '@bonvoyage/db';
-import { CreateTripInput, PreferenceInput, UpdateTripInput } from '@bonvoyage/shared';
+import {
+  CloseSubmissionsInput,
+  CreateTripInput,
+  PreferenceInput,
+  UpdateTripInput,
+} from '@bonvoyage/shared';
 import express from 'express';
 import { z } from 'zod';
 import type { Auth } from '../auth/auth';
@@ -16,7 +21,9 @@ import { getSessionUser, requireSession } from '../http/session';
 import { parseTripId } from './access';
 import {
   cancelTrip,
+  closeSubmissions,
   createTrip,
+  getActivity,
   getDestinations,
   getHubs,
   getMyTrips,
@@ -75,6 +82,20 @@ export function createRouter({
     const { userId } = getSessionUser(res);
     const result = await cancelTrip({ db, logger: req.log, clock }, tripId, userId);
     res.json(result);
+  });
+
+  // S1-5: T3b and the dashboard's activity list.
+  router.post('/trips/:id/close-submissions', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    parseOrThrow(CloseSubmissionsInput, req.body ?? {});
+    const { userId } = getSessionUser(res);
+    res.json(await closeSubmissions({ db, logger: req.log, clock }, tripId, userId));
+  });
+
+  router.get('/trips/:id/activity', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await getActivity(db, tripId, userId));
   });
 
   // S1-3: the invitation link and the roster. The logic lives in

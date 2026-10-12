@@ -1,13 +1,17 @@
 import type { Db } from '@bonvoyage/db';
 import { tripTransition } from '@bonvoyage/db/schema';
 import { legalEvents, nextState } from '@bonvoyage/engine';
-import type {
-  CreateTripInput,
-  DestinationsResponse,
-  HubsResponse,
-  TripDetail,
-  TripsResponse,
-  UpdateTripInput,
+import {
+  MAX_MEMBERS,
+  summarizeEvent,
+  type ActivityResponse,
+  type CreateTripInput,
+  type DestinationsResponse,
+  type HubsResponse,
+  type TripDetail,
+  type TripProgress,
+  type TripsResponse,
+  type UpdateTripInput,
 } from '@bonvoyage/shared';
 import { ERROR_CODES, indiaDate } from '@bonvoyage/shared';
 import type { Logger } from 'pino';
@@ -24,16 +28,19 @@ import {
   findHubBySlug,
   insertOrganiserMember,
   insertTrip,
+  listActivity,
   listActiveDestinations,
   listHubs,
   listMembersWithNames,
   listMembershipTrips,
   lockTripStatus,
+  newestTransitionAt,
   updateTripFields,
   type HubRow,
   type MemberWithName,
   type Tx,
 } from './repository';
+import { tripActions } from './actions';
 import { transitionTrip } from './transition-trip';
 
 interface Deps {
@@ -43,13 +50,27 @@ interface Deps {
 
 const iso = (d: Date) => d.toISOString();
 
+function progressOf(members: MemberWithName[]): TripProgress {
+  const active = members.filter((m) => m.member.status === 'active');
+  const submitted = active.filter((m) => m.member.submittedAt !== null).length;
+  return {
+    activeCount: active.length,
+    submittedCount: submitted,
+    pendingCount: active.length - submitted,
+    excludedCount: members.length - active.length,
+    maxMembers: MAX_MEMBERS,
+  };
+}
+
 function toDetail(
   row: TripRow,
   hubRow: HubRow,
   members: MemberWithName[],
   caller: MembershipRow,
+  lastActivityAt: Date | null,
 ): TripDetail {
   const organiser = members.find((m) => m.member.role === 'organiser');
+  const progress = progressOf(members);
   return {
     id: row.id,
     title: row.title,
@@ -75,18 +96,28 @@ function toDetail(
     myRole: caller.role,
     myStatus: caller.status,
     legalEvents: legalEvents(row.status),
+    progress,
+    availableActions: tripActions({
+      status: row.status,
+      myRole: caller.role,
+      myStatus: caller.status,
+      mySubmitted: caller.submittedAt !== null,
+      progress,
+    }),
+    lastActivityAt: lastActivityAt ? iso(lastActivityAt) : null,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
 }
 
 async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<TripDetail> {
-  const [hubRow, members] = await Promise.all([
+  const [hubRow, members, lastActivityAt] = await Promise.all([
     db.query.hub.findFirst({ where: (h, { eq }) => eq(h.id, row.originHubId) }),
     listMembersWithNames(db, row.id),
+    newestTransitionAt(db, row.id),
   ]);
   if (!hubRow) throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
-  return toDetail(row, hubRow, members, caller);
+  return toDetail(row, hubRow, members, caller, lastActivityAt);
 }
 
 export async function getDestinations(db: Db): Promise<DestinationsResponse> {
@@ -232,4 +263,43 @@ export async function cancelTrip(
   requireOrganiser(membership);
   const outcome = await transitionTrip(deps, { tripId, event: 'cancelTrip', actorUserId: userId });
   return { id: tripId, status: outcome.to };
+}
+
+// POST /api/trips/:id/close-submissions: T3b. transitionTrip's
+// excludeNonSubmitters action excludes every active member who has not
+// submitted (0001 f); GUARD_FAILED and ILLEGAL_TRANSITION surface as 409.
+export async function closeSubmissions(
+  deps: { db: Db; logger: Logger; clock: () => Date },
+  tripId: string,
+  userId: string,
+): Promise<TripDetail> {
+  const { membership } = await loadTripForMember(deps.db, tripId, userId);
+  requireActiveMember(membership);
+  requireOrganiser(membership);
+  await transitionTrip(deps, { tripId, event: 'closeSubmissions', actorUserId: userId });
+  return getTrip(deps.db, tripId, userId);
+}
+
+const ACTIVITY_LIMIT = 20;
+
+// GET /api/trips/:id/activity: any member, excluded included (they can read).
+export async function getActivity(
+  db: Db,
+  tripId: string,
+  userId: string,
+): Promise<ActivityResponse> {
+  await loadTripForMember(db, tripId, userId);
+  const rows = await listActivity(db, tripId, ACTIVITY_LIMIT);
+  return {
+    items: rows.map((r) => ({
+      id: r.id,
+      transitionId: r.transitionId,
+      event: r.event,
+      fromStatus: r.fromStatus,
+      toStatus: r.toStatus,
+      actorName: r.actorName,
+      createdAt: iso(r.createdAt),
+      summary: summarizeEvent(r.event, r.actorName),
+    })),
+  };
 }

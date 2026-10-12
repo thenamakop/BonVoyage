@@ -82,6 +82,35 @@ export const TripMember = z.object({
 });
 export type TripMember = z.infer<typeof TripMember>;
 
+// S1-5: the dashboard's counts, computed from trip_member (active and
+// excluded rows; maxMembers is MAX_MEMBERS).
+export const TripProgress = z.object({
+  activeCount: z.number().int(),
+  submittedCount: z.number().int(),
+  pendingCount: z.number().int(),
+  excludedCount: z.number().int(),
+  maxMembers: z.number().int(),
+});
+export type TripProgress = z.infer<typeof TripProgress>;
+
+export const TripActionName = z.enum([
+  'invite',
+  'editDetails',
+  'editPreferences',
+  'closeSubmissions',
+  'cancelTrip',
+  'leaveTrip',
+]);
+export type TripActionName = z.infer<typeof TripActionName>;
+
+/** An action this viewer may take now; a disabled one carries the reason. */
+export const TripAction = z.object({
+  action: TripActionName,
+  enabled: z.boolean(),
+  reason: z.string().optional(),
+});
+export type TripAction = z.infer<typeof TripAction>;
+
 export const TripDetail = z.object({
   id: z.string(),
   title: z.string(),
@@ -97,6 +126,10 @@ export const TripDetail = z.object({
   myRole: MemberRole,
   myStatus: MemberStatus,
   legalEvents: z.array(TripEventName),
+  progress: TripProgress,
+  availableActions: z.array(TripAction),
+  /** created_at of the newest trip_transition row; the activity list reloads when it moves. */
+  lastActivityAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -165,3 +198,52 @@ export const TRIP_STATUS_LABELS: Record<TripStatusType, { label: string; explana
     explanation: 'The trip was called off.',
   },
 };
+
+/** POST /api/trips/:id/close-submissions takes an empty object. */
+export const CloseSubmissionsInput = z.strictObject({});
+export type CloseSubmissionsInput = z.infer<typeof CloseSubmissionsInput>;
+
+export const ActivityItem = z.object({
+  id: z.string(),
+  transitionId: z.string(),
+  event: z.string(),
+  fromStatus: z.string().nullable(),
+  toStatus: z.string(),
+  actorName: z.string().nullable(),
+  createdAt: z.string(),
+  summary: z.string(),
+});
+export type ActivityItem = z.infer<typeof ActivityItem>;
+
+export const ActivityResponse = z.object({ items: z.array(ActivityItem) });
+export type ActivityResponse = z.infer<typeof ActivityResponse>;
+
+// One sentence per state-machine event for the activity list. Joining,
+// leaving and removal are not events, so they never appear here (S1-5).
+export const EVENT_SUMMARIES: Record<TripEventName, (actor: string) => string> = {
+  createTrip: (a) => `${a} created the trip`,
+  inviteMembers: (a) => `${a} opened the trip for preferences`,
+  preferenceSubmitted: (a) => `${a} submitted preferences`,
+  closeSubmissions: (a) => `${a} closed submissions`,
+  conflictDetected: (a) => `${a} found conflicting preferences`,
+  preferenceRevised: (a) => `${a} updated preferences`,
+  recommendationRequested: (a) => `${a} asked for recommendations`,
+  destinationSelected: (a) => `${a} chose a destination`,
+  packageRejected: (a) => `${a} turned down the packages`,
+  packageAccepted: (a) => `${a} accepted a package`,
+  generateItinerary: (a) => `${a} asked for an itinerary`,
+  itineraryRejected: (a) => `${a} turned down the itinerary`,
+  itineraryAccepted: (a) => `${a} accepted the itinerary`,
+  packageModified: (a) => `${a} changed the package`,
+  itineraryModified: (a) => `${a} changed the itinerary`,
+  cancelTrip: (a) => `${a} cancelled the trip`,
+  tripStarted: (a) => `${a} marked the trip as started`,
+  tripEnded: (a) => `${a} marked the trip as finished`,
+};
+
+/** The activity sentence for a stored event; a missing actor reads "Someone". */
+export function summarizeEvent(event: string, actorName: string | null): string {
+  const parsed = TripEventName.safeParse(event);
+  const actor = actorName ?? 'Someone';
+  return parsed.success ? EVENT_SUMMARIES[parsed.data](actor) : `${actor} changed the trip`;
+}

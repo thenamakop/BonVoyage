@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatHub, formatInr, groupBudgetLine } from './format';
+import {
+  formatDate,
+  formatHub,
+  formatInr,
+  formatRelative,
+  groupBudgetLine,
+  perPersonShare,
+  updatedAgo,
+} from './format';
 
 describe('formatInr', () => {
   it('formats with Indian grouping and no decimals', () => {
@@ -44,9 +52,44 @@ describe('groupBudgetLine', () => {
     );
   });
 
-  it('says "member" for one', () => {
+  it('a lone member gets no share yet (S1-2 review)', () => {
     expect(groupBudgetLine(20000, 1)).toBe(
-      'The group budget is ₹20,000, about ₹20,000 each for 1 member.',
+      'The group budget is ₹20,000. Per-person share appears once people join.',
     );
+  });
+});
+
+describe('perPersonShare', () => {
+  it('1 member: no share until people join', () => {
+    expect(perPersonShare(48000, 1)).toBe('Per-person share appears once people join');
+  });
+
+  it('3 members: the group total over 3, rounded down to ₹500', () => {
+    expect(perPersonShare(48000, 3)).toBe('about ₹16,000 each');
+    expect(perPersonShare(50000, 3)).toBe('about ₹16,500 each');
+  });
+
+  it('4 members', () => {
+    expect(perPersonShare(48000, 4)).toBe('about ₹12,000 each');
+    expect(perPersonShare(45000, 4)).toBe('about ₹11,000 each');
+  });
+});
+
+describe('formatRelative and updatedAgo', () => {
+  const now = Date.parse('2026-10-13T10:00:00Z');
+  const ago = (ms: number) => new Date(now - ms).toISOString();
+
+  it('words a past time', () => {
+    expect(formatRelative(ago(10_000), now)).toBe('just now');
+    expect(formatRelative(ago(5 * 60_000), now)).toBe('5 minutes ago');
+    expect(formatRelative(ago(2 * 3_600_000), now)).toBe('2 hours ago');
+    expect(formatRelative(ago(26 * 3_600_000), now)).toBe('yesterday');
+  });
+
+  it('ticks the footer in 5-second steps, then minutes', () => {
+    expect(updatedAgo(now - 3_000, now)).toBe('Updated just now');
+    expect(updatedAgo(now - 7_000, now)).toBe('Updated 5 seconds ago');
+    expect(updatedAgo(now - 59_000, now)).toBe('Updated 55 seconds ago');
+    expect(updatedAgo(now - 61_000, now)).toBe('Updated 1 minute ago');
   });
 });
