@@ -23,12 +23,24 @@ interface Deps {
   clock: () => Date;
 }
 
+export interface LockedTrip {
+  id: string;
+  status: TripStatus;
+  startDate: string | null;
+}
+
 interface Input {
   tripId: string;
   event: TripEvent;
   actorUserId: string;
   feasibleCount?: number;
   alternativesLeft?: number;
+  /**
+   * Work that must commit with the transition (S1-3: the first invitation
+   * row for T2). Runs after the row lock and before the guard context is
+   * built; a throw here, or a rejected event, rolls all of it back.
+   */
+  beforeDecide?: (tx: Tx, lockedTrip: LockedTrip) => Promise<void>;
 }
 
 export interface TransitionOutcome {
@@ -46,7 +58,7 @@ const REASON_TO_ERROR: Record<string, string> = {
   TERMINAL_STATE: ERROR_CODES.TRIP_CLOSED,
 };
 
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 function deferred(name: ActionName, sprint: string, logger: Logger) {
   return () => {
@@ -104,7 +116,7 @@ function indiaToday(clock: () => Date): string {
 
 export async function transitionTrip(
   { db, logger, clock }: Deps,
-  { tripId, event, actorUserId, feasibleCount, alternativesLeft }: Input,
+  { tripId, event, actorUserId, feasibleCount, alternativesLeft, beforeDecide }: Input,
 ): Promise<TransitionOutcome> {
   return db.transaction(async (tx) => {
     const rows = await tx
@@ -119,6 +131,8 @@ export async function transitionTrip(
       .limit(1);
     const row = rows[0];
     if (!row) throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Trip not found.');
+
+    if (beforeDecide) await beforeDecide(tx, row);
 
     const [counts] = await tx
       .select({

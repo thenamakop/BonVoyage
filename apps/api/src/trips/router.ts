@@ -1,15 +1,32 @@
 import type { Db } from '@bonvoyage/db';
 import { CreateTripInput, UpdateTripInput } from '@bonvoyage/shared';
 import express from 'express';
+import { z } from 'zod';
 import type { Auth } from '../auth/auth';
+import {
+  createInvitation,
+  getActiveInvitation,
+  leaveTrip,
+  removeMember,
+  revokeInvitations,
+} from '../invitations/service';
 import { parseOrThrow } from '../http/errors';
 import { getSessionUser, requireSession } from '../http/session';
 import { parseTripId } from './access';
 import { cancelTrip, createTrip, getHubs, getMyTrips, getTrip, updateTrip } from './service';
 
-export function createRouter({ db, auth }: { db: Db; auth: Auth }) {
+const MemberParams = z.object({ userId: z.string().min(1).max(200) });
+
+export function createRouter({
+  db,
+  auth,
+  clock = () => new Date(),
+}: {
+  db: Db;
+  auth: Auth;
+  clock?: () => Date;
+}) {
   const router = express.Router();
-  const clock = () => new Date();
 
   router.get('/hubs', requireSession(auth), async (_req, res) => {
     res.json(await getHubs(db));
@@ -45,6 +62,44 @@ export function createRouter({ db, auth }: { db: Db; auth: Auth }) {
     const { userId } = getSessionUser(res);
     const result = await cancelTrip({ db, logger: req.log, clock }, tripId, userId);
     res.json(result);
+  });
+
+  // S1-3: the invitation link and the roster. The logic lives in
+  // ../invitations; trip-scoped routes are registered here (AGENTS.md 4).
+  router.post('/trips/:id/invitations', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    const result = await createInvitation({ db, logger: req.log, clock }, tripId, userId);
+    res.status(result.created ? 201 : 200).json(result.invitation);
+  });
+
+  router.get('/trips/:id/invitations/active', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await getActiveInvitation({ db, logger: req.log, clock }, tripId, userId));
+  });
+
+  router.delete('/trips/:id/invitations/active', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    await revokeInvitations({ db, logger: req.log, clock }, tripId, userId);
+    res.status(204).end();
+  });
+
+  // Registered before /members/:userId: user ids are text, so "me" would match it.
+  router.delete('/trips/:id/members/me', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    await leaveTrip({ db, logger: req.log, clock }, tripId, userId);
+    res.status(204).end();
+  });
+
+  router.delete('/trips/:id/members/:userId', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const target = parseOrThrow(MemberParams, req.params);
+    const { userId } = getSessionUser(res);
+    await removeMember({ db, logger: req.log, clock }, tripId, userId, target.userId);
+    res.status(204).end();
   });
 
   return router;
