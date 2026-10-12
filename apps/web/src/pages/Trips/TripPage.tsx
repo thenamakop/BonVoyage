@@ -21,8 +21,9 @@ import { Roster } from './dashboard/Roster';
 import { StatusBanner } from './dashboard/StatusBanner';
 import { TripParameters } from './dashboard/TripParameters';
 
-// The trip dashboard (wireframe 06, S1-5). The trip is polled every 10 s while
-// the tab is visible (SRS 3.3); everything below re-renders from that one query.
+// The trip dashboard (wireframe 06, S1-5). The trip is polled every 8 s while
+// the tab is visible, so changes appear within 10 s (SRS 3.3); everything
+// below re-renders from that one query.
 
 const TICK_MS = 5_000;
 

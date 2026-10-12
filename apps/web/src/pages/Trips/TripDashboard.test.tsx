@@ -8,7 +8,7 @@ import type { TripDetail } from '@bonvoyage/shared';
 import { TRIP_ID, member, tripDetail } from '../../test/trip-fixture';
 import { TripPage } from './TripPage';
 
-// S1-5: the live dashboard. Only setInterval is faked: TanStack Query's 10 s
+// S1-5: the live dashboard. Only setInterval is faked: TanStack Query's 8 s
 // refetchInterval and the 5 s clock run on it, while Testing Library's own
 // waiting keeps real timeouts.
 
@@ -104,7 +104,7 @@ describe('Trip dashboard', () => {
     expect(screen.getByText('about ₹16,000 each')).toBeInTheDocument();
   });
 
-  it('polls every 10 s, announces a status change, and reloads activity only when it moves', async () => {
+  it('polls every 8 s, announces a status change, and reloads activity only when it moves', async () => {
     const collecting = tripDetail();
     const ready = tripDetail({
       status: 'ready_for_recommendation',
@@ -122,11 +122,13 @@ describe('Trip dashboard', () => {
     expect(callsTo(TRIP_URL)).toBe(1);
     expect(callsTo(ACTIVITY_URL)).toBe(1);
 
-    await advance(10_000); // same lastActivityAt: the activity list is not refetched
+    await advance(7_999); // not yet: the interval is 8 s
+    expect(callsTo(TRIP_URL)).toBe(1);
+    await advance(1); // same lastActivityAt: the activity list is not refetched
     expect(callsTo(TRIP_URL)).toBe(2);
     expect(callsTo(ACTIVITY_URL)).toBe(1);
 
-    await advance(10_000); // status and lastActivityAt changed
+    await advance(8_000); // status and lastActivityAt changed
     expect(callsTo(TRIP_URL)).toBe(3);
     expect(await screen.findByText('3 of 3 members have submitted')).toBeInTheDocument();
     expect(screen.getByTestId('status-announcer')).toHaveTextContent(
@@ -139,7 +141,7 @@ describe('Trip dashboard', () => {
     stubFetch([tripDetail(), 'fail']);
     renderPage();
     await screen.findByText('2 of 3 members have submitted');
-    await advance(10_000);
+    await advance(8_000);
     expect(
       await screen.findByText('Could not refresh the trip. Trying again.'),
     ).toBeInTheDocument();

@@ -112,4 +112,4 @@ The loading state (skeleton rows) is the inset on 02-trips; the error state (ale
 ## Open questions
 
 - Should the packages screen also show the rejected-package state once R13's decisions land, or is the per-member tally enough for Sprint 3?
-- The dashboard poll interval (10 s per issue #33) is assumed in the desktop "Updated 5 seconds ago"; confirm the cadence still stands.
+- The dashboard polls every 8 s (S1-5, PR #53), so a change appears within 10 s including request time (SRS 3.3); the desktop "Updated 5 seconds ago" fits that cadence. Issue #33 first said 10 s.

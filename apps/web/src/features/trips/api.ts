@@ -26,10 +26,11 @@ export function useMyTrips() {
   });
 }
 
-// SRS 3.3: the dashboard sees other people's changes within 10 seconds. Only
-// the trip is polled, only on the dashboard (live), only while the tab is
-// visible, and never once the trip is over.
-const LIVE_INTERVAL_MS = 10_000;
+// SRS 3.3: the dashboard sees other people's changes within 10 seconds. The
+// poll is 8 s so the worst case (one interval plus the request) stays under 10 s
+// on production. Only the trip is polled, only on the dashboard (live), only
+// while the tab is visible, and never once the trip is over.
+const LIVE_INTERVAL_MS = 8_000;
 const FINISHED = new Set(['cancelled', 'completed']);
 
 export function useTrip(id: string, { live = false }: { live?: boolean } = {}) {
