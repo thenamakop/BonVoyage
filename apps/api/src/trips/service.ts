@@ -3,6 +3,7 @@ import { tripTransition } from '@bonvoyage/db/schema';
 import { legalEvents, nextState } from '@bonvoyage/engine';
 import type {
   CreateTripInput,
+  DestinationsResponse,
   HubsResponse,
   TripDetail,
   TripsResponse,
@@ -23,6 +24,7 @@ import {
   findHubBySlug,
   insertOrganiserMember,
   insertTrip,
+  listActiveDestinations,
   listHubs,
   listMembersWithNames,
   listMembershipTrips,
@@ -85,6 +87,10 @@ async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<T
   ]);
   if (!hubRow) throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
   return toDetail(row, hubRow, members, caller);
+}
+
+export async function getDestinations(db: Db): Promise<DestinationsResponse> {
+  return { destinations: await listActiveDestinations(db) };
 }
 
 export async function getHubs(db: Db): Promise<HubsResponse> {

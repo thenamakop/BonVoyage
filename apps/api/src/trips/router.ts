@@ -1,5 +1,5 @@
 import type { Db } from '@bonvoyage/db';
-import { CreateTripInput, UpdateTripInput } from '@bonvoyage/shared';
+import { CreateTripInput, PreferenceInput, UpdateTripInput } from '@bonvoyage/shared';
 import express from 'express';
 import { z } from 'zod';
 import type { Auth } from '../auth/auth';
@@ -10,10 +10,19 @@ import {
   removeMember,
   revokeInvitations,
 } from '../invitations/service';
+import { getMyPreference, saveMyPreference } from '../preferences/service';
 import { parseOrThrow } from '../http/errors';
 import { getSessionUser, requireSession } from '../http/session';
 import { parseTripId } from './access';
-import { cancelTrip, createTrip, getHubs, getMyTrips, getTrip, updateTrip } from './service';
+import {
+  cancelTrip,
+  createTrip,
+  getDestinations,
+  getHubs,
+  getMyTrips,
+  getTrip,
+  updateTrip,
+} from './service';
 
 const MemberParams = z.object({ userId: z.string().min(1).max(200) });
 
@@ -30,6 +39,10 @@ export function createRouter({
 
   router.get('/hubs', requireSession(auth), async (_req, res) => {
     res.json(await getHubs(db));
+  });
+
+  router.get('/destinations', requireSession(auth), async (_req, res) => {
+    res.json(await getDestinations(db));
   });
 
   router.post('/trips', requireSession(auth), async (req, res) => {
@@ -100,6 +113,21 @@ export function createRouter({
     const { userId } = getSessionUser(res);
     await removeMember({ db, logger: req.log, clock }, tripId, userId, target.userId);
     res.status(204).end();
+  });
+
+  // S1-4: the caller's own preference. The logic lives in ../preferences;
+  // there is deliberately no route that reads another member's answers.
+  router.get('/trips/:id/preferences/me', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await getMyPreference(db, tripId, userId));
+  });
+
+  router.put('/trips/:id/preferences/me', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const input = parseOrThrow(PreferenceInput, req.body);
+    const { userId } = getSessionUser(res);
+    res.json(await saveMyPreference({ db, logger: req.log, clock }, tripId, userId, input));
   });
 
   return router;

@@ -1,5 +1,5 @@
 import type { Db } from '@bonvoyage/db';
-import { hub, trip, tripMember, user } from '@bonvoyage/db/schema';
+import { destination, hub, trip, tripMember, user } from '@bonvoyage/db/schema';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { MembershipRow, TripRow } from './access';
 
@@ -14,6 +14,14 @@ export async function findHubBySlug(db: Db | Tx, slug: string): Promise<HubRow |
 
 export async function listHubs(db: Db): Promise<HubRow[]> {
   return db.select().from(hub).orderBy(asc(hub.name));
+}
+
+export async function listActiveDestinations(db: Db) {
+  return db
+    .select({ slug: destination.slug, name: destination.name, state: destination.state })
+    .from(destination)
+    .where(eq(destination.active, true))
+    .orderBy(asc(destination.name));
 }
 
 export async function insertTrip(
