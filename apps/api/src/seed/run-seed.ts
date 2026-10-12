@@ -26,9 +26,11 @@ import {
 } from '@bonvoyage/db/schema';
 import { account, session, user, verification } from '@bonvoyage/db/schema/auth';
 import { distanceCache } from '@bonvoyage/db/schema';
+import { indiaDate, type PreferenceInput } from '@bonvoyage/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import type { Auth } from '../auth/auth';
+import { saveMyPreference } from '../preferences/service';
 import { transitionTrip } from '../trips/transition-trip';
 
 // S0-5 step 6: demo seed. Every step is idempotent so the seed can run again
@@ -51,7 +53,13 @@ export interface SeedOptions {
   auth: Auth;
   catalogueDir: string;
   password: string;
+  /** Where progress lines go; defaults to stdout (the seed is a CLI step). */
+  log?: (line: string) => void;
 }
+
+const stdout = (line: string) => {
+  process.stdout.write(`${line}\n`);
+};
 
 async function tableCounts(db: Db): Promise<Record<string, number>> {
   const tables = {
@@ -90,7 +98,13 @@ async function tableCounts(db: Db): Promise<Record<string, number>> {
   return counts;
 }
 
-export async function runSeed({ db, auth, catalogueDir, password }: SeedOptions): Promise<void> {
+export async function runSeed({
+  db,
+  auth,
+  catalogueDir,
+  password,
+  log = stdout,
+}: SeedOptions): Promise<void> {
   const today = TODAY();
 
   // a) catalogue
@@ -98,7 +112,7 @@ export async function runSeed({ db, auth, catalogueDir, password }: SeedOptions)
   const imported = Object.entries(counts.inserted)
     .map(([t, n]) => `${t} +${n}`)
     .join(', ');
-  console.log(`catalogue: ${imported}`);
+  log(`catalogue: ${imported}`);
 
   // b) demo users
   const userIds = new Map<string, string>();
@@ -168,16 +182,6 @@ export async function runSeed({ db, auth, catalogueDir, password }: SeedOptions)
     });
   }
 
-  // S0-6: T2 moves the demo trip to collecting_preferences through the locked
-  // transition path once; a re-seed sees it already there and skips.
-  const [demo] = await db.select({ status: trip.status }).from(trip).where(eq(trip.id, tripId));
-  if (demo!.status === 'draft') {
-    await transitionTrip(
-      { db, logger: pino({ level: 'silent' }), clock: () => new Date() },
-      { tripId, event: 'inviteMembers', actorUserId: asha },
-    );
-  }
-
   // e) members: Asha (organiser), Rohan and Meera. Kabir stays outside.
   for (const { name, role } of DEMO_USERS.filter((u) => u.name !== 'Kabir')) {
     await db
@@ -186,59 +190,54 @@ export async function runSeed({ db, auth, catalogueDir, password }: SeedOptions)
       .onConflictDoNothing({ target: [tripMember.tripId, tripMember.userId] });
   }
 
-  // f) preferences for Asha and Rohan (submitted); Meera stays pending.
-  const memberId = async (name: string) =>
-    (
-      await db
-        .select({ id: tripMember.id })
-        .from(tripMember)
-        .where(and(eq(tripMember.tripId, tripId), eq(tripMember.userId, userIds.get(name)!)))
-        .limit(1)
-    )[0]!.id;
-  const prefs = [
+  // S1-6: the seed follows the state machine like the app does. T2 opens the
+  // trip once; a re-seed sees it already open and skips.
+  const deps = { db, logger: pino({ level: 'silent' }), clock: () => new Date() };
+  const [demo] = await db.select({ status: trip.status }).from(trip).where(eq(trip.id, tripId));
+  if (demo!.status === 'draft') {
+    await transitionTrip(deps, { tripId, event: 'inviteMembers', actorUserId: asha });
+  }
+
+  // f) Asha and Rohan submit through the same preference service the API
+  // uses, so each submission writes an I1 row; Meera stays pending. Dates are
+  // relative to today so the server's "from today" check always passes.
+  const inDays = (n: number) => indiaDate(new Date(Date.now() + n * 86_400_000));
+  const prefs: { name: string; input: PreferenceInput }[] = [
     {
       name: 'Asha',
-      types: ['mountain', 'adventure'],
-      activities: ['trekking', 'rafting', 'camping'],
-      climate: 'cold' as const,
-      style: 'budget' as const,
-      min: 12000,
-      max: 18000,
-      start: '2026-11-13',
-      end: '2026-11-16',
+      input: {
+        destinationTypes: ['mountain', 'adventure'],
+        activities: ['trekking', 'rafting', 'camping'],
+        climate: 'cold',
+        travelStyle: 'budget',
+        budgetMinInr: 12000,
+        budgetMaxInr: 18000,
+        dateStart: inDays(31),
+        dateEnd: inDays(34),
+      },
     },
     {
       name: 'Rohan',
-      types: ['spiritual', 'mountain'],
-      activities: ['yoga_wellness', 'temples', 'trekking'],
-      climate: 'mild' as const,
-      style: 'comfort' as const,
-      min: 10000,
-      max: 16000,
-      start: '2026-11-12',
-      end: '2026-11-15',
+      input: {
+        destinationTypes: ['spiritual', 'mountain'],
+        activities: ['yoga_wellness', 'temples', 'trekking'],
+        climate: 'mild',
+        travelStyle: 'comfort',
+        budgetMinInr: 10000,
+        budgetMaxInr: 16000,
+        dateStart: inDays(30),
+        dateEnd: inDays(33),
+      },
     },
   ];
-  for (const p of prefs) {
-    const mid = await memberId(p.name);
-    await db
-      .insert(preference)
-      .values({
-        tripMemberId: mid,
-        destinationTypes: p.types,
-        activities: p.activities,
-        climate: p.climate,
-        travelStyle: p.style,
-        budgetMinInr: p.min,
-        budgetMaxInr: p.max,
-        dateStart: p.start,
-        dateEnd: p.end,
-      })
-      .onConflictDoNothing({ target: preference.tripMemberId });
-    await db
-      .update(tripMember)
-      .set({ submittedAt: new Date() })
-      .where(and(eq(tripMember.id, mid), sql`${tripMember.submittedAt} is null`));
+  for (const { name, input } of prefs) {
+    const userId = userIds.get(name)!;
+    const [m] = await db
+      .select({ submittedAt: tripMember.submittedAt })
+      .from(tripMember)
+      .where(and(eq(tripMember.tripId, tripId), eq(tripMember.userId, userId)))
+      .limit(1);
+    if (m?.submittedAt === null) await saveMyPreference(deps, tripId, userId, input);
   }
 
   // g) one active invitation
@@ -283,8 +282,8 @@ export async function runSeed({ db, auth, catalogueDir, password }: SeedOptions)
   }
 
   const rows = await tableCounts(db);
-  console.log('\nRow counts:');
-  for (const [table, n] of Object.entries(rows)) console.log(`  ${table}: ${n}`);
-  console.log('\nDemo sign-ins (password is never printed):');
-  for (const { name } of DEMO_USERS) console.log(`  ${demoEmail(name)}`);
+  log('\nRow counts:');
+  for (const [table, n] of Object.entries(rows)) log(`  ${table}: ${n}`);
+  log('\nDemo sign-ins (password is never printed):');
+  for (const { name } of DEMO_USERS) log(`  ${demoEmail(name)}`);
 }

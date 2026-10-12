@@ -78,7 +78,8 @@ const cancel = (a: request.Agent, id: string) =>
   a
     .post(`/api/trips/${id}/cancel`)
     .set('Host', 'localhost:5173')
-    .set('Origin', 'http://localhost:5173');
+    .set('Origin', 'http://localhost:5173')
+    .send({});
 
 afterAll(async () => {
   await pool.end();

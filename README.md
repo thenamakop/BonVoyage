@@ -284,6 +284,7 @@ The requirements follow the project's MoSCoW prioritisation: **R1 to R11** are M
 | [`docs/decisions/`](docs/decisions) | Architecture decision records ADR-001 to ADR-010 and later decisions |
 | [`docs/specs/scoring.md`](docs/specs/scoring.md) | Feasibility rules, the group-fit score and a worked example |
 | [`docs/traceability.md`](docs/traceability.md) | Requirements mapped to SRS sections, issues and tests |
+| [`docs/security/privacy.md`](docs/security/privacy.md) | What personal data is stored, who sees what, logs and deletion |
 | [`docs/prompts/`](docs/prompts) | The agent prompts each sprint was built from |
 | [`docs/sprints/`](docs/sprints) | Sprint reviews |
 | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | The original pre-development plan |

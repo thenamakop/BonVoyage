@@ -1,12 +1,13 @@
 import { createDb } from '@bonvoyage/db';
-import { preference, trip, tripMember } from '@bonvoyage/db/schema';
-import { eq, sql } from 'drizzle-orm';
+import { preference, trip, tripMember, tripTransition } from '@bonvoyage/db/schema';
+import { asc, eq, sql } from 'drizzle-orm';
 import { resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth/auth';
 import { runSeed } from './run-seed';
 
 // S0-5: the seed is idempotent and leaves the expected trip shape.
+// S1-6: it follows the state machine (T1, T2, then an I1 per submission).
 
 const { db, pool } = createDb(process.env.DATABASE_URL ?? '');
 const auth = createAuth({
@@ -23,16 +24,16 @@ afterAll(async () => {
 
 describe('runSeed', () => {
   it('runs twice with identical row counts and the expected trip shape', async () => {
-    await runSeed({ db, auth, catalogueDir, password: PASSWORD });
+    await runSeed({ db, auth, catalogueDir, password: PASSWORD, log: () => {} });
     const first = await Promise.all(
-      [trip, tripMember, preference].map(async (t) => {
+      [trip, tripMember, preference, tripTransition].map(async (t) => {
         const rows = await db.select({ n: sql<number>`count(*)::int` }).from(t);
         return rows[0]!.n;
       }),
     );
-    await runSeed({ db, auth, catalogueDir, password: PASSWORD });
+    await runSeed({ db, auth, catalogueDir, password: PASSWORD, log: () => {} });
     const second = await Promise.all(
-      [trip, tripMember, preference].map(async (t) => {
+      [trip, tripMember, preference, tripTransition].map(async (t) => {
         const rows = await db.select({ n: sql<number>`count(*)::int` }).from(t);
         return rows[0]!.n;
       }),
@@ -54,5 +55,17 @@ describe('runSeed', () => {
       .from(tripMember)
       .where(sql`${tripMember.tripId} = ${demo[0]!.id} and ${tripMember.submittedAt} is not null`);
     expect(prefs[0]!.n).toBe(2);
+
+    const transitions = await db
+      .select({ id: tripTransition.transitionId, event: tripTransition.event })
+      .from(tripTransition)
+      .where(eq(tripTransition.tripId, demo[0]!.id))
+      .orderBy(asc(tripTransition.createdAt));
+    expect(transitions).toEqual([
+      { id: 'T1', event: 'createTrip' },
+      { id: 'T2', event: 'inviteMembers' },
+      { id: 'I1', event: 'preferenceSubmitted' },
+      { id: 'I1', event: 'preferenceSubmitted' },
+    ]);
   });
 });

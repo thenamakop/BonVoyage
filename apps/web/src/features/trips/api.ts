@@ -110,7 +110,12 @@ const CancelResponse = z.object({ id: z.string(), status: z.string() });
 export function useCancelTrip(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => fetchJson(`/api/trips/${id}/cancel`, CancelResponse, { method: 'POST' }),
+    mutationFn: () =>
+      fetchJson(`/api/trips/${id}/cancel`, CancelResponse, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['trip', id] });
       void queryClient.invalidateQueries({ queryKey: ['trips'] });

@@ -73,12 +73,12 @@ async function openTrip(extra: number) {
   const org = await createTestUser(app, 'Asha');
   const { id: tripId } = await createTripAs(org.agent, { durationNights: 2 });
   const { token } = InvitationResponse.parse(
-    (await org.agent.post(`/api/trips/${tripId}/invitations`).set(H)).body,
+    (await org.agent.post(`/api/trips/${tripId}/invitations`).set(H).send({})).body,
   );
   const members = [];
   for (let i = 0; i < extra; i++) {
     const m = await createTestUser(app, `Member ${i}`);
-    await m.agent.post(`/api/invitations/${token}/accept`).set(H);
+    await m.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
     members.push(m);
   }
   return { org, members, tripId };

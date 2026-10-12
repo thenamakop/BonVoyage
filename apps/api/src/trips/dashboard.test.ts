@@ -65,11 +65,12 @@ async function threeMembers() {
   const asha = await createTestUser(app, 'Asha');
   const { id: tripId } = await createTripAs(asha.agent, { durationNights: 2 });
   const { token } = InvitationResponse.parse(
-    (await asha.agent.post(`/api/trips/${tripId}/invitations`).set(H)).body,
+    (await asha.agent.post(`/api/trips/${tripId}/invitations`).set(H).send({})).body,
   );
   const rohan = await createTestUser(app, 'Rohan');
   const meera = await createTestUser(app, 'Meera');
-  for (const m of [rohan, meera]) await m.agent.post(`/api/invitations/${token}/accept`).set(H);
+  for (const m of [rohan, meera])
+    await m.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
   return { asha, rohan, meera, tripId };
 }
 
