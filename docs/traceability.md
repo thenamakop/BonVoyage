@@ -15,7 +15,7 @@ Each requirement from the MoSCoW document, with its trace and sprint. Add the is
 | R9 | Organiser sets origin, duration, budget and radius | Must | User & Group Management | Table 5 | Manage Trip Group, 1.0 | S1 | #19, #30 (S1-2) |  |
 | R10 | Preference privacy and salted credential hashes | Must | User & Group Management; Preference Management | 3.4, 3.5 | D1 and D3 | S1 | #20, #29 (S1-1), #34 (S1-6) | apps/api/src/auth/auth.test.ts |
 | R11 | Relational persistence with referential integrity | Must | all modules | 3.4 | D1 to D6 | S0 onwards | #21, #35 (S1-7), #37 (CAT-A) | packages/db/src/catalogue/catalogue.test.ts, packages/db/test/schema.test.ts, packages/db/test/catalogue-import.test.ts, apps/api/src/seed/run-seed.test.ts, apps/api/src/trips/transition-trip.test.ts |
-| R12 | Grounded day-wise itinerary | Should | AI Itinerary Generator | Table 9 | Generate Itinerary, 6.0 | S4 | #22 |  |
+| R12 | Grounded day-wise itinerary | Should | AI Itinerary Generator | Table 9 | Generate Itinerary, 6.0 | S4 | #22 | packages/engine/src/itinerary/validate.test.ts, packages/integrations/src/llm/gemini.test.ts (spike evidence; R12 lands in S4) |
 | R13 | Accept, modify or reject generated output | Should | Trip & Feedback | 2.2, Table 9 | Review & Decide on Itinerary, 7.0 | S4 | #23 |  |
 | R14 | Cached or curated fallback, labelled by provenance | Should | External Data Integration | 3.5, Table 8 | 5.0 and D4 | S3 | #24, #37 (CAT-A), #38 (CAT-B), #39 (CAT-C) | packages/db/src/catalogue/catalogue.test.ts |
 | R15 | Screens within 3 s, shortlist within 10 s | Should | all modules | 3.3 | none | Buffer | #25 |  |

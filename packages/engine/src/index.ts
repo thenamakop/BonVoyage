@@ -1,4 +1,6 @@
 export { ROAD_FACTOR, estimateRoadKm, haversineKm } from './geo';
+export { validateItinerary } from './itinerary/validate';
+export type { ItemVerdict, ValidationError, ValidationResult } from './itinerary/validate';
 export type { LatLng } from './geo';
 export {
   ACTION_NAMES,

@@ -20,6 +20,7 @@ export type Provenance = z.infer<typeof Provenance>;
 
 export * from './vocab';
 export * from './domain';
+export * from './itinerary';
 
 export const ERROR_CODES = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',

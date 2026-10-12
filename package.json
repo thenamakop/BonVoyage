@@ -29,7 +29,8 @@
     "db:seed": "pnpm --filter @bonvoyage/api seed",
     "db:studio": "pnpm --filter @bonvoyage/db studio",
     "catalogue:check": "pnpm --filter @bonvoyage/db catalogue:check",
-    "catalogue:import": "pnpm --filter @bonvoyage/db catalogue:import"
+    "catalogue:import": "pnpm --filter @bonvoyage/db catalogue:import",
+    "spike:itinerary": "tsx packages/integrations/spikes/itinerary/run.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
