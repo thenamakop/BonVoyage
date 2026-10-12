@@ -2,7 +2,7 @@ import { createDb } from '@bonvoyage/db';
 import { hub, trip, tripMember, tripTransition } from '@bonvoyage/db/schema';
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
-import type { ErrorEnvelope } from '@bonvoyage/shared';
+import { indiaDate, type ErrorEnvelope } from '@bonvoyage/shared';
 import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
@@ -21,9 +21,10 @@ const auth = createAuth({
 const app = createApp({ db, pool, logger, auth });
 
 let seq = 0;
-const tomorrow = () => new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
-const today = () =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+// Both dates are India dates, as the T16 guard compares them (rule 7); a UTC
+// "tomorrow" equals India's "today" between 18:30 and 24:00 UTC.
+const tomorrow = () => indiaDate(new Date(Date.now() + 86_400_000));
+const today = () => indiaDate(new Date());
 
 async function signUp() {
   const a = request.agent(app);
