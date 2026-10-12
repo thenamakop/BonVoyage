@@ -61,6 +61,8 @@ export function useTripActivity(id: string, lastActivityAt: string | null | unde
     queryKey: ['trip', id, 'activity'],
     retry: false,
     enabled: lastActivityAt !== undefined,
+    // Not on focus either: the trip's own focus refetch reveals any new activity.
+    refetchOnWindowFocus: false,
     queryFn: () => fetchJson(`/api/trips/${id}/activity`, ActivityResponse),
   });
   const seen = useRef(lastActivityAt);
