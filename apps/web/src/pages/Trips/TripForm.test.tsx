@@ -4,37 +4,20 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { member, tripDetail } from '../../test/trip-fixture';
 import { TripNewPage } from './TripNewPage';
 
 const HUBS = { hubs: [{ slug: 'delhi', name: 'Delhi', state: 'Delhi' }] };
 const ME = { id: 'u1', name: 'Kabir', email: 'k@test.bv', homeHubSlug: 'delhi' };
-const DETAIL = {
-  id: '11111111-1111-4111-8111-111111111111',
+const DETAIL = tripDetail({
   title: 'Test weekend',
   status: 'draft',
   originHub: { slug: 'delhi', name: 'Delhi', state: 'Delhi' },
-  durationNights: 2,
   budgetTotalInr: 30000,
   radiusKm: 300,
-  startDate: null,
-  endDate: null,
   organiser: { userId: 'u1', name: 'Kabir' },
-  members: [
-    {
-      userId: 'u1',
-      name: 'Kabir',
-      role: 'organiser',
-      status: 'active',
-      submitted: false,
-      joinedAt: '',
-    },
-  ],
-  myRole: 'organiser',
-  myStatus: 'active',
-  legalEvents: ['inviteMembers', 'cancelTrip'],
-  createdAt: '',
-  updatedAt: '',
-};
+  members: [member('u1', 'Kabir', { role: 'organiser' })],
+});
 
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
 

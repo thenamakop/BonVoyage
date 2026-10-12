@@ -4,41 +4,22 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TripDetail } from '@bonvoyage/shared';
+import { TRIP_ID, member, tripDetail } from '../../test/trip-fixture';
 import { PreferencesPage } from './PreferencesPage';
 
 // S1-4: the preference form (wireframe 05).
 
-const TRIP_ID = '11111111-1111-4111-8111-111111111111';
-const member = (userId: string, name: string, role = 'member') => ({
-  userId,
-  name,
-  role,
-  status: 'active',
-  submitted: false,
-  joinedAt: '2026-10-12T00:00:00.000Z',
-});
-
-function detail(overrides: Record<string, unknown> = {}) {
-  return {
-    id: TRIP_ID,
-    title: 'Long weekend in the hills',
-    status: 'collecting_preferences',
-    originHub: { slug: 'gurugram', name: 'Gurugram', state: 'Haryana' },
-    durationNights: 2,
-    budgetTotalInr: 48000,
-    radiusKm: 450,
-    startDate: null,
-    endDate: null,
-    organiser: { userId: 'u1', name: 'Asha' },
-    members: [member('u1', 'Asha', 'organiser'), member('u2', 'Rohan'), member('u3', 'Meera')],
+const detail = (overrides: Partial<TripDetail> = {}) =>
+  tripDetail({
     myRole: 'member',
-    myStatus: 'active',
-    legalEvents: ['preferenceSubmitted'],
-    createdAt: '',
-    updatedAt: '',
+    members: [
+      member('u1', 'Asha', { role: 'organiser' }),
+      member('u2', 'Rohan'),
+      member('u3', 'Meera'),
+    ],
     ...overrides,
-  };
-}
+  });
 
 const SAVED = {
   destinationTypes: ['mountain'],
