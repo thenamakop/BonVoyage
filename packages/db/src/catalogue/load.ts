@@ -34,17 +34,25 @@ export interface Catalogue {
   issues: CatalogueIssue[];
 }
 
+/**
+ * The five catalogue files as text. undefined means the file could not be
+ * read; parseCatalogue reports that as an error, as loadCatalogue always has.
+ */
+export interface CatalogueFiles {
+  hubs: string | undefined;
+  destinations: string | undefined;
+  fares: string | undefined;
+  pois: string | undefined;
+  costRules: string | undefined;
+}
+
 interface RowWithLine {
   record: Record<string, string>;
   line: number;
 }
 
-function readCsv(file: string, dir: string, issues: CatalogueIssue[]): RowWithLine[] {
-  const path = join(dir, file);
-  let text: string;
-  try {
-    text = readFileSync(path, 'utf8');
-  } catch {
+function readCsv(file: string, text: string | undefined, issues: CatalogueIssue[]): RowWithLine[] {
+  if (text === undefined) {
     issues.push({ file, severity: 'error', message: 'file not found or unreadable' });
     return [];
   }
@@ -103,30 +111,44 @@ function validateRows<T>(
   return out;
 }
 
-export function loadCatalogue(dir: string, opts: { today: string }): Catalogue {
+/**
+ * Every check catalogue:check and the importers run: headers, row validation
+ * and the cross-file checks. Takes the files as text so the administrator
+ * page (S1-7) can check uploaded files without touching the disk.
+ */
+export function parseCatalogue(files: CatalogueFiles, opts: { today: string }): Catalogue {
   const issues: CatalogueIssue[] = [];
   const { today } = opts;
 
-  const hubs = validateRows('hubs.csv', readCsv('hubs.csv', dir, issues), hubRow(today), issues);
+  const hubs = validateRows(
+    'hubs.csv',
+    readCsv('hubs.csv', files.hubs, issues),
+    hubRow(today),
+    issues,
+  );
   const destinations = validateRows(
     'destinations.csv',
-    readCsv('destinations.csv', dir, issues),
+    readCsv('destinations.csv', files.destinations, issues),
     destinationRow(today),
     issues,
   );
   const fares = validateRows(
     'fares.csv',
-    readCsv('fares.csv', dir, issues),
+    readCsv('fares.csv', files.fares, issues),
     fareRow(today),
     issues,
   );
-  const pois = validateRows('pois.csv', readCsv('pois.csv', dir, issues), poiRow(today), issues);
+  const pois = validateRows(
+    'pois.csv',
+    readCsv('pois.csv', files.pois, issues),
+    poiRow(today),
+    issues,
+  );
 
   let costRules: CostRules | undefined;
   try {
-    const result = costRulesFile(today).safeParse(
-      JSON.parse(readFileSync(join(dir, 'cost-rules.json'), 'utf8')),
-    );
+    if (files.costRules === undefined) throw new Error('file not found or unreadable');
+    const result = costRulesFile(today).safeParse(JSON.parse(files.costRules));
     if (result.success) {
       costRules = result.data;
     } else {
@@ -149,4 +171,26 @@ export function loadCatalogue(dir: string, opts: { today: string }): Catalogue {
 
   issues.push(...checkCatalogue({ hubs, destinations, fares, pois }));
   return { hubs, destinations, fares, pois, costRules, issues };
+}
+
+function readText(dir: string, file: string): string | undefined {
+  try {
+    return readFileSync(join(dir, file), 'utf8');
+  } catch {
+    return undefined;
+  }
+}
+
+/** Reads the five files from a catalogue directory and parses them. */
+export function loadCatalogue(dir: string, opts: { today: string }): Catalogue {
+  return parseCatalogue(
+    {
+      hubs: readText(dir, 'hubs.csv'),
+      destinations: readText(dir, 'destinations.csv'),
+      fares: readText(dir, 'fares.csv'),
+      pois: readText(dir, 'pois.csv'),
+      costRules: readText(dir, 'cost-rules.json'),
+    },
+    opts,
+  );
 }
