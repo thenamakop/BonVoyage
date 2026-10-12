@@ -15,7 +15,9 @@ export type Access =
   /** an active member of the trip */
   | 'activeMember'
   /** the trip's organiser */
-  | 'organiser';
+  | 'organiser'
+  /** an email listed in ADMIN_EMAILS (S1-7) */
+  | 'admin';
 
 export interface Endpoint {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -52,4 +54,7 @@ export const ENDPOINTS: readonly Endpoint[] = [
   { method: 'GET', path: '/api/trips/:id/invitations/active', access: 'organiser' },
   { method: 'DELETE', path: '/api/trips/:id/invitations/active', access: 'organiser' },
   { method: 'DELETE', path: '/api/trips/:id/members/:userId', access: 'organiser' },
+
+  { method: 'GET', path: '/api/admin/catalogue/status', access: 'admin' },
+  { method: 'POST', path: '/api/admin/catalogue/import', access: 'admin' },
 ];

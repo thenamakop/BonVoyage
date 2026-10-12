@@ -20,6 +20,16 @@ const EnvSchema = z
     VERCEL: z.string().optional(),
     VERCEL_ENV: z.enum(['production', 'preview', 'development']).optional(),
     VERCEL_URL: z.string().min(1).optional(),
+    // S1-7: comma-separated administrator emails; empty means nobody.
+    ADMIN_EMAILS: z
+      .string()
+      .optional()
+      .transform((list) =>
+        (list ?? '')
+          .split(',')
+          .map((e) => e.trim().toLowerCase())
+          .filter((e) => e.length > 0),
+      ),
   })
   .transform((value) => ({
     ...value,

@@ -20,9 +20,10 @@ const AUTH_HEADERS = { Host: 'localhost:5173', Origin: 'http://localhost:5173' }
 export async function createTestUser(
   app: Express,
   name = 'Test user',
+  /** Defaults to a fresh address; pass one when the app must know it up front (ADMIN_EMAILS). */
+  email = `t${Date.now().toString(36)}-${seq++}@test.bv`,
 ): Promise<{ agent: request.Agent; userId: string; email: string }> {
   const agent = request.agent(app);
-  const email = `t${Date.now().toString(36)}-${seq++}@test.bv`;
   await agent
     .post('/api/auth/sign-up/email')
     .set(AUTH_HEADERS)

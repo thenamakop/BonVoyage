@@ -1,6 +1,8 @@
 import type { RouteObject } from 'react-router';
 import { AppShell } from './components/app/AppShell';
+import { RequireAdmin } from './features/auth/RequireAdmin';
 import { RequireAuth } from './features/auth/RequireAuth';
+import { CataloguePage } from './pages/Admin/CataloguePage';
 import { JoinPage } from './pages/Join/JoinPage';
 import { NotFound } from './pages/NotFound';
 import { SignInPage } from './pages/Auth/SignInPage';
@@ -31,6 +33,10 @@ export const routes: RouteObject[] = [
           { path: '/trips/:id/edit', element: <TripEditPage /> },
           { path: '/trips/:id/preferences', element: <PreferencesPage /> },
           { path: '/me', element: <ProfilePage /> },
+          {
+            element: <RequireAdmin />,
+            children: [{ path: '/admin/catalogue', element: <CataloguePage /> }],
+          },
         ],
       },
       { path: '*', element: <NotFound /> },

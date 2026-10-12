@@ -41,3 +41,16 @@ describe('parseEnv APP_URL', () => {
     expect(env.APP_URL).toBe('https://bonvoyage.example.com');
   });
 });
+
+describe('parseEnv ADMIN_EMAILS (S1-7)', () => {
+  it('is empty when unset or blank: nobody is an administrator', () => {
+    expect(parseEnv(base).ADMIN_EMAILS).toEqual([]);
+    expect(parseEnv({ ...base, ADMIN_EMAILS: ' , ' }).ADMIN_EMAILS).toEqual([]);
+  });
+
+  it('splits on commas, trims and lowercases', () => {
+    expect(
+      parseEnv({ ...base, ADMIN_EMAILS: ' Admin@Example.TEST ,second@example.test,' }).ADMIN_EMAILS,
+    ).toEqual(['admin@example.test', 'second@example.test']);
+  });
+});

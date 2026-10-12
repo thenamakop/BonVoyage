@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createDb } from '@bonvoyage/db';
 import { pino } from 'pino';
 import {
@@ -18,6 +20,8 @@ import { createTestUser, createTripAs, ensureHub } from '../test/helpers';
 // are NOT derived from the inventory's access field, or this would prove nothing.
 
 const { db, pool } = createDb(process.env.DATABASE_URL ?? '');
+// The administrator is listed in the app's ADMIN_EMAILS (S1-7).
+const ADMIN_EMAIL = `matrix-admin-${Date.now().toString(36)}@test.bv`;
 const auth = createAuth({
   db,
   secret: 'test-secret-test-secret-test-secret',
@@ -28,11 +32,30 @@ const app = createApp({
   pool,
   logger: pino({ level: 'silent' }),
   auth,
+  adminEmails: [ADMIN_EMAIL],
   clock: () => new Date('2026-11-01T06:30:00Z'),
 });
 const H = { Host: 'localhost:5173', Origin: 'http://localhost:5173' };
 
-const ACTORS = ['anonymous', 'nonMember', 'member', 'excludedMember', 'organiser'] as const;
+// The real catalogue, checked as a dry run: writes nothing.
+const CATALOGUE_DIR = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
+const readCatalogue = (f: string) => readFileSync(resolve(CATALOGUE_DIR, f), 'utf8');
+const CATALOGUE_FILES = {
+  hubs: readCatalogue('hubs.csv'),
+  destinations: readCatalogue('destinations.csv'),
+  fares: readCatalogue('fares.csv'),
+  pois: readCatalogue('pois.csv'),
+  costRules: readCatalogue('cost-rules.json'),
+};
+
+const ACTORS = [
+  'anonymous',
+  'nonMember',
+  'member',
+  'excludedMember',
+  'organiser',
+  'admin',
+] as const;
 type Actor = (typeof ACTORS)[number];
 type Agent = request.Agent;
 type Users = Record<Exclude<Actor, 'anonymous'>, { agent: Agent; userId: string }>;
@@ -62,74 +85,75 @@ interface Case {
   url: (f: Fixture) => string;
   body?: object;
   /** One cell per actor, in ACTORS order: "200" or "409 MEMBER_EXCLUDED". */
-  expected: [string, string, string, string, string];
+  expected: [string, string, string, string, string, string];
 }
 
-//                                    anonymous nonMember member excluded organiser
+// Cells: anonymous, nonMember, member, excludedMember, organiser, admin. The
+// admin is signed in and in no trip, so trip routes treat them as a non-member.
 const CASES: Case[] = [
   {
     method: 'GET',
     path: '/api/health',
     url: () => '/api/health',
-    expected: ['200', '200', '200', '200', '200'],
+    expected: ['200', '200', '200', '200', '200', '200'],
   },
   {
     method: 'GET',
     path: '/api/invitations/:token',
     url: (f) => `/api/invitations/${f.token}`,
-    expected: ['200', '200', '200', '200', '200'],
+    expected: ['200', '200', '200', '200', '200', '200'],
   },
 
   {
     method: 'GET',
     path: '/api/me',
     url: () => '/api/me',
-    expected: ['401', '200', '200', '200', '200'],
+    expected: ['401', '200', '200', '200', '200', '200'],
   },
   {
     method: 'GET',
     path: '/api/me/trips',
     url: () => '/api/me/trips',
-    expected: ['401', '200', '200', '200', '200'],
+    expected: ['401', '200', '200', '200', '200', '200'],
   },
   {
     method: 'GET',
     path: '/api/me/profile',
     url: () => '/api/me/profile',
-    expected: ['401', '200', '200', '200', '200'],
+    expected: ['401', '200', '200', '200', '200', '200'],
   },
   {
     method: 'PATCH',
     path: '/api/me/profile',
     url: () => '/api/me/profile',
     body: { homeHubSlug: 'test-hub' },
-    expected: ['401', '200', '200', '200', '200'],
+    expected: ['401', '200', '200', '200', '200', '200'],
   },
   {
     method: 'POST',
     path: '/api/me/past-trips',
     url: () => '/api/me/past-trips',
     body: { placeName: 'Matrix place', rating: 4 },
-    expected: ['401', '201', '201', '201', '201'],
+    expected: ['401', '201', '201', '201', '201', '201'],
   },
   // The row belongs to the organiser: anyone else's delete is a 404.
   {
     method: 'DELETE',
     path: '/api/me/past-trips/:id',
     url: (f) => `/api/me/past-trips/${f.pastTripId}`,
-    expected: ['401', '404 NOT_FOUND', '404 NOT_FOUND', '404 NOT_FOUND', '204'],
+    expected: ['401', '404 NOT_FOUND', '404 NOT_FOUND', '404 NOT_FOUND', '204', '404 NOT_FOUND'],
   },
   {
     method: 'GET',
     path: '/api/hubs',
     url: () => '/api/hubs',
-    expected: ['401', '200', '200', '200', '200'],
+    expected: ['401', '200', '200', '200', '200', '200'],
   },
   {
     method: 'GET',
     path: '/api/destinations',
     url: () => '/api/destinations',
-    expected: ['401', '200', '200', '200', '200'],
+    expected: ['401', '200', '200', '200', '200', '200'],
   },
   {
     method: 'POST',
@@ -142,7 +166,7 @@ const CASES: Case[] = [
       budgetTotalInr: 20000,
       radiusKm: 300,
     },
-    expected: ['401', '201', '201', '201', '201'],
+    expected: ['401', '201', '201', '201', '201', '201'],
   },
   // A non-member joins; members and the organiser are already in (idempotent).
   {
@@ -150,26 +174,26 @@ const CASES: Case[] = [
     path: '/api/invitations/:token/accept',
     url: (f) => `/api/invitations/${f.token}/accept`,
     body: {},
-    expected: ['401', '200', '200', '409 MEMBER_EXCLUDED', '200'],
+    expected: ['401', '200', '200', '409 MEMBER_EXCLUDED', '200', '200'],
   },
 
   {
     method: 'GET',
     path: '/api/trips/:id',
     url: (f) => `/api/trips/${f.tripId}`,
-    expected: ['401', '404 NOT_FOUND', '200', '200', '200'],
+    expected: ['401', '404 NOT_FOUND', '200', '200', '200', '404 NOT_FOUND'],
   },
   {
     method: 'GET',
     path: '/api/trips/:id/activity',
     url: (f) => `/api/trips/${f.tripId}/activity`,
-    expected: ['401', '404 NOT_FOUND', '200', '200', '200'],
+    expected: ['401', '404 NOT_FOUND', '200', '200', '200', '404 NOT_FOUND'],
   },
   {
     method: 'GET',
     path: '/api/trips/:id/preferences/me',
     url: (f) => `/api/trips/${f.tripId}/preferences/me`,
-    expected: ['401', '404 NOT_FOUND', '200', '200', '200'],
+    expected: ['401', '404 NOT_FOUND', '200', '200', '200', '404 NOT_FOUND'],
   },
 
   {
@@ -177,13 +201,20 @@ const CASES: Case[] = [
     path: '/api/trips/:id/preferences/me',
     url: (f) => `/api/trips/${f.tripId}/preferences/me`,
     body: PREFS,
-    expected: ['401', '404 NOT_FOUND', '200', '403 FORBIDDEN', '200'],
+    expected: ['401', '404 NOT_FOUND', '200', '403 FORBIDDEN', '200', '404 NOT_FOUND'],
   },
   {
     method: 'DELETE',
     path: '/api/trips/:id/members/me',
     url: (f) => `/api/trips/${f.tripId}/members/me`,
-    expected: ['401', '404 NOT_FOUND', '204', '403 FORBIDDEN', '422 ORGANISER_CANNOT_LEAVE'],
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '204',
+      '403 FORBIDDEN',
+      '422 ORGANISER_CANNOT_LEAVE',
+      '404 NOT_FOUND',
+    ],
   },
 
   // Collecting preferences: details are locked, and 1 submission is too few to close.
@@ -192,46 +223,75 @@ const CASES: Case[] = [
     path: '/api/trips/:id',
     url: (f) => `/api/trips/${f.tripId}`,
     body: { title: 'Renamed' },
-    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '409 TRIP_NOT_EDITABLE'],
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '403 FORBIDDEN',
+      '403 FORBIDDEN',
+      '409 TRIP_NOT_EDITABLE',
+      '404 NOT_FOUND',
+    ],
   },
   {
     method: 'POST',
     path: '/api/trips/:id/cancel',
     url: (f) => `/api/trips/${f.tripId}/cancel`,
     body: {},
-    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200'],
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200', '404 NOT_FOUND'],
   },
   {
     method: 'POST',
     path: '/api/trips/:id/close-submissions',
     url: (f) => `/api/trips/${f.tripId}/close-submissions`,
     body: {},
-    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '409 GUARD_FAILED'],
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '403 FORBIDDEN',
+      '403 FORBIDDEN',
+      '409 GUARD_FAILED',
+      '404 NOT_FOUND',
+    ],
   },
   {
     method: 'POST',
     path: '/api/trips/:id/invitations',
     url: (f) => `/api/trips/${f.tripId}/invitations`,
     body: {},
-    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200'],
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200', '404 NOT_FOUND'],
   },
   {
     method: 'GET',
     path: '/api/trips/:id/invitations/active',
     url: (f) => `/api/trips/${f.tripId}/invitations/active`,
-    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200'],
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200', '404 NOT_FOUND'],
   },
   {
     method: 'DELETE',
     path: '/api/trips/:id/invitations/active',
     url: (f) => `/api/trips/${f.tripId}/invitations/active`,
-    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '204'],
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '204', '404 NOT_FOUND'],
   },
   {
     method: 'DELETE',
     path: '/api/trips/:id/members/:userId',
     url: (f) => `/api/trips/${f.tripId}/members/${f.memberId}`,
-    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '204'],
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '204', '404 NOT_FOUND'],
+  },
+
+  // S1-7: administrator routes. Being an organiser is not enough.
+  {
+    method: 'GET',
+    path: '/api/admin/catalogue/status',
+    url: () => '/api/admin/catalogue/status',
+    expected: ['401', '403 FORBIDDEN', '403 FORBIDDEN', '403 FORBIDDEN', '403 FORBIDDEN', '200'],
+  },
+  {
+    method: 'POST',
+    path: '/api/admin/catalogue/import',
+    url: () => '/api/admin/catalogue/import',
+    body: { files: CATALOGUE_FILES, dryRun: true },
+    expected: ['401', '403 FORBIDDEN', '403 FORBIDDEN', '403 FORBIDDEN', '403 FORBIDDEN', '200'],
   },
 ];
 
@@ -245,10 +305,12 @@ beforeAll(async () => {
       createTestUser(app, n),
     ),
   );
+  const admin = await createTestUser(app, 'Matrix Admin', ADMIN_EMAIL);
   users = {
     organiser: organiser!,
     member: member!,
     excludedMember: excludedMember!,
+    admin,
     nonMember: nonMember!,
   };
 });

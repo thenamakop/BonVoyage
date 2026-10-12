@@ -8,7 +8,7 @@ import { member, tripDetail } from '../../test/trip-fixture';
 import { TripNewPage } from './TripNewPage';
 
 const HUBS = { hubs: [{ slug: 'delhi', name: 'Delhi', state: 'Delhi' }] };
-const ME = { id: 'u1', name: 'Kabir', email: 'k@test.bv', homeHubSlug: 'delhi' };
+const ME = { id: 'u1', name: 'Kabir', email: 'k@test.bv', homeHubSlug: 'delhi', isAdmin: false };
 const DETAIL = tripDetail({
   title: 'Test weekend',
   status: 'draft',

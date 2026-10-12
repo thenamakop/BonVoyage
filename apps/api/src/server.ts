@@ -14,7 +14,7 @@ const auth = createAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: baseUrlOptions(env.APP_URL),
 });
-const app = createApp({ db, pool, logger, auth });
+const app = createApp({ db, pool, logger, auth, adminEmails: env.ADMIN_EMAILS });
 
 const server = app.listen(env.PORT, () => {
   logger.info(`api listening on http://localhost:${env.PORT}`);

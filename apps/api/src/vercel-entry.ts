@@ -16,4 +16,4 @@ const auth = createAuth({
 });
 
 // An Express app is a (req, res) handler, so this serves every /api request.
-export default createApp({ db, pool, logger, auth });
+export default createApp({ db, pool, logger, auth, adminEmails: env.ADMIN_EMAILS });

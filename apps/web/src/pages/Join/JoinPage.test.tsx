@@ -8,7 +8,7 @@ import { JoinPage } from './JoinPage';
 
 const TOKEN = 'abcdefghijklmnopqrstuvwxyz012345';
 const TRIP_ID = '11111111-1111-4111-8111-111111111111';
-const ME = { id: 'u2', name: 'Rohan', email: 'r@test.bv', homeHubSlug: null };
+const ME = { id: 'u2', name: 'Rohan', email: 'r@test.bv', homeHubSlug: null, isAdmin: false };
 const PREVIEW = {
   tripTitle: 'Long weekend in the hills',
   organiserName: 'Asha',

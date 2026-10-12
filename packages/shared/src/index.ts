@@ -11,6 +11,8 @@ export const ErrorEnvelope = z.object({
     code: z.string().regex(/^[A-Z][A-Z0-9_]*$/),
     message: z.string(),
     fields: z.record(z.string(), z.string()).optional(),
+    /** Structured extra information, e.g. CATALOGUE_INVALID's issues (S1-7). */
+    details: z.unknown().optional(),
   }),
 });
 export type ErrorEnvelope = z.infer<typeof ErrorEnvelope>;
@@ -26,6 +28,7 @@ export * from './api/trips';
 export * from './api/invitations';
 export * from './api/preferences';
 export * from './api/profile';
+export * from './api/admin';
 export * from './time';
 
 export const ERROR_CODES = {
@@ -48,6 +51,7 @@ export const ERROR_CODES = {
   ORGANISER_CANNOT_LEAVE: 'ORGANISER_CANNOT_LEAVE',
   TRIP_LOCKED: 'TRIP_LOCKED',
   UNSUPPORTED_MEDIA_TYPE: 'UNSUPPORTED_MEDIA_TYPE',
+  CATALOGUE_INVALID: 'CATALOGUE_INVALID',
   DB_UNAVAILABLE: 'DB_UNAVAILABLE',
   INTERNAL: 'INTERNAL',
 } as const;

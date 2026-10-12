@@ -3,9 +3,18 @@ import { eq } from 'drizzle-orm';
 import express from 'express';
 import { hub, userProfile } from '@bonvoyage/db/schema';
 import type { Auth } from '../../auth/auth';
+import { isAdmin } from '../../http/admin';
 import { getSessionUser, requireSession } from '../../http/session';
 
-export function createRouter({ db, auth }: { db: Db; auth: Auth }) {
+export function createRouter({
+  db,
+  auth,
+  adminEmails,
+}: {
+  db: Db;
+  auth: Auth;
+  adminEmails: readonly string[];
+}) {
   const router = express.Router();
 
   router.get('/me', requireSession(auth), async (_req, res) => {
@@ -16,7 +25,13 @@ export function createRouter({ db, auth }: { db: Db; auth: Auth }) {
       .leftJoin(hub, eq(userProfile.homeHubId, hub.id))
       .where(eq(userProfile.userId, userId))
       .limit(1);
-    res.json({ id: userId, name, email, homeHubSlug: rows[0]?.homeHubSlug ?? null });
+    res.json({
+      id: userId,
+      name,
+      email,
+      homeHubSlug: rows[0]?.homeHubSlug ?? null,
+      isAdmin: isAdmin(adminEmails, email),
+    });
   });
 
   return router;

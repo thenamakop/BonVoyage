@@ -2,18 +2,19 @@ import { parseArgs } from 'node:util';
 import { resolve } from 'node:path';
 import { DESTINATION_TYPES } from '@bonvoyage/shared';
 import { loadCatalogue, type CatalogueIssue } from '../src/catalogue/load';
+import {
+  CATALOGUE_STAGES,
+  CATALOGUE_STAGE_ORDER,
+  type CatalogueStage,
+} from '../src/catalogue/stages';
 
 // S0-4: validates packages/db/catalogue and reports verification progress.
 // Exit 1 on any error; --require a|b|c also fails on draft rows of that stage
 // and every earlier stage.
 
-const STAGES = {
-  a: { name: 'A (hubs, destination identity)', due: '2026-10-18' },
-  b: { name: 'B (destination costs, fares, cost rules)', due: '2026-10-25' },
-  c: { name: 'C (POIs)', due: '2026-11-01' },
-} as const;
-type Stage = keyof typeof STAGES;
-const STAGE_ORDER: Stage[] = ['a', 'b', 'c'];
+const STAGES = CATALOGUE_STAGES;
+type Stage = CatalogueStage;
+const STAGE_ORDER = CATALOGUE_STAGE_ORDER;
 
 const { values } = parseArgs({
   options: {

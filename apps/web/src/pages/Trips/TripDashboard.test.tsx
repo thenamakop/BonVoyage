@@ -32,7 +32,13 @@ function stubFetch(trips: (TripDetail | 'fail')[], meId = 'u1') {
     }
     if (url === '/api/me') {
       return Promise.resolve(
-        Response.json({ id: meId, name: 'Me', email: 'me@test.bv', homeHubSlug: null }),
+        Response.json({
+          id: meId,
+          name: 'Me',
+          email: 'me@test.bv',
+          homeHubSlug: null,
+          isAdmin: false,
+        }),
       );
     }
     if (url === ACTIVITY_URL) {

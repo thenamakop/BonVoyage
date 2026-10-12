@@ -191,6 +191,7 @@ curl http://localhost:5173/api/health
 | `GEMINI_MODEL` | which Gemini model to call | `gemini-3.8-flash` |
 | `LIVE_APIS` | `off` answers from fixtures and curated data, spending no quota | `off` |
 | `APP_URL`, `PORT`, `LOG_LEVEL` | URLs, API port, log detail | `http://localhost:5173`, `4000`, `info` |
+| `ADMIN_EMAILS` | who may open `/admin/catalogue` (comma-separated sign-in emails) | empty (nobody), or your own email |
 
 ```bash
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
