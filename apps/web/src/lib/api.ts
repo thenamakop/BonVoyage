@@ -5,13 +5,22 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly fields: Record<string, string> | undefined;
+  /** Structured extras from the envelope, e.g. CATALOGUE_INVALID's issues. */
+  readonly details: unknown;
 
-  constructor(status: number, code: string, message: string, fields?: Record<string, string>) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fields?: Record<string, string>,
+    details?: unknown,
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.details = details;
   }
 }
 
@@ -44,8 +53,8 @@ export async function fetchJson<T>(
   }
   const envelope = ErrorEnvelope.safeParse(body);
   if (envelope.success) {
-    const { code, message, fields } = envelope.data.error;
-    throw new ApiError(res.status, code, message, fields);
+    const { code, message, fields, details } = envelope.data.error;
+    throw new ApiError(res.status, code, message, fields, details);
   }
   throw new ApiError(res.status, 'BAD_RESPONSE', 'The server sent an unexpected response.');
 }

@@ -67,6 +67,16 @@ export function UserMenu({ user }: { user: MeResponse }) {
           >
             Your profile
           </Link>
+          {user.isAdmin ? (
+            <Link
+              to="/admin/catalogue"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex min-h-11 w-full items-center rounded px-3 text-left text-sm text-slate-900 hover:bg-slate-100"
+            >
+              Catalogue
+            </Link>
+          ) : null}
           <button
             type="button"
             role="menuitem"
