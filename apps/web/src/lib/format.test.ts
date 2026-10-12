@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatHub, formatInr } from './format';
+import { formatDate, formatHub, formatInr, groupBudgetLine } from './format';
 
 describe('formatInr', () => {
   it('formats with Indian grouping and no decimals', () => {
@@ -31,5 +31,22 @@ describe('formatHub', () => {
 
   it('gives "name, state" otherwise', () => {
     expect(formatHub({ name: 'Gurugram', state: 'Haryana' })).toBe('Gurugram, Haryana');
+  });
+});
+
+describe('groupBudgetLine', () => {
+  it('divides the group total by active members, rounded down to ₹500', () => {
+    expect(groupBudgetLine(48000, 3)).toBe(
+      'The group budget is ₹48,000, about ₹16,000 each for 3 members.',
+    );
+    expect(groupBudgetLine(50000, 3)).toBe(
+      'The group budget is ₹50,000, about ₹16,500 each for 3 members.',
+    );
+  });
+
+  it('says "member" for one', () => {
+    expect(groupBudgetLine(20000, 1)).toBe(
+      'The group budget is ₹20,000, about ₹20,000 each for 1 member.',
+    );
   });
 });

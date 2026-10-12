@@ -3,12 +3,13 @@ import { tripTransition } from '@bonvoyage/db/schema';
 import { legalEvents, nextState } from '@bonvoyage/engine';
 import type {
   CreateTripInput,
+  DestinationsResponse,
   HubsResponse,
   TripDetail,
   TripsResponse,
   UpdateTripInput,
 } from '@bonvoyage/shared';
-import { ERROR_CODES } from '@bonvoyage/shared';
+import { ERROR_CODES, indiaDate } from '@bonvoyage/shared';
 import type { Logger } from 'pino';
 import { AppError } from '../http/errors';
 import {
@@ -23,6 +24,7 @@ import {
   findHubBySlug,
   insertOrganiserMember,
   insertTrip,
+  listActiveDestinations,
   listHubs,
   listMembersWithNames,
   listMembershipTrips,
@@ -87,6 +89,10 @@ async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<T
   return toDetail(row, hubRow, members, caller);
 }
 
+export async function getDestinations(db: Db): Promise<DestinationsResponse> {
+  return { destinations: await listActiveDestinations(db) };
+}
+
 export async function getHubs(db: Db): Promise<HubsResponse> {
   const rows = await listHubs(db);
   return { hubs: rows.map(({ slug, name, state }) => ({ slug, name, state })) };
@@ -107,7 +113,7 @@ export async function createTrip(
     });
   }
 
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(clock());
+  const today = indiaDate(clock());
   const created = await db.transaction(async (tx: Tx) => {
     const result = nextState('initial', 'createTrip', {
       pendingCount: 0,

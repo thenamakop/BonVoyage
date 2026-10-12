@@ -7,6 +7,7 @@ import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { useMe } from '../../features/auth/api';
 import { useTrip } from '../../features/trips/api';
 import { statusTone } from '../../features/trips/status-tone';
 import { ApiError } from '../../lib/api';
@@ -18,6 +19,7 @@ import { Roster } from './Roster';
 export function TripPage() {
   const { id = '' } = useParams();
   const trip = useTrip(id);
+  const me = useMe();
   useDocumentTitle(trip.data?.title ?? 'Trip');
 
   if (trip.isLoading) {
@@ -85,6 +87,15 @@ export function TripPage() {
       {t.myStatus === 'excluded' ? (
         <div className="mb-4">
           <Alert tone="warning">You were removed from this trip, so you can only view it.</Alert>
+        </div>
+      ) : null}
+      {t.myStatus === 'active' ? (
+        <div className="mb-4">
+          <ButtonLink to={`/trips/${t.id}/preferences`} variant="secondary">
+            {t.members.find((m) => m.userId === me.data?.id)?.submitted
+              ? 'Edit your preferences'
+              : 'Your preferences'}
+          </ButtonLink>
         </div>
       ) : null}
       {canInvite ? (

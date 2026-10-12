@@ -6,6 +6,8 @@ import { NotFound } from './pages/NotFound';
 import { SignInPage } from './pages/Auth/SignInPage';
 import { SignUpPage } from './pages/Auth/SignUpPage';
 import { LandingPage } from './pages/Landing/LandingPage';
+import { ProfilePage } from './pages/Profile/ProfilePage';
+import { PreferencesPage } from './pages/Trips/PreferencesPage';
 import { TripEditPage } from './pages/Trips/TripEditPage';
 import { TripNewPage } from './pages/Trips/TripNewPage';
 import { TripPage } from './pages/Trips/TripPage';
@@ -27,6 +29,8 @@ export const routes: RouteObject[] = [
           { path: '/trips/new', element: <TripNewPage /> },
           { path: '/trips/:id', element: <TripPage /> },
           { path: '/trips/:id/edit', element: <TripEditPage /> },
+          { path: '/trips/:id/preferences', element: <PreferencesPage /> },
+          { path: '/me', element: <ProfilePage /> },
         ],
       },
       { path: '*', element: <NotFound /> },

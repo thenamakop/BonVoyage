@@ -24,6 +24,9 @@ export * from './itinerary';
 export * from './api/auth';
 export * from './api/trips';
 export * from './api/invitations';
+export * from './api/preferences';
+export * from './api/profile';
+export * from './time';
 
 export const ERROR_CODES = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',

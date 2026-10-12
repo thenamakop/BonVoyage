@@ -11,6 +11,7 @@ import { router as recommendation } from './recommendation/router';
 import { router as transportCost } from './transport-cost/router';
 import { router as tripFeedback } from './trip-feedback/router';
 import { createRouter as invitations } from '../invitations/router';
+import { createRouter as profile } from '../profile/router';
 import { createRouter as trips } from '../trips/router';
 import { createRouter as usersGroups } from './users-groups/router';
 
@@ -20,6 +21,7 @@ export function createApiRouter(deps: { db: Db; auth: Auth; clock?: () => Date }
   apiRouter.use(usersGroups({ db: deps.db, auth: deps.auth }));
   apiRouter.use(trips(deps));
   apiRouter.use(invitations(deps));
+  apiRouter.use(profile(deps));
   apiRouter.use(preferences);
   apiRouter.use(filtering);
   apiRouter.use(recommendation);

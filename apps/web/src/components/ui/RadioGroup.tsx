@@ -3,7 +3,7 @@ import { useId } from 'react';
 type RadioGroupProps = {
   legend: string;
   name: string;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; description?: string }[];
   value: string;
   onChange: (value: string) => void;
   hint?: string;
@@ -31,7 +31,7 @@ export function RadioGroup({
         {options.map((opt) => (
           <label
             key={opt.value}
-            className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-4 text-sm ${
+            className={`flex min-h-11 cursor-pointer flex-col justify-center rounded-md border px-4 py-1 text-sm ${
               value === opt.value
                 ? 'border-brand-700 bg-brand-700 text-white'
                 : 'border-slate-300 bg-white text-slate-900'
@@ -44,7 +44,12 @@ export function RadioGroup({
               checked={value === opt.value}
               onChange={() => onChange(opt.value)}
             />
-            {opt.label}
+            <span>{opt.label}</span>
+            {opt.description ? (
+              <span className={`text-xs ${value === opt.value ? 'text-white' : 'text-slate-600'}`}>
+                {opt.description}
+              </span>
+            ) : null}
           </label>
         ))}
       </div>

@@ -8,7 +8,7 @@ import {
   type TripEvent,
 } from '@bonvoyage/engine';
 import type { TripStatus } from '@bonvoyage/shared';
-import { ERROR_CODES } from '@bonvoyage/shared';
+import { ERROR_CODES, indiaDate } from '@bonvoyage/shared';
 import type { Logger } from 'pino';
 import { AppError } from '../http/errors';
 
@@ -110,10 +110,6 @@ const ACTION_HANDLERS = (tx: Tx, tripId: string, logger: Logger) =>
     },
   }) satisfies Record<ActionName, () => Promise<unknown>>;
 
-function indiaToday(clock: () => Date): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(clock());
-}
-
 export async function transitionTrip(
   { db, logger, clock }: Deps,
   { tripId, event, actorUserId, feasibleCount, alternativesLeft, beforeDecide }: Input,
@@ -147,7 +143,7 @@ export async function transitionTrip(
       submittedCount: counts?.submitted ?? 0,
       feasibleCount: feasibleCount ?? null,
       alternativesLeft: alternativesLeft ?? null,
-      today: indiaToday(clock),
+      today: indiaDate(clock()),
       startDate: row.startDate,
     });
 
