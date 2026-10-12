@@ -9,6 +9,7 @@ import type {
   UpdateTripInput,
 } from '@bonvoyage/shared';
 import { ERROR_CODES } from '@bonvoyage/shared';
+import type { Logger } from 'pino';
 import { AppError } from '../http/errors';
 import {
   loadTripForMember,
@@ -31,6 +32,7 @@ import {
   type MemberWithName,
   type Tx,
 } from './repository';
+import { transitionTrip } from './transition-trip';
 
 interface Deps {
   db: Db;
@@ -210,4 +212,18 @@ export async function updateTrip(
 
   const { trip: row, membership: fresh } = await loadTripForMember(db, tripId, userId);
   return detailFor(db, row, fresh);
+}
+
+// RUNBOOK B3: T15/T16. loadTripForMember returns the same 404 for a missing
+// trip and a non-member, so a trip's existence is never revealed.
+export async function cancelTrip(
+  deps: { db: Db; logger: Logger; clock: () => Date },
+  tripId: string,
+  userId: string,
+): Promise<{ id: string; status: string }> {
+  const { membership } = await loadTripForMember(deps.db, tripId, userId);
+  requireActiveMember(membership);
+  requireOrganiser(membership);
+  const outcome = await transitionTrip(deps, { tripId, event: 'cancelTrip', actorUserId: userId });
+  return { id: tripId, status: outcome.to };
 }

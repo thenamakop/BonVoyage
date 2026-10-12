@@ -10,7 +10,7 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { useTrip } from '../../features/trips/api';
 import { statusTone } from '../../features/trips/status-tone';
 import { ApiError } from '../../lib/api';
-import { formatInr } from '../../lib/format';
+import { formatHub, formatInr } from '../../lib/format';
 import { useDocumentTitle } from '../../lib/use-document-title';
 
 export function TripPage() {
@@ -81,9 +81,7 @@ export function TripPage() {
           <dl className="mt-2 space-y-1 text-sm text-slate-700">
             <div className="flex justify-between gap-2">
               <dt>Starting city</dt>
-              <dd>
-                {t.originHub.name}, {t.originHub.state}
-              </dd>
+              <dd>{formatHub(t.originHub)}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt>Duration</dt>

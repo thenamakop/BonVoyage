@@ -9,7 +9,7 @@ import { TextField } from '../../components/ui/TextField';
 import { useMe } from '../../features/auth/api';
 import { useHubs } from '../../features/trips/api';
 import { ApiError } from '../../lib/api';
-import { formatInr } from '../../lib/format';
+import { formatHub, formatInr } from '../../lib/format';
 
 // Shared create/edit form (wireframe 03). Numbers stay as strings so an empty
 // box means "missing", never 0; every typed value is kept on any error.
@@ -58,10 +58,16 @@ export function TripForm({
   const hubValue = originHubSlug ?? me.data?.homeHubSlug ?? '';
 
   const budgetNumber = num(budget);
-  const budgetPreview =
-    Number.isInteger(budgetNumber) && budgetNumber > 0
-      ? `${formatInr(budgetNumber)} for the group`
-      : 'Total for the whole group, for the whole trip';
+  const budgetHint = (
+    <>
+      Total for the whole group, for the whole trip
+      {Number.isInteger(budgetNumber) && budgetNumber > 0 ? (
+        <span className="block font-medium text-slate-900">
+          {formatInr(budgetNumber)} for the group
+        </span>
+      ) : null}
+    </>
+  );
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -135,7 +141,7 @@ export function TripForm({
           <option value="">Choose a city</option>
           {(hubs.data?.hubs ?? []).map((h) => (
             <option key={h.slug} value={h.slug}>
-              {h.name}, {h.state}
+              {formatHub(h)}
             </option>
           ))}
         </Select>
@@ -152,7 +158,7 @@ export function TripForm({
         inputMode="numeric"
         value={budget}
         onChange={(e) => setBudget(e.target.value)}
-        hint={budgetPreview}
+        hint={budgetHint}
         error={fields.budgetTotalInr}
       />
       <TextField

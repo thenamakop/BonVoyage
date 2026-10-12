@@ -5,7 +5,7 @@ import type { Auth } from '../auth/auth';
 import { parseOrThrow } from '../http/errors';
 import { getSessionUser, requireSession } from '../http/session';
 import { parseTripId } from './access';
-import { createTrip, getHubs, getMyTrips, getTrip, updateTrip } from './service';
+import { cancelTrip, createTrip, getHubs, getMyTrips, getTrip, updateTrip } from './service';
 
 export function createRouter({ db, auth }: { db: Db; auth: Auth }) {
   const router = express.Router();
@@ -38,6 +38,13 @@ export function createRouter({ db, auth }: { db: Db; auth: Auth }) {
     const input = parseOrThrow(UpdateTripInput, req.body);
     const { userId } = getSessionUser(res);
     res.json(await updateTrip({ db, clock }, tripId, userId, input));
+  });
+
+  router.post('/trips/:id/cancel', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    const result = await cancelTrip({ db, logger: req.log, clock }, tripId, userId);
+    res.json(result);
   });
 
   return router;

@@ -18,3 +18,8 @@ export function formatInr(amount: number): string {
 export function formatDate(isoDate: string | Date): string {
   return dateFmt.format(typeof isoDate === 'string' ? new Date(isoDate) : isoDate);
 }
+
+// "Delhi" rather than "Delhi, Delhi" when the hub is its own state or territory.
+export function formatHub(hub: { name: string; state: string }): string {
+  return hub.state === hub.name ? hub.name : `${hub.name}, ${hub.state}`;
+}

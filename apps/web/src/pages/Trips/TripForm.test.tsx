@@ -107,8 +107,10 @@ describe('TripForm', () => {
     await waitFor(() => expect(screen.getByLabelText('Starting city')).toHaveValue('delhi'));
     await user.type(screen.getByLabelText('Trip title'), 'Test weekend');
     await user.type(screen.getByLabelText('Nights'), '2');
+    expect(screen.getByText('Total for the whole group, for the whole trip')).toBeInTheDocument();
     await user.type(screen.getByLabelText('Group budget (₹)'), '30000');
     expect(screen.getByText('₹30,000 for the group')).toBeInTheDocument();
+    expect(screen.getByText('Total for the whole group, for the whole trip')).toBeInTheDocument();
     await user.type(screen.getByLabelText('Search radius (km)'), '300');
     await user.click(screen.getByRole('button', { name: 'Create trip' }));
     expect(await screen.findByText('Trip page')).toBeInTheDocument();
