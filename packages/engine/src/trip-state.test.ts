@@ -4,6 +4,7 @@ import {
   DO_ACTIVITIES,
   legalEvents,
   nextState,
+  TRIP_EVENTS,
   type ActionName,
   type GuardContext,
   type TripEvent,
@@ -338,5 +339,13 @@ describe('legalEvents and do-activities', () => {
     expect(DO_ACTIVITIES.in_progress).toBe('sendDailyReminders');
     const r = nextState('finalised', 'tripStarted', ctx());
     expect(r.ok && r.actions).not.toContain('sendDailyReminders');
+  });
+});
+
+describe('shared contract parity', () => {
+  it('TripEventName in shared mirrors TRIP_EVENTS', async () => {
+    const { TripEventName } = await import('@bonvoyage/shared');
+    const shared = [...TripEventName.options].sort();
+    expect([...TRIP_EVENTS].sort()).toEqual(shared);
   });
 });

@@ -22,6 +22,7 @@ export * from './vocab';
 export * from './domain';
 export * from './itinerary';
 export * from './api/auth';
+export * from './api/trips';
 
 export const ERROR_CODES = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
@@ -34,6 +35,7 @@ export const ERROR_CODES = {
   GUARD_FAILED: 'GUARD_FAILED',
   PREFERENCES_LOCKED: 'PREFERENCES_LOCKED',
   TRIP_CLOSED: 'TRIP_CLOSED',
+  TRIP_NOT_EDITABLE: 'TRIP_NOT_EDITABLE',
   DB_UNAVAILABLE: 'DB_UNAVAILABLE',
   INTERNAL: 'INTERNAL',
 } as const;
