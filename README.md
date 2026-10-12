@@ -18,7 +18,7 @@
 </div>
 
 > [!NOTE]
-> BonVoyage is a Software Engineering course project at BML Munjal University, under active development. The [roadmap](#roadmap) shows what is built and what is next.
+> BonVoyage is a Software Engineering & Artificial Intelligence course project at BML Munjal University, under active development. The [roadmap](#roadmap) shows what is built and what is next.
 
 ## What is BonVoyage?
 
