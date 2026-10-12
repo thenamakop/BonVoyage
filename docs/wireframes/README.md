@@ -58,7 +58,7 @@ The loading state (skeleton rows) is the inset on 02-trips; the error state (ale
 
 1. The progress bar always repeats its numbers as text ("2 of 3 preferences submitted"); the step line under the banner reads "Step 2 of 7: Collecting preferences".
 2. "Close submissions" is a secondary action, enabled once two members have submitted, with the consequence in words: "Meera has not submitted and will be left out of planning."
-3. Money shows the group total and the per-person figure; the next-step callout carries a "Your preferences" shortcut and the "Recent activity" list sits above the error inset.
+3. Money shows the group total and the per-person figure; the next-step callout reads "Waiting for Meera." with a full-width "Edit your preferences" button below it (Asha has already submitted), and the "Recent activity" list sits above the error inset.
 4. Error inset: alert with a Retry action for the live refresh.
 
 ![Shortlist](07-shortlist.svg)
