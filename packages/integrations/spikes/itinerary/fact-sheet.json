@@ -1,0 +1,119 @@
+{
+  "note": "draft catalogue values; this spike measures grounding, not prices",
+  "trip": {
+    "nights": 2,
+    "startDate": "2026-11-06",
+    "endDate": "2026-11-08",
+    "groupSize": 4,
+    "interests": ["rafting", "yoga_wellness", "temples"]
+  },
+  "destination": { "slug": "rishikesh", "name": "Rishikesh", "state": "Uttarakhand" },
+  "legs": [
+    {
+      "id": "onward",
+      "mode": "bus",
+      "from": "Gurugram",
+      "to": "Rishikesh",
+      "depart": "06:00",
+      "arrive": "12:30",
+      "durationMinutes": 390,
+      "farePerPersonInr": 550
+    },
+    {
+      "id": "return",
+      "mode": "bus",
+      "from": "Rishikesh",
+      "to": "Gurugram",
+      "depart": "16:00",
+      "arrive": "22:30",
+      "durationMinutes": 390,
+      "farePerPersonInr": 550
+    }
+  ],
+  "stay": { "tier": "budget", "perRoomPerNightInr": 900, "rooms": 2 },
+  "pois": [
+    {
+      "id": "laxman-jhula",
+      "name": "Laxman Jhula",
+      "category": "sight",
+      "typicalMinutes": 45,
+      "openTime": null,
+      "closeTime": null,
+      "closedDays": [],
+      "entryFeeInr": 0
+    },
+    {
+      "id": "ram-jhula",
+      "name": "Ram Jhula",
+      "category": "sight",
+      "typicalMinutes": 45,
+      "openTime": null,
+      "closeTime": null,
+      "closedDays": [],
+      "entryFeeInr": 0
+    },
+    {
+      "id": "triveni-ghat",
+      "name": "Triveni Ghat",
+      "category": "temple",
+      "typicalMinutes": 90,
+      "openTime": "05:00",
+      "closeTime": "21:00",
+      "closedDays": [],
+      "entryFeeInr": 0
+    },
+    {
+      "id": "beatles-ashram",
+      "name": "The Beatles Ashram (Chaurasi Kutia)",
+      "category": "sight",
+      "typicalMinutes": 120,
+      "openTime": "10:00",
+      "closeTime": "16:00",
+      "closedDays": [],
+      "entryFeeInr": 600
+    },
+    {
+      "id": "neelkanth-temple",
+      "name": "Neelkanth Mahadev Temple",
+      "category": "temple",
+      "typicalMinutes": 90,
+      "openTime": "05:00",
+      "closeTime": "18:00",
+      "closedDays": [],
+      "entryFeeInr": 0
+    },
+    {
+      "id": "ganga-rafting",
+      "name": "Ganga rafting run (Brahmapuri to NIM beach)",
+      "category": "adventure",
+      "typicalMinutes": 180,
+      "openTime": "08:00",
+      "closeTime": "16:00",
+      "closedDays": [],
+      "entryFeeInr": 1000
+    },
+    {
+      "id": "parmarth-ganga-aarti",
+      "name": "Parmarth Niketan Ganga aarti",
+      "category": "temple",
+      "typicalMinutes": 60,
+      "openTime": "18:00",
+      "closeTime": "19:00",
+      "closedDays": [],
+      "entryFeeInr": 0
+    }
+  ],
+  "costs": {
+    "totalInr": 27000,
+    "perPersonInr": 6750,
+    "items": [
+      { "category": "onward", "amountInr": 2200 },
+      { "category": "return", "amountInr": 2200 },
+      { "category": "stay", "amountInr": 3600 },
+      { "category": "food", "amountInr": 8400 },
+      { "category": "local", "amountInr": 4200 },
+      { "category": "activities", "amountInr": 6400 }
+    ]
+  },
+  "limits": { "maxDayHours": 10 }
+}
