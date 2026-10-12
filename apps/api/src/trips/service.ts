@@ -8,7 +8,7 @@ import type {
   TripsResponse,
   UpdateTripInput,
 } from '@bonvoyage/shared';
-import { ERROR_CODES } from '@bonvoyage/shared';
+import { ERROR_CODES, indiaDate } from '@bonvoyage/shared';
 import type { Logger } from 'pino';
 import { AppError } from '../http/errors';
 import {
@@ -107,7 +107,7 @@ export async function createTrip(
     });
   }
 
-  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(clock());
+  const today = indiaDate(clock());
   const created = await db.transaction(async (tx: Tx) => {
     const result = nextState('initial', 'createTrip', {
       pendingCount: 0,
