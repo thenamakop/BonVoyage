@@ -1,6 +1,7 @@
 import type { RouteObject } from 'react-router';
 import { AppShell } from './components/app/AppShell';
 import { RequireAuth } from './features/auth/RequireAuth';
+import { JoinPage } from './pages/Join/JoinPage';
 import { NotFound } from './pages/NotFound';
 import { SignInPage } from './pages/Auth/SignInPage';
 import { SignUpPage } from './pages/Auth/SignUpPage';
@@ -17,6 +18,8 @@ export const routes: RouteObject[] = [
       { path: '/', element: <LandingPage /> },
       { path: '/sign-up', element: <SignUpPage /> },
       { path: '/sign-in', element: <SignInPage /> },
+      // Public: the preview is safe to show before sign-in (S1-3).
+      { path: '/join/:token', element: <JoinPage /> },
       {
         element: <RequireAuth />,
         children: [
