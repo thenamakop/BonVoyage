@@ -65,7 +65,7 @@ async function organiserWithTrip(overrides: Parameters<typeof createTripAs>[1] =
 }
 
 const invite = (agent: request.Agent, tripId: string) =>
-  agent.post(`/api/trips/${tripId}/invitations`).set(H);
+  agent.post(`/api/trips/${tripId}/invitations`).set(H).send({});
 
 async function openTrip() {
   const org = await organiserWithTrip();
@@ -78,7 +78,7 @@ const transitionsOf = (tripId: string) =>
   db.select().from(tripTransition).where(eq(tripTransition.tripId, tripId));
 
 const accept = (agent: request.Agent, token: string) =>
-  agent.post(`/api/invitations/${token}/accept`).set(H);
+  agent.post(`/api/invitations/${token}/accept`).set(H).send({});
 
 describe('POST /api/trips/:id/invitations', () => {
   it('201 in draft: one T2 row, trip collecting; a second POST returns the same token', async () => {
@@ -156,7 +156,9 @@ describe('POST /api/trips/:id/invitations', () => {
     const bad = await invite(outsider.agent, 'not-a-uuid');
     expect(bad.status).toBe(400);
     expect((bad.body as ErrorEnvelope).error.fields).toEqual({ id: 'must be a uuid' });
-    expect((await request(app).post(`/api/trips/${tripId}/invitations`).set(H)).status).toBe(401);
+    expect(
+      (await request(app).post(`/api/trips/${tripId}/invitations`).set(H).send({})).status,
+    ).toBe(401);
     const nonMember = await invite(outsider.agent, tripId);
     expect(nonMember.status).toBe(404);
     expect(codeOf(nonMember)).toBe('NOT_FOUND');
@@ -364,7 +366,9 @@ describe('POST /api/invitations/:token/accept', () => {
 
   it('401 without a session and 404 for an unknown token', async () => {
     const { token } = await openTrip();
-    expect((await request(app).post(`/api/invitations/${token}/accept`).set(H)).status).toBe(401);
+    expect(
+      (await request(app).post(`/api/invitations/${token}/accept`).set(H).send({})).status,
+    ).toBe(401);
     const guest = await createTestUser(app);
     const res = await accept(guest.agent, 'B'.repeat(32));
     expect(res.status).toBe(404);

@@ -12,6 +12,8 @@ import type { Logger } from 'pino';
 import { pinoHttp } from 'pino-http';
 import type { Auth } from './auth/auth';
 import { AppError, errorHandler, notFoundHandler } from './http/errors';
+import { requireJson } from './http/json-only';
+import type { SessionUser } from './http/session';
 import { createApiRouter } from './modules';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
@@ -43,9 +45,31 @@ export function createApp({ db, pool, logger, auth, clock }: AppDeps): Express {
         res.setHeader('x-request-id', id);
         return id;
       },
+      // S1-6 (SRS 3.5): a request line logs the id, method, path and status
+      // only. Bodies (passwords, budgets) and headers (cookies) are never
+      // serialised; the redact list is a second guard if a serializer changes.
+      serializers: {
+        req: (req: { id: unknown; method: string; url: string }) => ({
+          id: req.id,
+          method: req.method,
+          url: req.url,
+        }),
+        res: (res: { statusCode: number }) => ({ statusCode: res.statusCode }),
+      },
       redact: {
-        paths: ['req.headers.authorization', 'req.headers.cookie', 'res.headers["set-cookie"]'],
+        paths: [
+          'req.headers.authorization',
+          'req.headers.cookie',
+          'res.headers["set-cookie"]',
+          'req.body',
+          'res.body',
+        ],
         censor: '[redacted]',
+      },
+      // The signed-in user by id, never by email.
+      customProps: (_req, res) => {
+        const user = (res as { locals?: { sessionUser?: SessionUser } }).locals?.sessionUser;
+        return user ? { userId: user.userId } : {};
       },
     }),
   );
@@ -54,6 +78,7 @@ export function createApp({ db, pool, logger, auth, clock }: AppDeps): Express {
   app.all('/api/auth/*splat', toNodeHandler(auth));
 
   app.use(express.json({ limit: '100kb' }));
+  app.use('/api', requireJson);
 
   app.get('/api/health', async (_req, res) => {
     if (await probeDb(pool)) {

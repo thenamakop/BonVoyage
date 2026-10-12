@@ -44,10 +44,10 @@ async function tripWithMember() {
   const org = await createTestUser(app, 'Kabir');
   const { id: tripId } = await createTripAs(org.agent);
   const { token } = InvitationResponse.parse(
-    (await org.agent.post(`/api/trips/${tripId}/invitations`).set(H)).body,
+    (await org.agent.post(`/api/trips/${tripId}/invitations`).set(H).send({})).body,
   );
   const member = await createTestUser(app, 'Rohan');
-  await member.agent.post(`/api/invitations/${token}/accept`).set(H);
+  await member.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
   return { org, member, tripId };
 }
 

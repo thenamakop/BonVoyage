@@ -11,6 +11,13 @@ import { fetchJson } from '../../lib/api';
 // Invitation link and roster hooks (S1-3). 204 responses parse as undefined.
 const NoContent = z.undefined();
 
+// Writes must be JSON (S1-6), so a POST without a payload sends {}.
+const EMPTY_JSON_POST = {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: '{}',
+};
+
 export function useActiveInvitation(tripId: string, enabled = true) {
   return useQuery({
     queryKey: ['trip', tripId, 'invitation'],
@@ -23,7 +30,7 @@ export function useCreateInvitation(tripId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      fetchJson(`/api/trips/${tripId}/invitations`, InvitationResponse, { method: 'POST' }),
+      fetchJson(`/api/trips/${tripId}/invitations`, InvitationResponse, EMPTY_JSON_POST),
     onSuccess: (invitation) => {
       queryClient.setQueryData(['trip', tripId, 'invitation'], { invitation });
       // The first link is T2: the trip's status changes too.
@@ -56,9 +63,7 @@ export function useAcceptInvitation(token: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      fetchJson(`/api/invitations/${token}/accept`, AcceptInvitationResponse, {
-        method: 'POST',
-      }),
+      fetchJson(`/api/invitations/${token}/accept`, AcceptInvitationResponse, EMPTY_JSON_POST),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['trips'] });
       void queryClient.invalidateQueries({ queryKey: ['invitation', token] });
