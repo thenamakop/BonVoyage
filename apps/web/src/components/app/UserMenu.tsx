@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import type { MeResponse } from '@bonvoyage/shared';
 import { signOutUser } from '../../lib/auth-client';
 import { Alert } from '../ui/Alert';
@@ -59,6 +59,14 @@ export function UserMenu({ user }: { user: MeResponse }) {
           role="menu"
           className="absolute right-0 top-full z-10 mt-1 w-44 rounded-md border border-slate-200 bg-white p-1 shadow-lg"
         >
+          <Link
+            to="/me"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex min-h-11 w-full items-center rounded px-3 text-left text-sm text-slate-900 hover:bg-slate-100"
+          >
+            Your profile
+          </Link>
           <button
             type="button"
             role="menuitem"
