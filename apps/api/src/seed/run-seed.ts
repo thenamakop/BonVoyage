@@ -1,0 +1,278 @@
+import { randomBytes } from 'node:crypto';
+import { importCatalogue } from '@bonvoyage/db';
+import type { Db } from '@bonvoyage/db';
+import {
+  destination,
+  fareFallback,
+  hub,
+  invitation,
+  itinerary,
+  itineraryDecision,
+  itineraryItem,
+  notification,
+  packageDecision,
+  pastTrip,
+  poi,
+  preference,
+  recommendationItem,
+  recommendationRun,
+  costItem,
+  costRule,
+  trip,
+  tripMember,
+  tripPackage,
+  tripTransition,
+  userProfile,
+} from '@bonvoyage/db/schema';
+import { account, session, user, verification } from '@bonvoyage/db/schema/auth';
+import { distanceCache } from '@bonvoyage/db/schema';
+import { and, eq, sql } from 'drizzle-orm';
+import type { Auth } from '../auth/auth';
+
+// S0-5 step 6: demo seed. Every step is idempotent so the seed can run again
+// without duplicating anything. Prints row counts, never the password.
+
+const DEMO_USERS = [
+  { name: 'Asha', role: 'organiser' },
+  { name: 'Rohan', role: 'member' },
+  { name: 'Meera', role: 'member' },
+  { name: 'Kabir', role: 'member' },
+] as const;
+
+const TRIP_TITLE = 'Long weekend in the hills';
+const TODAY = () => new Date().toISOString().slice(0, 10);
+
+const demoEmail = (name: string) => `${name.toLowerCase()}@demo.bonvoyage.test`;
+
+export interface SeedOptions {
+  db: Db;
+  auth: Auth;
+  catalogueDir: string;
+  password: string;
+}
+
+async function tableCounts(db: Db): Promise<Record<string, number>> {
+  const tables = {
+    user,
+    session,
+    account,
+    verification,
+    user_profile: userProfile,
+    hub,
+    destination,
+    poi,
+    fare_fallback: fareFallback,
+    cost_rule: costRule,
+    distance_cache: distanceCache,
+    trip,
+    trip_member: tripMember,
+    invitation,
+    trip_transition: tripTransition,
+    preference,
+    past_trip: pastTrip,
+    recommendation_run: recommendationRun,
+    recommendation_item: recommendationItem,
+    trip_package: tripPackage,
+    cost_item: costItem,
+    package_decision: packageDecision,
+    itinerary,
+    itinerary_item: itineraryItem,
+    itinerary_decision: itineraryDecision,
+    notification,
+  } as const;
+  const counts: Record<string, number> = {};
+  for (const [name, table] of Object.entries(tables)) {
+    const rows = await db.select({ n: sql<number>`count(*)::int` }).from(table);
+    counts[name] = rows[0]?.n ?? 0;
+  }
+  return counts;
+}
+
+export async function runSeed({ db, auth, catalogueDir, password }: SeedOptions): Promise<void> {
+  const today = TODAY();
+
+  // a) catalogue
+  const counts = await importCatalogue(db, catalogueDir, { today });
+  const imported = Object.entries(counts.inserted)
+    .map(([t, n]) => `${t} +${n}`)
+    .join(', ');
+  console.log(`catalogue: ${imported}`);
+
+  // b) demo users
+  const userIds = new Map<string, string>();
+  for (const { name } of DEMO_USERS) {
+    const email = demoEmail(name);
+    const existing = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, email))
+      .limit(1);
+    if (existing[0]) {
+      userIds.set(name, existing[0].id);
+      continue;
+    }
+    const result = await auth.api.signUpEmail({
+      body: { email, password, name: `${name} (demo)` },
+      headers: { host: 'localhost:4000', origin: 'http://localhost:4000' },
+    });
+    const id = (result as { user?: { id: string } }).user?.id;
+    if (!id) throw new Error(`signUpEmail failed for ${email}`);
+    userIds.set(name, id);
+  }
+
+  // c) user_profile with home hub gurugram
+  const gurugram = (
+    await db.select({ id: hub.id }).from(hub).where(eq(hub.slug, 'gurugram')).limit(1)
+  )[0];
+  if (!gurugram) throw new Error('gurugram hub missing after catalogue import');
+  for (const { name } of DEMO_USERS) {
+    await db
+      .insert(userProfile)
+      .values({ userId: userIds.get(name)!, homeHubId: gurugram.id })
+      .onConflictDoNothing({ target: userProfile.userId });
+  }
+
+  // d) the demo trip
+  const asha = userIds.get('Asha')!;
+  let tripId = (
+    await db
+      .select({ id: trip.id })
+      .from(trip)
+      .where(and(eq(trip.organiserId, asha), eq(trip.title, TRIP_TITLE)))
+      .limit(1)
+  )[0]?.id;
+  if (!tripId) {
+    tripId = (
+      await db
+        .insert(trip)
+        .values({
+          title: TRIP_TITLE,
+          organiserId: asha,
+          originHubId: gurugram.id,
+          durationNights: 2,
+          budgetTotalInr: 48000,
+          radiusKm: 450,
+        })
+        .returning({ id: trip.id })
+    )[0]!.id;
+    // T1 createTrip: audit row from null to draft.
+    await db.insert(tripTransition).values({
+      tripId,
+      transitionId: 'T1',
+      event: 'createTrip',
+      fromStatus: null,
+      toStatus: 'draft',
+      actorUserId: asha,
+    });
+  }
+
+  // e) members: Asha (organiser), Rohan and Meera. Kabir stays outside.
+  for (const { name, role } of DEMO_USERS.filter((u) => u.name !== 'Kabir')) {
+    await db
+      .insert(tripMember)
+      .values({ tripId, userId: userIds.get(name)!, role })
+      .onConflictDoNothing({ target: [tripMember.tripId, tripMember.userId] });
+  }
+
+  // f) preferences for Asha and Rohan (submitted); Meera stays pending.
+  const memberId = async (name: string) =>
+    (
+      await db
+        .select({ id: tripMember.id })
+        .from(tripMember)
+        .where(and(eq(tripMember.tripId, tripId), eq(tripMember.userId, userIds.get(name)!)))
+        .limit(1)
+    )[0]!.id;
+  const prefs = [
+    {
+      name: 'Asha',
+      types: ['mountain', 'adventure'],
+      activities: ['trekking', 'rafting', 'camping'],
+      climate: 'cold' as const,
+      style: 'budget' as const,
+      min: 12000,
+      max: 18000,
+      start: '2026-11-13',
+      end: '2026-11-16',
+    },
+    {
+      name: 'Rohan',
+      types: ['spiritual', 'mountain'],
+      activities: ['yoga_wellness', 'temples', 'trekking'],
+      climate: 'mild' as const,
+      style: 'comfort' as const,
+      min: 10000,
+      max: 16000,
+      start: '2026-11-12',
+      end: '2026-11-15',
+    },
+  ];
+  for (const p of prefs) {
+    const mid = await memberId(p.name);
+    await db
+      .insert(preference)
+      .values({
+        tripMemberId: mid,
+        destinationTypes: p.types,
+        activities: p.activities,
+        climate: p.climate,
+        travelStyle: p.style,
+        budgetMinInr: p.min,
+        budgetMaxInr: p.max,
+        dateStart: p.start,
+        dateEnd: p.end,
+      })
+      .onConflictDoNothing({ target: preference.tripMemberId });
+    await db
+      .update(tripMember)
+      .set({ submittedAt: new Date() })
+      .where(and(eq(tripMember.id, mid), sql`${tripMember.submittedAt} is null`));
+  }
+
+  // g) one active invitation
+  const hasInvite = (
+    await db
+      .select({ id: invitation.id })
+      .from(invitation)
+      .where(and(eq(invitation.tripId, tripId), eq(invitation.status, 'active')))
+      .limit(1)
+  )[0];
+  if (!hasInvite) {
+    await db.insert(invitation).values({
+      tripId,
+      token: randomBytes(24).toString('base64url'),
+      createdBy: asha,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
+  }
+
+  // h) one past_trip for Asha: rishikesh, rating 5
+  const rishikesh = (
+    await db
+      .select({ id: destination.id })
+      .from(destination)
+      .where(eq(destination.slug, 'rishikesh'))
+      .limit(1)
+  )[0];
+  const hasPast = (
+    await db
+      .select({ id: pastTrip.id })
+      .from(pastTrip)
+      .where(and(eq(pastTrip.userId, asha), eq(pastTrip.placeName, 'Rishikesh')))
+      .limit(1)
+  )[0];
+  if (!hasPast) {
+    await db.insert(pastTrip).values({
+      userId: asha,
+      destinationId: rishikesh?.id ?? null,
+      placeName: 'Rishikesh',
+      rating: 5,
+    });
+  }
+
+  const rows = await tableCounts(db);
+  console.log('\nRow counts:');
+  for (const [table, n] of Object.entries(rows)) console.log(`  ${table}: ${n}`);
+  console.log('\nDemo sign-ins (password is never printed):');
+  for (const { name } of DEMO_USERS) console.log(`  ${demoEmail(name)}`);
+}

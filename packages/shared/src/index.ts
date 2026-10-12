@@ -19,9 +19,12 @@ export const Provenance = z.enum(['live', 'cached', 'curated', 'estimated']);
 export type Provenance = z.infer<typeof Provenance>;
 
 export * from './vocab';
+export * from './domain';
 
 export const ERROR_CODES = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
+  UNAUTHENTICATED: 'UNAUTHENTICATED',
+  FORBIDDEN: 'FORBIDDEN',
   INVALID_JSON: 'INVALID_JSON',
   PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
   NOT_FOUND: 'NOT_FOUND',

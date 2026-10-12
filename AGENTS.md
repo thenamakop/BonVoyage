@@ -94,8 +94,9 @@ Some of these exist only after the scaffold (prompt S0-2). If a command is missi
 | `pnpm vercel-build` | Write the Vercel Build Output API directory `.vercel/output` (static SPA plus one bundled api function) |
 | `pnpm smoke:function` | Smoke-test the bundled function in `.vercel/output` (needs `DATABASE_URL`) |
 | `pnpm db:migrate:remote --target preview\|production` | Check or migrate a Neon branch from the laptop (only when a task says so) |
-| `pnpm db:migrate` / `pnpm db:seed` / `pnpm db:reset` / `pnpm db:studio` | Database tasks (`db:reset` is local only) |
+| `pnpm db:migrate` / `pnpm db:seed` / `pnpm db:reset` / `pnpm db:studio` | Database tasks (`db:reset` is local only; `db:seed` seeds demo users plus a demo trip, local or `--target preview`) |
 | `pnpm catalogue:check` | Validate the destination catalogue CSVs |
+| `pnpm catalogue:import --target local\|preview\|production` | Import the catalogue CSVs into a database |
 | `pnpm vitest run --project <unit\|web\|integration> <path>` | Run one test project or file (one root Vitest config, so packages have no test script) |
 
 Health check: `curl -s http://localhost:5173/api/health` returns `{"status":"ok","db":"ok"}`.
@@ -165,6 +166,7 @@ These come from the SRS and the runbook. Breaking one is a bug, even if tests pa
 - **Never edit a migration that is already on `master`.** Fixes are new migrations.
 - Never run migrations, seeds or resets against Neon unless the task explicitly says so, and then only through `pnpm db:migrate:remote`.
 - Deleting a trip must cascade to its members, preferences, packages and itineraries.
+- Better Auth owns `user`, `session`, `account` and `verification`: regenerate them with its CLI, never hand-edit them; app data about a user goes in `user_profile`.
 
 ## 11. Secrets and data
 

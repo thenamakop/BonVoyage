@@ -3,14 +3,16 @@ import type { Db } from '@bonvoyage/db';
 import { probeDb } from '@bonvoyage/db';
 import { ERROR_CODES } from '@bonvoyage/shared';
 import type { HealthOk } from '@bonvoyage/shared';
+import { toNodeHandler } from 'better-auth/node';
 import express from 'express';
 import type { Express } from 'express';
 import helmet from 'helmet';
 import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import { pinoHttp } from 'pino-http';
+import type { Auth } from './auth/auth';
 import { AppError, errorHandler, notFoundHandler } from './http/errors';
-import { apiRouter } from './modules';
+import { createApiRouter } from './modules';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
 
@@ -18,9 +20,10 @@ export interface AppDeps {
   db: Db;
   pool: Pool;
   logger: Logger;
+  auth: Auth;
 }
 
-export function createApp({ pool, logger }: AppDeps): Express {
+export function createApp({ db, pool, logger, auth }: AppDeps): Express {
   const app = express();
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -45,8 +48,8 @@ export function createApp({ pool, logger }: AppDeps): Express {
     }),
   );
 
-  // S0-5 mounts Better Auth here: app.all('/api/auth/*splat', toNodeHandler(auth)).
-  // It must come BEFORE express.json because Better Auth reads the raw body.
+  // Better Auth reads the raw body, so it mounts BEFORE express.json.
+  app.all('/api/auth/*splat', toNodeHandler(auth));
 
   app.use(express.json({ limit: '100kb' }));
 
@@ -59,7 +62,7 @@ export function createApp({ pool, logger }: AppDeps): Express {
     throw new AppError(503, ERROR_CODES.DB_UNAVAILABLE, 'The database is not reachable.');
   });
 
-  app.use('/api', apiRouter);
+  app.use('/api', createApiRouter({ db, auth }));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

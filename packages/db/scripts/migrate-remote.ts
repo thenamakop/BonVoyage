@@ -1,19 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
-import { parseArgs, parseEnv } from 'node:util';
+import { parseArgs } from 'node:util';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type { Pool } from 'pg';
 import { createDb } from '../src/client';
-import {
-  assertDirectRemote,
-  countPending,
-  imageMajor,
-  isRemoteTarget,
-  pickRemoteUrl,
-  serverMajor,
-} from '../src/remote';
+import { countPending, imageMajor, serverMajor } from '../src/remote';
 import { describeTarget } from '../src/target';
+import { resolveRemoteTarget } from './lib/remote-target';
 
 const USAGE = 'Usage: pnpm db:migrate:remote --target preview|production [--status]';
 const packageDir = resolve(import.meta.dirname, '..');
@@ -62,18 +56,13 @@ const { values } = parseArgs({
   options: { target: { type: 'string' }, status: { type: 'boolean', default: false } },
   strict: false,
 });
-const target = typeof values.target === 'string' ? values.target : undefined;
-if (!isRemoteTarget(target)) fail(USAGE);
-
-const envFile = resolve(repoRoot, '.env.neon');
-if (!existsSync(envFile)) fail('.env.neon was not found at the repository root.');
-
+const targetArg = typeof values.target === 'string' ? values.target : undefined;
+let target: 'preview' | 'production';
 let url: string;
 try {
-  url = pickRemoteUrl(parseEnv(readFileSync(envFile, 'utf8')), target);
-  assertDirectRemote(url);
+  ({ target, url } = resolveRemoteTarget(targetArg));
 } catch (error) {
-  fail(error instanceof Error ? error.message : 'Invalid remote configuration.');
+  fail(`${error instanceof Error ? error.message : 'Invalid remote configuration.'} ${USAGE}`);
 }
 
 console.log(`Target: ${target} (${describeTarget(url)})`);
