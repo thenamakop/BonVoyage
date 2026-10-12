@@ -1,6 +1,6 @@
 import { createDb } from '@bonvoyage/db';
 import { account, user } from '@bonvoyage/db/schema/auth';
-import { ERROR_CODES } from '@bonvoyage/shared';
+import { ERROR_CODES, MeResponse } from '@bonvoyage/shared';
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import request from 'supertest';
@@ -48,7 +48,8 @@ describe('auth + /api/me', () => {
     expect(signUp.status).toBe(200);
     const me = await a.get('/api/me');
     expect(me.status).toBe(200);
-    expect(me.body).toMatchObject({ email: EMAIL, name: 'Tester', homeHubSlug: null });
+    const parsed = MeResponse.parse(me.body);
+    expect(parsed).toMatchObject({ email: EMAIL, name: 'Tester', homeHubSlug: null });
   });
 
   it('after sign out GET /api/me is 401 with the UNAUTHENTICATED envelope', async () => {

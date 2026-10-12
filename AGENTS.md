@@ -60,6 +60,7 @@ Do not add frameworks or swap libraries: no Next.js, no Turborepo, no second UI 
 
 ```text
 apps/web/             React SPA (Vite)
+  src/components/ui/  UI components live here; use them before writing new markup
 apps/api/             Express app: src/app.ts exports it, src/server.ts listens locally; src/vercel-entry.ts is the Vercel function entry (added in S0-3)
   src/trips/          the trip lifecycle shared by every module (transitionTrip)
   src/modules/        users-groups, preferences, filtering, recommendation, transport-cost,
