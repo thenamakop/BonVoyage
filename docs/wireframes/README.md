@@ -1,6 +1,6 @@
 # Wireframes
 
-Low-to-mid fidelity SVG wireframes for every BonVoyage screen. They are greyscale boxes with real labels and demo-seed sample data, not final design: layout, content and states are what later prompts build against; spacing and styling will change. `docs/design` remains the frozen UML baseline (tag `design-baseline-v1`) — these files supplement it, they do not replace it.
+Low-to-mid fidelity SVG wireframes for every BonVoyage screen. They are greyscale boxes with real labels and demo-seed sample data, not final design: layout, content and states are what later prompts build against; spacing and styling will change. `docs/design` remains the frozen UML baseline (tag `design-baseline-v1`); these files supplement it, they do not replace it.
 
 Sample data comes from the demo seed: trip "Long weekend in the hills", origin Gurugram, 2 nights, group budget ₹48,000, radius 450 km, members Asha (organiser), Rohan and Meera.
 
@@ -10,10 +10,10 @@ SRS 3.1.1 names five screens (trip dashboard, preference submission form, ranked
 
 | File | Route | Built in | Requirements | States shown | SRS 3.1.1 screen |
 | --- | --- | --- | --- | --- | --- |
-| 01-sign-in.svg | /sign-in, /sign-up | S1-1 | R1, R10 | default, error slot, sign-up variant | — |
-| 02-trips.svg | /trips | S1-2 | R2, R9 | list, empty, loading | — |
-| 03-trip-new.svg | /trips/new | S1-2 | R9 | default, field error | — |
-| 04-join.svg | /join/:token | S1-3 | R2 | default, signed-out, expired link | — |
+| 01-sign-in.svg | /sign-in, /sign-up | S1-1 | R1, R10 | default, error slot, sign-up variant | none |
+| 02-trips.svg | /trips | S1-2 | R2, R9 | list, empty, loading | none |
+| 03-trip-new.svg | /trips/new | S1-2 | R9 | default, field error | none |
+| 04-join.svg | /join/:token | S1-3 | R2 | default, signed-out, expired link | none |
 | 05-preferences.svg | /trips/:id/preferences | S1-4 | R3 | default, field error | preference submission form |
 | 06-dashboard.svg | /trips/:id | S1-5 | R2, R3 | collecting, error, per-person money | trip dashboard |
 | 07-shortlist.svg | /trips/:id/shortlist | S2 | R6, R7 | ranked list | ranked destination shortlist |
@@ -30,7 +30,7 @@ The loading state (skeleton rows) is the inset on 02-trips; the error state (ale
 
 ![Sign in](01-sign-in.svg)
 
-1. Error alert slot above the form (`UNAUTHENTICATED` message such as "Invalid email or password").
+1. Error alert slot above the form (`UNAUTHENTICATED` copy: "Email or password is incorrect.").
 2. Sign-up variant: adds a Name field above Email and the password hint "At least 12 characters".
 
 ![Your trips](02-trips.svg)
@@ -41,24 +41,24 @@ The loading state (skeleton rows) is the inset on 02-trips; the error state (ale
 
 ![New trip](03-trip-new.svg)
 
-1. Field error pattern: red border plus an icon plus a message — never colour alone.
-2. Helpers keep units plain: budget is the whole-group total, radius is distance from the origin hub.
+1. Field error pattern: red border plus an icon plus a message, never colour alone; error and helper lines stay at least 18 px apart.
+2. Helpers keep units plain: budget is the whole-group total, radius is the road distance from the starting city ("How far from your starting city you are willing to travel by road").
 
 ![Join a trip](04-join.svg)
 
-1. Signed-out inset: members sign in, then return to the join page.
-2. Expired or revoked link inset: plain explanation, ask the organiser for a new link.
+1. Signed-out inset: "Sign in to join" beside "Create an account"; either route returns to the join page.
+2. Expired or turned-off link inset: "This link has expired or was turned off. Ask the organiser for a new one."
 
 ![Preferences](05-preferences.svg)
 
-1. Budget max error: "Maximum must be at least the minimum" — fields show the server `fields` map keyed by request field name.
+1. Budget max error: "Maximum must be at least the minimum" wrapped on two lines under the field; chips are 44 px tall and wrap to a second row rather than overflow.
 2. The editable note mirrors the T3/I1 rule: preferences can change until the shortlist runs.
 
 ![Trip dashboard](06-dashboard.svg)
 
-1. The progress bar always repeats its numbers as text ("2 of 3 preferences submitted").
-2. Disabled organiser actions state their reason in words ("Available after 2 members submit").
-3. Money shows the group total and the per-person figure.
+1. The progress bar always repeats its numbers as text ("2 of 3 preferences submitted"); the step line under the banner reads "Step 2 of 7: Collecting preferences".
+2. "Close submissions" is a secondary action, enabled once two members have submitted, with the consequence in words: "Meera has not submitted and will be left out of planning."
+3. Money shows the group total and the per-person figure; the next-step callout carries a "Your preferences" shortcut and the "Recent activity" list sits above the error inset.
 4. Error inset: alert with a Retry action for the live refresh.
 
 ![Shortlist](07-shortlist.svg)
@@ -80,13 +80,13 @@ The loading state (skeleton rows) is the inset on 02-trips; the error state (ale
 
 ![Itinerary](10-itinerary.svg)
 
-1. Every item carries a provenance tag: "From the catalogue", "Curated fare" or "Suggested".
-2. Travel legs are their own timeline items, matching the validator's onward/return rule.
+1. Every item carries a provenance tag: "From the catalogue", "Curated fare", "Curated stay" or "Suggested".
+2. Travel legs are their own timeline items, matching the validator's onward/return rule; the day tabs are 44 px tap targets.
 
 ![Trip dashboard (desktop)](06-dashboard-desktop.svg)
 
-1. Two columns: parameters and progress left, roster right.
-2. Organiser actions bottom right with the disabled reason in words.
+1. Two columns: parameters and progress left, roster right; step line under the banner, "Recent activity" card bottom left.
+2. Organiser actions bottom right; "Close submissions" is enabled secondary with the "Meera has not submitted" note in words.
 
 ![Packages (desktop)](09-packages-desktop.svg)
 
@@ -100,7 +100,7 @@ The loading state (skeleton rows) is the inset on 02-trips; the error state (ale
 ## Shared patterns
 
 - **App header:** product name left, user menu avatar right, on every screen except 01 (sign-in) and 04 (join), which are pre-membership.
-- **Status badges:** trip status always appears in words — `draft`, `collecting preferences`, `ready for recommendation`, `shortlisted`, `packages proposed`, `package selected`, `itinerary proposed`, `finalised`, `in progress`, `completed`, `cancelled` (from `TRIP_STATUSES`) — never by colour alone.
+- **Status badges:** trip status always appears in words: `draft`, `collecting preferences`, `ready for recommendation`, `shortlisted`, `packages proposed`, `package selected`, `itinerary proposed`, `finalised`, `in progress`, `completed`, `cancelled` (from `TRIP_STATUSES`), never by colour alone.
 - **Money:** every figure shows the group total, the per-person amount and the word "estimate" (`formatInr`, Indian grouping, no decimals).
 - **Loading:** skeleton rows in place of content.
 - **Empty:** a short sentence plus the one action that fixes it.
@@ -112,4 +112,4 @@ The loading state (skeleton rows) is the inset on 02-trips; the error state (ale
 ## Open questions
 
 - Should the packages screen also show the rejected-package state once R13's decisions land, or is the per-member tally enough for Sprint 3?
-- The dashboard poll interval (10 s per issue #33) is assumed in "Updated 5 seconds ago"; confirm the cadence still stands.
+- The dashboard poll interval (10 s per issue #33) is assumed in the desktop "Updated 5 seconds ago"; confirm the cadence still stands.
