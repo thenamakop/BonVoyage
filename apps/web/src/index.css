@@ -1,14 +1,34 @@
 @import 'tailwindcss';
 
+@theme {
+  --color-brand-900: #0a1c26;
+  --color-brand-700: #0d3a3d;
+  --color-accent: #f4a340;
+  --color-accent-strong: #d9832a;
+  --color-mint: #7fe3d8;
+  --color-danger: #b91c1c;
+  --color-success: #15803d;
+  --color-warning: #b45309;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
 @layer base {
-  html {
-    font-family:
-      system-ui,
-      -apple-system,
-      'Segoe UI',
-      Roboto,
-      'Helvetica Neue',
-      Arial,
-      sans-serif;
+  body {
+    @apply bg-slate-50 font-sans text-slate-900;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-700);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms;
+      animation-duration: 0.01ms;
+      animation-iteration-count: 1;
+    }
   }
 }
