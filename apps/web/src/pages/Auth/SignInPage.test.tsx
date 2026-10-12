@@ -23,6 +23,7 @@ function renderPage(initial = '/sign-in') {
     [
       { path: '/sign-in', element: <SignInPage /> },
       { path: '/trips', element: <p>Trips page</p> },
+      { path: '/join/:token', element: <p>Join page</p> },
     ],
     { initialEntries: [initial] },
   );
@@ -78,5 +79,33 @@ describe('SignInPage', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByText('Trips page')).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/trips');
+  });
+
+  it('returns to a join link once /api/me reports the new session (S1-3)', async () => {
+    let signedIn = false;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          signedIn
+            ? Response.json({ id: 'u1', name: 'Asha', email: 'a@test.bv', homeHubSlug: null })
+            : Response.json(
+                { error: { code: 'UNAUTHENTICATED', message: 'Sign in required.' } },
+                { status: 401 },
+              ),
+        ),
+      ),
+    );
+    signInEmail.mockImplementation(() => {
+      signedIn = true;
+      return Promise.resolve({ ok: true });
+    });
+    const router = renderPage('/sign-in?next=%2Fjoin%2Fabc');
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Email'), 'asha@demo.bonvoyage.test');
+    await user.type(screen.getByLabelText('Password'), 'password-one-two');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByText('Join page')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/join/abc');
   });
 });

@@ -24,9 +24,12 @@ export function SignInPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  if (me.data) return <Navigate to="/trips" replace />;
-
   const next = params.get('next');
+  // Honour next here too: once sign-in or sign-up refreshes ['me'], this
+  // guard renders before the submit handler's navigate and would otherwise
+  // drop the person on /trips instead of, say, /join/<token> (S1-3).
+  if (me.data) return <Navigate to={safeNext(next)} replace />;
+
   const signUpLink = `/sign-up${next ? `?next=${encodeURIComponent(next)}` : ''}`;
 
   async function onSubmit(e: FormEvent) {
