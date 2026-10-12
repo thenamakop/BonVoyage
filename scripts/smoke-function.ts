@@ -72,11 +72,35 @@ async function main(): Promise<void> {
 
   record('static/index.html exists', existsSync(resolve(output, 'static/index.html')));
   const config = parseJson(readFileSync(resolve(output, 'config.json'), 'utf8')) as
-    { routes?: { src?: string; dest?: string }[] } | undefined;
+    | {
+        routes?: {
+          src?: string;
+          dest?: string;
+          handle?: string;
+          continue?: boolean;
+          headers?: Record<string, string>;
+        }[];
+      }
+    | undefined;
   const first = config?.routes?.[0];
   record(
     'first route in config.json is the /api route',
     first?.src === '^/api(?:/.*)?$' && first.dest === '/api',
+  );
+  const routes = config?.routes ?? [];
+  const referrer = routes.findIndex(
+    (r) => r.headers?.['Referrer-Policy'] === 'same-origin' && r.continue === true,
+  );
+  const filesystem = routes.findIndex((r) => r.handle === 'filesystem');
+  record(
+    'static routes send Referrer-Policy: same-origin before the filesystem handle',
+    referrer > 0 && filesystem > referrer && routes[referrer]?.src === '^/.*$',
+    `referrer route ${referrer}, filesystem ${filesystem}`,
+  );
+  const html = readFileSync(resolve(output, 'static/index.html'), 'utf8');
+  record(
+    'static/index.html has <meta name="referrer" content="same-origin">',
+    html.includes('<meta name="referrer" content="same-origin"'),
   );
 }
 

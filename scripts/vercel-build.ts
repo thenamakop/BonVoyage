@@ -54,6 +54,10 @@ async function main(): Promise<void> {
       version: 3,
       routes: [
         { src: '^/api(?:/.*)?$', dest: '/api' },
+        // S1-6: the SPA's pages (not /api, which helmet covers and the route
+        // above already ended) send no Referer to other sites, so a /join/<token>
+        // link cannot leak its token.
+        { src: '^/.*$', headers: { 'Referrer-Policy': 'same-origin' }, continue: true },
         {
           src: '^/assets/(.*)$',
           headers: { 'cache-control': 'public, max-age=31536000, immutable' },
