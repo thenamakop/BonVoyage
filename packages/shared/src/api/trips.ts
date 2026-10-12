@@ -1,0 +1,167 @@
+import { z } from 'zod';
+import { MemberRole, MemberStatus, TripStatus } from '../domain';
+import type { TripStatus as TripStatusType } from '../domain';
+
+// Trip API contracts (S1-2). budgetTotalInr is the whole group's budget for
+// the whole trip; per-person figures are display-only. TripMember never
+// carries an email: members see each other's names only.
+
+export const HubSummary = z.object({
+  slug: z.string(),
+  name: z.string(),
+  state: z.string(),
+});
+export type HubSummary = z.infer<typeof HubSummary>;
+
+export const HubsResponse = z.object({ hubs: z.array(HubSummary) });
+export type HubsResponse = z.infer<typeof HubsResponse>;
+
+// The events a trip can take (engine TRIP_EVENTS, mirrored here so web and
+// api share one contract; packages/engine/src/trip-state.test.ts asserts the
+// two lists never drift).
+export const TripEventName = z.enum([
+  'createTrip',
+  'inviteMembers',
+  'preferenceSubmitted',
+  'closeSubmissions',
+  'conflictDetected',
+  'preferenceRevised',
+  'recommendationRequested',
+  'destinationSelected',
+  'packageRejected',
+  'packageAccepted',
+  'generateItinerary',
+  'itineraryRejected',
+  'itineraryAccepted',
+  'packageModified',
+  'itineraryModified',
+  'cancelTrip',
+  'tripStarted',
+  'tripEnded',
+]);
+export type TripEventName = z.infer<typeof TripEventName>;
+
+export const CreateTripInput = z.object({
+  title: z
+    .string()
+    .trim()
+    .min(1, 'Give the trip a title.')
+    .max(120, 'Keep the title under 120 characters.'),
+  originHubSlug: z.string().min(1, 'Choose a starting city from the list.'),
+  durationNights: z
+    .number('Enter the number of nights.')
+    .int('Whole nights only.')
+    .min(1, 'Choose between 1 and 14 nights.')
+    .max(14, 'Choose between 1 and 14 nights.'),
+  budgetTotalInr: z
+    .number('Enter the group budget in rupees.')
+    .int('Whole rupees only.')
+    .min(1000, 'The group budget must be at least ₹1,000.')
+    .max(10000000, 'The group budget must be under ₹1,00,00,000.'),
+  radiusKm: z
+    .number('Enter the radius in kilometres.')
+    .int('Whole kilometres only.')
+    .min(50, 'Radius must be at least 50 km.')
+    .max(1500, 'Radius must be 1,500 km or less.'),
+});
+export type CreateTripInput = z.infer<typeof CreateTripInput>;
+
+export const UpdateTripInput = CreateTripInput.partial().refine(
+  (value) => Object.keys(value).length > 0,
+  { message: 'Change at least one field.' },
+);
+export type UpdateTripInput = z.infer<typeof UpdateTripInput>;
+
+export const TripMember = z.object({
+  userId: z.string(),
+  name: z.string(),
+  role: MemberRole,
+  status: MemberStatus,
+  submitted: z.boolean(),
+  joinedAt: z.string(),
+});
+export type TripMember = z.infer<typeof TripMember>;
+
+export const TripDetail = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: TripStatus,
+  originHub: HubSummary,
+  durationNights: z.number(),
+  budgetTotalInr: z.number(),
+  radiusKm: z.number(),
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  organiser: z.object({ userId: z.string(), name: z.string() }),
+  members: z.array(TripMember),
+  myRole: MemberRole,
+  myStatus: MemberStatus,
+  legalEvents: z.array(TripEventName),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type TripDetail = z.infer<typeof TripDetail>;
+
+export const TripSummary = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: TripStatus,
+  originHub: HubSummary,
+  durationNights: z.number(),
+  budgetTotalInr: z.number(),
+  memberCount: z.number(),
+  myRole: MemberRole,
+  updatedAt: z.string(),
+});
+export type TripSummary = z.infer<typeof TripSummary>;
+
+export const TripsResponse = z.object({ trips: z.array(TripSummary) });
+export type TripsResponse = z.infer<typeof TripsResponse>;
+
+// Status names and plain-language explanations for badges and the trip page.
+export const TRIP_STATUS_LABELS: Record<TripStatusType, { label: string; explanation: string }> = {
+  draft: {
+    label: 'Draft',
+    explanation: 'The organiser is still setting up the trip; nobody has been invited yet.',
+  },
+  collecting_preferences: {
+    label: 'Collecting preferences',
+    explanation: 'Members are filling in what they want from the trip.',
+  },
+  ready_for_recommendation: {
+    label: 'Ready for recommendations',
+    explanation: 'Every active member has submitted; the group can ask for a shortlist.',
+  },
+  shortlisted: {
+    label: 'Shortlist ready',
+    explanation: 'Destinations that fit the group are ranked and waiting for a choice.',
+  },
+  packages_proposed: {
+    label: 'Packages proposed',
+    explanation: 'Costed packages are ready for the group to compare and decide on.',
+  },
+  package_selected: {
+    label: 'Package selected',
+    explanation: 'The group has picked a package; an itinerary can now be generated.',
+  },
+  itinerary_proposed: {
+    label: 'Itinerary proposed',
+    explanation: 'A day-wise plan is ready for the group to review.',
+  },
+  finalised: {
+    label: 'Finalised',
+    explanation: 'The itinerary is accepted and the trip is booked in.',
+  },
+  in_progress: {
+    label: 'In progress',
+    explanation: 'The trip is happening now.',
+  },
+  completed: {
+    label: 'Completed',
+    explanation: 'The trip is finished; feedback may still come in.',
+  },
+  cancelled: {
+    label: 'Cancelled',
+    explanation: 'The trip was called off.',
+  },
+};
