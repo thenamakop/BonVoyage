@@ -50,7 +50,7 @@ const prefs = (overrides: Record<string, unknown> = {}) => ({
 });
 
 type Agent = request.Agent;
-const put = (agent: Agent, tripId: string, body: unknown) =>
+const put = (agent: Agent, tripId: string, body: object) =>
   agent.put(`/api/trips/${tripId}/preferences/me`).set(H).send(body);
 const get = (agent: Agent, tripId: string) =>
   agent.get(`/api/trips/${tripId}/preferences/me`).set(H);

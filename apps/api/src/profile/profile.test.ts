@@ -114,7 +114,7 @@ describe('POST and DELETE /api/me/past-trips', () => {
 
   it('400: both destinationSlug and placeName, rating 6, unknown or inactive destination, future date', async () => {
     const { agent } = await createTestUser(app);
-    const post = (body: unknown) => agent.post('/api/me/past-trips').set(H).send(body);
+    const post = (body: object) => agent.post('/api/me/past-trips').set(H).send(body);
     const both = await post({ destinationSlug: 'test-rishikesh', placeName: 'X', rating: 4 });
     expect(both.status).toBe(400);
     expect(Object.keys(fieldsOf(both))).toEqual(['placeName']);
