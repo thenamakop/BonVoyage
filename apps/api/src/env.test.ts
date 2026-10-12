@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { parseEnv } from './env';
 
-const base = { DATABASE_URL: 'postgres://u:p@localhost:5433/db_test' };
+const base = {
+  DATABASE_URL: 'postgres://u:p@localhost:5433/db_test',
+  BETTER_AUTH_SECRET: 'test-secret-test-secret-test-secret',
+};
 
 describe('parseEnv APP_URL', () => {
   it('defaults to the local web address', () => {

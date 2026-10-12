@@ -10,6 +10,8 @@ const EnvSchema = z
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().min(1).max(65535).default(4000),
     DATABASE_URL: z.url(),
+    BETTER_AUTH_SECRET: z.string().min(32),
+    SEED_DEMO_PASSWORD: z.string().optional(),
     APP_URL: z.url().optional(),
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])

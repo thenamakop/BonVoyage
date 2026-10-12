@@ -6,13 +6,19 @@ import { pino } from 'pino';
 import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createApp } from './app';
+import { createAuth } from './auth/auth';
 
 const logger = pino({ level: 'silent' });
 const live = createDb(process.env.DATABASE_URL ?? '');
 const dead = createDb('postgres://bonvoyage:bonvoyage@127.0.0.1:1/x');
 
 function appWith(handle: { db: Db; pool: Pool }) {
-  return createApp({ db: handle.db, pool: handle.pool, logger });
+  const auth = createAuth({
+    db: handle.db,
+    secret: 'test-secret-test-secret-test-secret',
+    baseURL: { allowedHosts: ['localhost:5173', 'localhost:4000', '*.vercel.app'] },
+  });
+  return createApp({ db: handle.db, pool: handle.pool, logger, auth });
 }
 
 afterAll(async () => {
