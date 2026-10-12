@@ -18,6 +18,7 @@
     "test:watch": "vitest",
     "vercel-build": "tsx scripts/vercel-build.ts",
     "smoke:function": "tsx scripts/smoke-function.ts",
+    "backlog": "tsx scripts/backlog/create-backlog.ts",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:up": "docker compose up -d --wait db db-test",
     "db:down": "docker compose down",
