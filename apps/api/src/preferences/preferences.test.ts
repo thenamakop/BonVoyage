@@ -192,55 +192,74 @@ describe('PUT /api/trips/:id/preferences/me: the state machine', () => {
   });
 });
 
-describe('PUT /api/trips/:id/preferences/me: validation and access', () => {
-  it('400 with the field for each rule; nothing is written', async () => {
-    const { org, tripId } = await openTrip(0);
-    const cases: [Record<string, unknown>, string, string][] = [
-      [{ destinationTypes: [] }, 'destinationTypes', 'Pick at least one kind of place.'],
-      [
-        { budgetMinInr: 8000, budgetMaxInr: 6000 },
-        'budgetMaxInr',
-        'Maximum must be at least the minimum.',
-      ],
-      [
-        { dateStart: '2026-10-31', dateEnd: '2026-11-05' },
-        'dateStart',
-        'Choose a start date from today onwards.',
-      ],
-      [
-        { dateStart: '2026-11-13', dateEnd: '2026-11-14' },
-        'dateEnd',
-        'Your dates must cover at least 2 nights for this trip.',
-      ],
-    ];
-    for (const [patch, field, message] of cases) {
+describe('PUT /api/trips/:id/preferences/me: field errors', () => {
+  it.each([
+    [
+      'dateStart',
+      'a start date before today in India',
+      { dateStart: '2026-10-31', dateEnd: '2026-11-05' },
+      'Choose a start date from today onwards.',
+    ],
+    [
+      'dateEnd',
+      'a window shorter than the trip',
+      { dateStart: '2026-11-13', dateEnd: '2026-11-14' },
+      'Your dates must cover at least 2 nights for this trip.',
+    ],
+    [
+      'budgetMaxInr',
+      'a maximum below the minimum',
+      { budgetMinInr: 8000, budgetMaxInr: 6000 },
+      'Maximum must be at least the minimum.',
+    ],
+    [
+      'destinationTypes',
+      'an empty list',
+      { destinationTypes: [] },
+      'Pick at least one kind of place.',
+    ],
+  ])(
+    '400 fields.%s for %s; nothing written, no transition',
+    async (field, _why, patch, message) => {
+      const { org, tripId } = await openTrip(0);
       const res = await put(org.agent, tripId, prefs(patch));
-      expect(res.status, field).toBe(400);
+      expect(res.status).toBe(400);
       expect(codeOf(res)).toBe('VALIDATION_ERROR');
-      expect(fieldsOf(res)[field]).toBe(message);
-    }
-    expect(MyPreferenceResponse.parse((await get(org.agent, tripId)).body).preference).toBeNull();
+      expect(fieldsOf(res)).toEqual({ [field]: message });
+      expect(MyPreferenceResponse.parse((await get(org.agent, tripId)).body).preference).toBeNull();
+      expect(await transitionsOf(tripId)).toEqual(['T1', 'T2']);
+    },
+  );
+});
+
+describe('PUT /api/trips/:id/preferences/me: access', () => {
+  it('401 without a session on GET and PUT; no transition', async () => {
+    const { tripId } = await openTrip(0);
+    const anon = request(app);
+    expect(
+      (await anon.put(`/api/trips/${tripId}/preferences/me`).set(H).send(prefs())).status,
+    ).toBe(401);
+    expect((await anon.get(`/api/trips/${tripId}/preferences/me`).set(H)).status).toBe(401);
     expect(await transitionsOf(tripId)).toEqual(['T1', 'T2']);
   });
 
-  it('401 without a session, 400 for a bad id, 404 for a non-member', async () => {
+  it('404 for a non-member on GET and PUT (400 for a bad id); no transition', async () => {
     const { tripId } = await openTrip(0);
-    expect(
-      (await request(app).put(`/api/trips/${tripId}/preferences/me`).set(H).send(prefs())).status,
-    ).toBe(401);
-    expect((await request(app).get(`/api/trips/${tripId}/preferences/me`).set(H)).status).toBe(401);
     const outsider = await createTestUser(app);
     const bad = await put(outsider.agent, 'not-a-uuid', prefs());
     expect(bad.status).toBe(400);
     expect(fieldsOf(bad)).toEqual({ id: 'must be a uuid' });
-    expect((await put(outsider.agent, tripId, prefs())).status).toBe(404);
+    const res = await put(outsider.agent, tripId, prefs());
+    expect(res.status).toBe(404);
+    expect(codeOf(res)).toBe('NOT_FOUND');
     expect((await get(outsider.agent, tripId)).status).toBe(404);
+    expect(await transitionsOf(tripId)).toEqual(['T1', 'T2']);
   });
 
-  it('403 for an excluded member, whose GET answers null', async () => {
+  it('403 for an excluded member on PUT, whose GET answers null; no transition', async () => {
     const { org, members, tripId } = await openTrip(1);
     const removed = members[0]!;
-    await put(removed.agent, tripId, prefs());
+    await put(removed.agent, tripId, prefs()); // I1
     await org.agent.delete(`/api/trips/${tripId}/members/${removed.userId}`).set(H);
     const res = await put(removed.agent, tripId, prefs());
     expect(res.status).toBe(403);
@@ -249,10 +268,11 @@ describe('PUT /api/trips/:id/preferences/me: validation and access', () => {
       preference: null,
       submittedAt: null,
     });
+    expect(await transitionsOf(tripId)).toEqual(['T1', 'T2', 'I1']);
   });
 });
 
-describe('GET /api/trips/:id/preferences/me: privacy (R10)', () => {
+describe('GET /api/trips/:id/preferences/me: own answers only (R10)', () => {
   it("member A never receives member B's values, here or on the trip page", async () => {
     const { org, members, tripId } = await openTrip(1);
     const b = members[0]!;
@@ -283,5 +303,7 @@ describe('GET /api/trips/:id/preferences/me: privacy (R10)', () => {
       .from(tripMember)
       .where(and(eq(tripMember.tripId, tripId), eq(tripMember.userId, b.userId)));
     expect(row!.submittedAt).not.toBeNull();
+    // B's submission was I1; A's was the last one needed (T3).
+    expect(await transitionsOf(tripId)).toEqual(['T1', 'T2', 'I1', 'T3']);
   });
 });

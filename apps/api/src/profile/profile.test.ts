@@ -77,11 +77,16 @@ describe('GET and PATCH /api/me/profile', () => {
     expect(ProfileResponse.parse(cleared.body).homeHubSlug).toBeNull();
   });
 
-  it('400 fields.homeHubSlug for an unknown hub; 401 without a session', async () => {
+  it('400 fields.homeHubSlug for an unknown hub', async () => {
     const { agent } = await createTestUser(app);
     const res = await agent.patch('/api/me/profile').set(H).send({ homeHubSlug: 'atlantis' });
     expect(res.status).toBe(400);
     expect(fieldsOf(res)).toEqual({ homeHubSlug: 'Choose a city from the list.' });
+    const after = ProfileResponse.parse((await agent.get('/api/me/profile').set(H)).body);
+    expect(after.homeHubSlug).toBeNull();
+  });
+
+  it('401 without a session on GET and PATCH', async () => {
     expect((await request(app).get('/api/me/profile').set(H)).status).toBe(401);
     expect(
       (await request(app).patch('/api/me/profile').set(H).send({ homeHubSlug: null })).status,
@@ -112,26 +117,39 @@ describe('POST and DELETE /api/me/past-trips', () => {
     expect(profile.pastTrips.map((t) => t.rating)).toEqual([4, 5]);
   });
 
-  it('400: both destinationSlug and placeName, rating 6, unknown or inactive destination, future date', async () => {
+  it.each([
+    [
+      'both destinationSlug and placeName',
+      { destinationSlug: 'test-rishikesh', placeName: 'X', rating: 4 },
+      'placeName',
+      'Choose a destination or name the place, not both.',
+    ],
+    ['rating 6', { placeName: 'X', rating: 6 }, 'rating', 'Choose a rating from 1 to 5.'],
+    [
+      'an unknown destinationSlug',
+      { destinationSlug: 'nowhere', rating: 3 },
+      'destinationSlug',
+      'Choose a destination from the list.',
+    ],
+    [
+      'an inactive destination',
+      { destinationSlug: 'test-closed', rating: 3 },
+      'destinationSlug',
+      'Choose a destination from the list.',
+    ],
+    [
+      'a visit date after today',
+      { placeName: 'X', visitedOn: '2026-11-02', rating: 3 },
+      'visitedOn',
+      'The visit date cannot be in the future.',
+    ],
+  ])('400 for %s; nothing saved', async (_name, body, field, message) => {
     const { agent } = await createTestUser(app);
-    const post = (body: object) => agent.post('/api/me/past-trips').set(H).send(body);
-    const both = await post({ destinationSlug: 'test-rishikesh', placeName: 'X', rating: 4 });
-    expect(both.status).toBe(400);
-    expect(Object.keys(fieldsOf(both))).toEqual(['placeName']);
-    const six = await post({ placeName: 'X', rating: 6 });
-    expect(six.status).toBe(400);
-    expect(Object.keys(fieldsOf(six))).toEqual(['rating']);
-    for (const slug of ['nowhere', 'test-closed']) {
-      const res = await post({ destinationSlug: slug, rating: 3 });
-      expect(res.status).toBe(400);
-      expect(fieldsOf(res)).toEqual({ destinationSlug: 'Choose a destination from the list.' });
-    }
-    const future = await post({ placeName: 'X', visitedOn: '2026-11-02', rating: 3 });
-    expect(future.status).toBe(400);
-    expect(fieldsOf(future)).toEqual({ visitedOn: 'The visit date cannot be in the future.' });
-    expect(
-      ProfileResponse.parse((await agent.get('/api/me/profile').set(H)).body).pastTrips,
-    ).toEqual([]);
+    const res = await agent.post('/api/me/past-trips').set(H).send(body);
+    expect(res.status).toBe(400);
+    expect(fieldsOf(res)).toEqual({ [field]: message });
+    const after = ProfileResponse.parse((await agent.get('/api/me/profile').set(H)).body);
+    expect(after.pastTrips).toEqual([]);
   });
 
   it("204 for your own row; 404 for someone else's row, a missing id or a malformed id", async () => {
