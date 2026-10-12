@@ -1,0 +1,339 @@
+import { createDb } from '@bonvoyage/db';
+import { pino } from 'pino';
+import {
+  InvitationResponse,
+  MyPreferenceResponse,
+  PastTrip,
+  type ErrorEnvelope,
+} from '@bonvoyage/shared';
+import request from 'supertest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createApp } from '../app';
+import { createAuth } from '../auth/auth';
+import { ENDPOINTS } from '../test/endpoint-inventory';
+import { createTestUser, createTripAs, ensureHub } from '../test/helpers';
+
+// S1-6 step 2: every endpoint, tried by every kind of caller, against a fresh
+// trip in collecting_preferences. The expected cells are written by hand; they
+// are NOT derived from the inventory's access field, or this would prove nothing.
+
+const { db, pool } = createDb(process.env.DATABASE_URL ?? '');
+const auth = createAuth({
+  db,
+  secret: 'test-secret-test-secret-test-secret',
+  baseURL: { allowedHosts: ['localhost:5173', 'localhost:4000', '*.vercel.app'] },
+});
+const app = createApp({
+  db,
+  pool,
+  logger: pino({ level: 'silent' }),
+  auth,
+  clock: () => new Date('2026-11-01T06:30:00Z'),
+});
+const H = { Host: 'localhost:5173', Origin: 'http://localhost:5173' };
+
+const ACTORS = ['anonymous', 'nonMember', 'member', 'excludedMember', 'organiser'] as const;
+type Actor = (typeof ACTORS)[number];
+type Agent = request.Agent;
+type Users = Record<Exclude<Actor, 'anonymous'>, { agent: Agent; userId: string }>;
+
+interface Fixture {
+  tripId: string;
+  token: string;
+  memberId: string;
+  pastTripId: string;
+}
+
+const PREFS = {
+  destinationTypes: ['mountain'],
+  activities: ['trekking'],
+  climate: 'mild',
+  travelStyle: 'comfort',
+  budgetMinInr: 8000,
+  budgetMaxInr: 12000,
+  dateStart: '2026-11-13',
+  dateEnd: '2026-11-16',
+};
+
+interface Case {
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  path: string;
+  /** The URL for this fixture. */
+  url: (f: Fixture) => string;
+  body?: object;
+  /** One cell per actor, in ACTORS order: "200" or "409 MEMBER_EXCLUDED". */
+  expected: [string, string, string, string, string];
+}
+
+//                                    anonymous nonMember member excluded organiser
+const CASES: Case[] = [
+  {
+    method: 'GET',
+    path: '/api/health',
+    url: () => '/api/health',
+    expected: ['200', '200', '200', '200', '200'],
+  },
+  {
+    method: 'GET',
+    path: '/api/invitations/:token',
+    url: (f) => `/api/invitations/${f.token}`,
+    expected: ['200', '200', '200', '200', '200'],
+  },
+
+  {
+    method: 'GET',
+    path: '/api/me',
+    url: () => '/api/me',
+    expected: ['401', '200', '200', '200', '200'],
+  },
+  {
+    method: 'GET',
+    path: '/api/me/trips',
+    url: () => '/api/me/trips',
+    expected: ['401', '200', '200', '200', '200'],
+  },
+  {
+    method: 'GET',
+    path: '/api/me/profile',
+    url: () => '/api/me/profile',
+    expected: ['401', '200', '200', '200', '200'],
+  },
+  {
+    method: 'PATCH',
+    path: '/api/me/profile',
+    url: () => '/api/me/profile',
+    body: { homeHubSlug: 'test-hub' },
+    expected: ['401', '200', '200', '200', '200'],
+  },
+  {
+    method: 'POST',
+    path: '/api/me/past-trips',
+    url: () => '/api/me/past-trips',
+    body: { placeName: 'Matrix place', rating: 4 },
+    expected: ['401', '201', '201', '201', '201'],
+  },
+  // The row belongs to the organiser: anyone else's delete is a 404.
+  {
+    method: 'DELETE',
+    path: '/api/me/past-trips/:id',
+    url: (f) => `/api/me/past-trips/${f.pastTripId}`,
+    expected: ['401', '404 NOT_FOUND', '404 NOT_FOUND', '404 NOT_FOUND', '204'],
+  },
+  {
+    method: 'GET',
+    path: '/api/hubs',
+    url: () => '/api/hubs',
+    expected: ['401', '200', '200', '200', '200'],
+  },
+  {
+    method: 'GET',
+    path: '/api/destinations',
+    url: () => '/api/destinations',
+    expected: ['401', '200', '200', '200', '200'],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips',
+    url: () => '/api/trips',
+    body: {
+      title: 'Matrix trip',
+      originHubSlug: 'test-hub',
+      durationNights: 2,
+      budgetTotalInr: 20000,
+      radiusKm: 300,
+    },
+    expected: ['401', '201', '201', '201', '201'],
+  },
+  // A non-member joins; members and the organiser are already in (idempotent).
+  {
+    method: 'POST',
+    path: '/api/invitations/:token/accept',
+    url: (f) => `/api/invitations/${f.token}/accept`,
+    body: {},
+    expected: ['401', '200', '200', '409 MEMBER_EXCLUDED', '200'],
+  },
+
+  {
+    method: 'GET',
+    path: '/api/trips/:id',
+    url: (f) => `/api/trips/${f.tripId}`,
+    expected: ['401', '404 NOT_FOUND', '200', '200', '200'],
+  },
+  {
+    method: 'GET',
+    path: '/api/trips/:id/activity',
+    url: (f) => `/api/trips/${f.tripId}/activity`,
+    expected: ['401', '404 NOT_FOUND', '200', '200', '200'],
+  },
+  {
+    method: 'GET',
+    path: '/api/trips/:id/preferences/me',
+    url: (f) => `/api/trips/${f.tripId}/preferences/me`,
+    expected: ['401', '404 NOT_FOUND', '200', '200', '200'],
+  },
+
+  {
+    method: 'PUT',
+    path: '/api/trips/:id/preferences/me',
+    url: (f) => `/api/trips/${f.tripId}/preferences/me`,
+    body: PREFS,
+    expected: ['401', '404 NOT_FOUND', '200', '403 FORBIDDEN', '200'],
+  },
+  {
+    method: 'DELETE',
+    path: '/api/trips/:id/members/me',
+    url: (f) => `/api/trips/${f.tripId}/members/me`,
+    expected: ['401', '404 NOT_FOUND', '204', '403 FORBIDDEN', '422 ORGANISER_CANNOT_LEAVE'],
+  },
+
+  // Collecting preferences: details are locked, and 1 submission is too few to close.
+  {
+    method: 'PATCH',
+    path: '/api/trips/:id',
+    url: (f) => `/api/trips/${f.tripId}`,
+    body: { title: 'Renamed' },
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '409 TRIP_NOT_EDITABLE'],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/cancel',
+    url: (f) => `/api/trips/${f.tripId}/cancel`,
+    body: {},
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200'],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/close-submissions',
+    url: (f) => `/api/trips/${f.tripId}/close-submissions`,
+    body: {},
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '409 GUARD_FAILED'],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/invitations',
+    url: (f) => `/api/trips/${f.tripId}/invitations`,
+    body: {},
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200'],
+  },
+  {
+    method: 'GET',
+    path: '/api/trips/:id/invitations/active',
+    url: (f) => `/api/trips/${f.tripId}/invitations/active`,
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200'],
+  },
+  {
+    method: 'DELETE',
+    path: '/api/trips/:id/invitations/active',
+    url: (f) => `/api/trips/${f.tripId}/invitations/active`,
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '204'],
+  },
+  {
+    method: 'DELETE',
+    path: '/api/trips/:id/members/:userId',
+    url: (f) => `/api/trips/${f.tripId}/members/${f.memberId}`,
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '204'],
+  },
+];
+
+let users: Users;
+const results: { c: Case; actor: Actor; expected: string; got: string }[] = [];
+
+beforeAll(async () => {
+  await ensureHub(db, 'test-hub');
+  const [organiser, member, excludedMember, nonMember] = await Promise.all(
+    ['Matrix Organiser', 'Matrix Member', 'Matrix Excluded', 'Matrix Outsider'].map((n) =>
+      createTestUser(app, n),
+    ),
+  );
+  users = {
+    organiser: organiser!,
+    member: member!,
+    excludedMember: excludedMember!,
+    nonMember: nonMember!,
+  };
+});
+
+afterAll(async () => {
+  // On success, print the matrix summary per actor (the PR quotes it).
+  if (results.length === CASES.length * ACTORS.length) {
+    const lines = ACTORS.map((actor) => {
+      const mine = results.filter((r) => r.actor === actor);
+      const counts = new Map<string, number>();
+      for (const r of mine)
+        counts.set(r.got.split(' ')[0]!, (counts.get(r.got.split(' ')[0]!) ?? 0) + 1);
+      const summary = [...counts]
+        .sort()
+        .map(([s, n]) => `${n}x${s}`)
+        .join(' ');
+      return `  ${actor.padEnd(15)} ${mine.length} cases: ${summary}`;
+    });
+    process.stdout.write(
+      `\nAccess matrix: ${CASES.length} endpoints x ${ACTORS.length} actors\n${lines.join('\n')}\n`,
+    );
+  }
+  await pool.end();
+});
+
+/** A fresh trip in collecting_preferences: member submitted, excluded removed. */
+async function freshTrip(): Promise<Fixture> {
+  const { organiser, member, excludedMember } = users;
+  const { id: tripId } = await createTripAs(organiser.agent, { durationNights: 2 });
+  const { token } = InvitationResponse.parse(
+    (await organiser.agent.post(`/api/trips/${tripId}/invitations`).set(H).send({})).body,
+  );
+  for (const m of [member, excludedMember]) {
+    await m.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
+  }
+  await member.agent.put(`/api/trips/${tripId}/preferences/me`).set(H).send(PREFS);
+  await organiser.agent.delete(`/api/trips/${tripId}/members/${excludedMember.userId}`).set(H);
+  const { id: pastTripId } = PastTrip.parse(
+    (
+      await organiser.agent
+        .post('/api/me/past-trips')
+        .set(H)
+        .send({ placeName: 'Organiser only', rating: 3 })
+    ).body,
+  );
+  return { tripId, token, memberId: member.userId, pastTripId };
+}
+
+function call(actor: Actor, c: Case, f: Fixture) {
+  const base = actor === 'anonymous' ? request(app) : users[actor].agent;
+  const m = c.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
+  const req = base[m](c.url(f)).set(H);
+  return c.body ? req.send(c.body) : req;
+}
+
+describe('access matrix', () => {
+  it('covers every inventory endpoint exactly once', () => {
+    const covered = CASES.map((c) => `${c.method} ${c.path}`).sort();
+    expect(covered).toEqual(ENDPOINTS.map((e) => `${e.method} ${e.path}`).sort());
+  });
+
+  it.each(CASES.map((c) => [`${c.method} ${c.path}`, c] as const))('%s', async (_name, c) => {
+    const failures: string[] = [];
+    for (const [i, actor] of ACTORS.entries()) {
+      const fixture = await freshTrip();
+      const res = await call(actor, c, fixture);
+      const code = res.status >= 400 ? (res.body as ErrorEnvelope).error?.code : undefined;
+      const expected = c.expected[i]!;
+      const got = expected.includes(' ') && code ? `${res.status} ${code}` : String(res.status);
+      results.push({ c, actor, expected, got });
+      if (got !== expected) {
+        failures.push(
+          `${c.method} ${c.path} as ${actor}: expected ${expected}, got ${got}${code ? ` (${code})` : ''}`,
+        );
+      }
+    }
+    expect(failures, failures.join('\n')).toEqual([]);
+  });
+
+  it("an excluded member's GET preferences/me is 200 with preference null", async () => {
+    const f = await freshTrip();
+    const res = await users.excludedMember.agent
+      .get(`/api/trips/${f.tripId}/preferences/me`)
+      .set(H);
+    expect(res.status).toBe(200);
+    expect(MyPreferenceResponse.parse(res.body)).toEqual({ preference: null, submittedAt: null });
+  });
+});
