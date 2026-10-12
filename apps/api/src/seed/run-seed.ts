@@ -27,7 +27,9 @@ import {
 import { account, session, user, verification } from '@bonvoyage/db/schema/auth';
 import { distanceCache } from '@bonvoyage/db/schema';
 import { and, eq, sql } from 'drizzle-orm';
+import { pino } from 'pino';
 import type { Auth } from '../auth/auth';
+import { transitionTrip } from '../trips/transition-trip';
 
 // S0-5 step 6: demo seed. Every step is idempotent so the seed can run again
 // without duplicating anything. Prints row counts, never the password.
@@ -164,6 +166,16 @@ export async function runSeed({ db, auth, catalogueDir, password }: SeedOptions)
       toStatus: 'draft',
       actorUserId: asha,
     });
+  }
+
+  // S0-6: T2 moves the demo trip to collecting_preferences through the locked
+  // transition path once; a re-seed sees it already there and skips.
+  const [demo] = await db.select({ status: trip.status }).from(trip).where(eq(trip.id, tripId));
+  if (demo!.status === 'draft') {
+    await transitionTrip(
+      { db, logger: pino({ level: 'silent' }), clock: () => new Date() },
+      { tripId, event: 'inviteMembers', actorUserId: asha },
+    );
   }
 
   // e) members: Asha (organiser), Rohan and Meera. Kabir stays outside.
