@@ -107,3 +107,15 @@ inputs). Each key holds `{ value, unit, source_url, collected_on, review_status 
 | toll_inr_per_km | INR/km | Typical national-highway toll rate |
 | persons_per_car | persons | Seats assumed per car |
 | car_rental_inr_per_day | INR/day | Typical self-drive hatchback rental |
+
+## Importing from the administrator page
+
+`/admin/catalogue` loads these five files into the database the page is running on, without a terminal. Use it for the preview and production databases once a batch is verified; locally, `pnpm catalogue:import` still works.
+
+- **Who can:** only sign-in emails listed in the `ADMIN_EMAILS` environment variable (comma-separated). Everyone else gets "Administrators only", and the API answers 403.
+- **Check files** is a dry run. It runs the same checks as `pnpm catalogue:check`, and every issue is listed with its file and line. It then works out exactly what an import would insert and update, inside a transaction that is rolled back, so nothing is written.
+- **Import** stays disabled until a check of the same five files finds no errors. It asks you to confirm and names the host, so you can see which database you are writing to.
+- **It never deletes.** Destinations in the database that the files no longer contain are listed as a warning and kept; deactivate them instead.
+- **It never decides `review_status`.** Rows are written exactly as the files say. Only Maulik marks a row verified, in the CSV (decision 0002); the page only shows the progress per stage.
+- "Updated" counts rows whose values actually change, so importing the same files twice reports 0 the second time. `pnpm catalogue:import` still counts every existing row it matched as updated.
+
