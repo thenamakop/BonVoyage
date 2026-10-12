@@ -386,7 +386,7 @@ Sprint 1 goal: an organiser signs up, creates a trip with origin, duration, budg
 | 2 | Create a trip with origin, duration, budget and radius (T1) | R2, R9 | Parth |
 | 3 | Shareable invitation link, join flow and roster (T2) | R2 | Parth |
 | 4 | Preference form; a submission completes T3 | R3 | Kushagra |
-| 5 | Trip dashboard with submission status and an 8-second poll (planned as 10 s) | R3 | Kushagra |
+| 5 | Trip dashboard with submission status and an 8-second poll | R3 | Kushagra |
 | 6 | Access rules: a profile is readable by its owner only; the group sees aggregates | R10 | Maulik |
 | 7 | Catalogue CSV import and an administrator re-import command | R11 | Manan |
 | 8 | API tests for issues 1 to 7 against Docker Postgres | R11 | Parth |
