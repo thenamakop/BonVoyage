@@ -26,3 +26,5 @@ Each requirement from the MoSCoW document, with its trace and sprint. Add the is
 | R20 | Nationwide real-time inventory | Won't | none | 2.4 | none | Won't |  |  |
 
 Board: https://github.com/users/thenamakop/projects/1
+
+Wireframes: docs/wireframes/README.md
