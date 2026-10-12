@@ -24,6 +24,7 @@ This is a university Software Engineering project (BML Munjal University). One d
 | Priorities (R1 to R20) | `docs/baseline/BonVoyage_MoSCoW_Prioritization.md` |
 | Design diagrams (DFD, sequence, state machine) | `docs/design/` (PNGs in `docs/design/png/`) |
 | Decisions that override older documents | `docs/decisions/` |
+| Who sees which personal data, and the tests that prove it | `docs/security/privacy.md` |
 
 **Which source wins.** When documents disagree, follow this order:
 
