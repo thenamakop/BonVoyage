@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatInr } from './format';
+import { formatDate, formatHub, formatInr } from './format';
 
 describe('formatInr', () => {
   it('formats with Indian grouping and no decimals', () => {
@@ -21,5 +21,15 @@ describe('formatDate', () => {
 
   it('stays on the same calendar day in Asia/Kolkata', () => {
     expect(formatDate('2026-11-13T20:00:00Z')).toBe('14 Nov 2026');
+  });
+});
+
+describe('formatHub', () => {
+  it('gives the name alone when the state equals the name', () => {
+    expect(formatHub({ name: 'Delhi', state: 'Delhi' })).toBe('Delhi');
+  });
+
+  it('gives "name, state" otherwise', () => {
+    expect(formatHub({ name: 'Gurugram', state: 'Haryana' })).toBe('Gurugram, Haryana');
   });
 });

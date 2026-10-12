@@ -1,10 +1,10 @@
 import { createDb } from '@bonvoyage/db';
-import { hub, trip, tripMember, tripTransition } from '@bonvoyage/db/schema';
+import { hub, invitation, trip, tripMember, tripTransition } from '@bonvoyage/db/schema';
 import { user } from '@bonvoyage/db/schema/auth';
 import { eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import { afterAll, describe, expect, it } from 'vitest';
-import { transitionTrip } from './transition-trip';
+import { transitionTrip, type LockedTrip } from './transition-trip';
 
 // S0-5 step 7 (RUNBOOK A3): the only code path that changes trip.status.
 // Test setup may write trip.status directly to arrange a state.
@@ -191,5 +191,81 @@ describe('transitionTrip', () => {
         },
       ),
     ).rejects.toMatchObject({ status: 404, code: 'NOT_FOUND' });
+  });
+
+  describe('beforeDecide hook (S1-3)', () => {
+    it('runs with the locked trip while the row lock is held', async () => {
+      const { tripId, organiser } = await makeTrip('draft');
+      const other = createDb(process.env.DATABASE_URL ?? '');
+      let seen: LockedTrip | undefined;
+      let lockError: unknown;
+      try {
+        await transitionTrip(
+          { db, logger, clock },
+          {
+            tripId,
+            event: 'inviteMembers',
+            actorUserId: organiser,
+            beforeDecide: async (_tx, locked) => {
+              seen = locked;
+              // A second connection cannot take the row lock while the hook runs.
+              await other.pool
+                .query('select id from trip where id = $1 for update nowait', [tripId])
+                .catch((err: unknown) => {
+                  lockError = err;
+                });
+            },
+          },
+        );
+      } finally {
+        await other.pool.end();
+      }
+      expect(seen).toEqual({ id: tripId, status: 'draft', startDate: null });
+      expect(lockError).toMatchObject({ code: '55P03' });
+    });
+
+    it('a throwing hook leaves no transition row and no status change', async () => {
+      const { tripId, organiser } = await makeTrip('draft');
+      await expect(
+        transitionTrip(
+          { db, logger, clock },
+          {
+            tripId,
+            event: 'inviteMembers',
+            actorUserId: organiser,
+            beforeDecide: () => Promise.reject(new Error('hook failed')),
+          },
+        ),
+      ).rejects.toThrow('hook failed');
+      const [t] = await db.select().from(trip).where(eq(trip.id, tripId));
+      expect(t!.status).toBe('draft');
+      expect(await transitionsOf(tripId)).toHaveLength(0);
+    });
+
+    it('rolls back what the hook wrote when nextState rejects the event', async () => {
+      const { tripId, organiser } = await makeTrip('collecting_preferences');
+      await expect(
+        transitionTrip(
+          { db, logger, clock },
+          {
+            tripId,
+            event: 'inviteMembers',
+            actorUserId: organiser,
+            beforeDecide: async (tx) => {
+              await tx.insert(invitation).values({
+                tripId,
+                token: `hook-${tripId}`,
+                createdBy: organiser,
+                expiresAt: new Date('2026-11-15T00:00:00Z'),
+              });
+            },
+          },
+        ),
+      ).rejects.toMatchObject({ status: 409, code: 'ILLEGAL_TRANSITION' });
+      expect(await db.select().from(invitation).where(eq(invitation.tripId, tripId))).toHaveLength(
+        0,
+      );
+      expect(await transitionsOf(tripId)).toHaveLength(0);
+    });
   });
 });

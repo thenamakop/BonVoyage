@@ -80,6 +80,8 @@ docs/                 See section 2
 - Services hold the use-case logic and call `packages/engine` and `packages/integrations`.
 - Repositories hold the Drizzle queries.
 
+API code lives in feature folders apps/api/src/<area>/ with a router, service and repository; trip-scoped routes go in apps/api/src/trips/.
+
 ## 5. Commands
 
 Some of these exist only after the scaffold (prompt S0-2). If a command is missing, check whether the scaffold has been merged before inventing a replacement.

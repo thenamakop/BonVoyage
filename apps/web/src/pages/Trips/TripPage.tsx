@@ -10,8 +10,10 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { useTrip } from '../../features/trips/api';
 import { statusTone } from '../../features/trips/status-tone';
 import { ApiError } from '../../lib/api';
-import { formatInr } from '../../lib/format';
+import { formatHub, formatInr } from '../../lib/format';
 import { useDocumentTitle } from '../../lib/use-document-title';
+import { InvitePanel } from './InvitePanel';
+import { Roster } from './Roster';
 
 export function TripPage() {
   const { id = '' } = useParams();
@@ -55,8 +57,14 @@ export function TripPage() {
 
   const t = trip.data;
   const labels = TRIP_STATUS_LABELS[t.status];
-  const perPerson = t.members.length > 0 ? Math.round(t.budgetTotalInr / t.members.length) : 0;
+  // Removed members do not travel, so they do not share the budget.
+  const travellers = t.members.filter((m) => m.status === 'active').length;
+  const perPerson = travellers > 0 ? Math.round(t.budgetTotalInr / travellers) : 0;
   const canEdit = t.myRole === 'organiser' && t.status === 'draft';
+  const canInvite =
+    t.myRole === 'organiser' &&
+    t.myStatus === 'active' &&
+    (t.status === 'draft' || t.status === 'collecting_preferences');
 
   return (
     <>
@@ -74,6 +82,16 @@ export function TripPage() {
         }
       />
       <p className="mb-4 text-sm text-slate-600">{labels.explanation}</p>
+      {t.myStatus === 'excluded' ? (
+        <div className="mb-4">
+          <Alert tone="warning">You were removed from this trip, so you can only view it.</Alert>
+        </div>
+      ) : null}
+      {canInvite ? (
+        <div className="mb-4">
+          <InvitePanel trip={t} />
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>
@@ -81,9 +99,7 @@ export function TripPage() {
           <dl className="mt-2 space-y-1 text-sm text-slate-700">
             <div className="flex justify-between gap-2">
               <dt>Starting city</dt>
-              <dd>
-                {t.originHub.name}, {t.originHub.state}
-              </dd>
+              <dd>{formatHub(t.originHub)}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt>Duration</dt>
@@ -108,20 +124,7 @@ export function TripPage() {
           </dl>
         </Card>
 
-        <Card>
-          <h2 className="text-sm font-semibold text-slate-900">Members</h2>
-          <ul className="mt-2 space-y-1 text-sm text-slate-700">
-            {t.members.map((m) => (
-              <li key={m.userId} className="flex items-center justify-between gap-2">
-                <span>{m.name}</span>
-                <span className="flex items-center gap-2">
-                  {m.role === 'organiser' ? <Badge>Organiser</Badge> : null}
-                  {m.status === 'excluded' ? <Badge tone="danger">Removed</Badge> : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <Roster trip={t} />
       </div>
     </>
   );

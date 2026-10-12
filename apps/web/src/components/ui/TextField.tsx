@@ -3,7 +3,7 @@ import type { ComponentProps, ReactNode } from 'react';
 
 type TextFieldProps = ComponentProps<'input'> & {
   label: string;
-  hint?: string;
+  hint?: ReactNode;
   error?: ReactNode;
 };
 

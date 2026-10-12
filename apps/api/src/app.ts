@@ -21,9 +21,11 @@ export interface AppDeps {
   pool: Pool;
   logger: Logger;
   auth: Auth;
+  /** Defaults to the wall clock; tests inject one to reach expiry (S1-3). */
+  clock?: () => Date;
 }
 
-export function createApp({ db, pool, logger, auth }: AppDeps): Express {
+export function createApp({ db, pool, logger, auth, clock }: AppDeps): Express {
   const app = express();
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -62,7 +64,7 @@ export function createApp({ db, pool, logger, auth }: AppDeps): Express {
     throw new AppError(503, ERROR_CODES.DB_UNAVAILABLE, 'The database is not reachable.');
   });
 
-  app.use('/api', createApiRouter({ db, auth }));
+  app.use('/api', createApiRouter({ db, auth, ...(clock ? { clock } : {}) }));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
