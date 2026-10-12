@@ -22,12 +22,12 @@ const asha = {
   isAdmin: false,
 };
 
-function renderMenu() {
+function renderMenu(user = asha) {
   const queryClient = new QueryClient();
-  queryClient.setQueryData(['me'], asha);
+  queryClient.setQueryData(['me'], user);
   const router = createMemoryRouter(
     [
-      { path: '/', element: <UserMenu user={asha} /> },
+      { path: '/', element: <UserMenu user={user} /> },
       { path: '/trips', element: <p>Trips page</p> },
     ],
     { initialEntries: ['/'] },
@@ -56,6 +56,23 @@ describe('UserMenu', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Sign out' }));
     expect(signOutUser).toHaveBeenCalledOnce();
     expect(queryClient.getQueryData(['me'])).toBeUndefined();
+  });
+
+  it('shows Catalogue only to administrators (S1-7)', async () => {
+    const user = userEvent.setup();
+    renderMenu();
+    await user.click(screen.getByRole('button', { name: /Asha/ }));
+    expect(screen.queryByRole('menuitem', { name: 'Catalogue' })).not.toBeInTheDocument();
+  });
+
+  it('administrators see Catalogue, linking to /admin/catalogue', async () => {
+    const user = userEvent.setup();
+    renderMenu({ ...asha, isAdmin: true });
+    await user.click(screen.getByRole('button', { name: /Asha/ }));
+    expect(screen.getByRole('menuitem', { name: 'Catalogue' })).toHaveAttribute(
+      'href',
+      '/admin/catalogue',
+    );
   });
 
   it('closes on Escape', async () => {
