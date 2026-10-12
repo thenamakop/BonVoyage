@@ -25,9 +25,11 @@ export interface AppDeps {
   auth: Auth;
   /** Defaults to the wall clock; tests inject one to reach expiry (S1-3). */
   clock?: () => Date;
+  /** Lowercased administrator emails from ADMIN_EMAILS (S1-7); none by default. */
+  adminEmails?: readonly string[];
 }
 
-export function createApp({ db, pool, logger, auth, clock }: AppDeps): Express {
+export function createApp({ db, pool, logger, auth, clock, adminEmails = [] }: AppDeps): Express {
   const app = express();
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
@@ -77,6 +79,9 @@ export function createApp({ db, pool, logger, auth, clock }: AppDeps): Express {
   // Better Auth reads the raw body, so it mounts BEFORE express.json.
   app.all('/api/auth/*splat', toNodeHandler(auth));
 
+  // S1-7: the catalogue upload (five files, up to 2 MB) gets its own parser,
+  // mounted BEFORE the global one; body-parser then skips the parsed body.
+  app.use('/api/admin/catalogue/import', express.json({ limit: '2mb' }));
   app.use(express.json({ limit: '100kb' }));
   app.use('/api', requireJson);
 
@@ -89,7 +94,7 @@ export function createApp({ db, pool, logger, auth, clock }: AppDeps): Express {
     throw new AppError(503, ERROR_CODES.DB_UNAVAILABLE, 'The database is not reachable.');
   });
 
-  app.use('/api', createApiRouter({ db, auth, ...(clock ? { clock } : {}) }));
+  app.use('/api', createApiRouter({ db, auth, adminEmails, ...(clock ? { clock } : {}) }));
 
   app.use(notFoundHandler);
   app.use(errorHandler);

@@ -5,6 +5,8 @@ export const MeResponse = z.object({
   name: z.string(),
   email: z.string().email(),
   homeHubSlug: z.string().nullable(),
+  /** Listed in ADMIN_EMAILS (S1-7); shows the Catalogue page. */
+  isAdmin: z.boolean(),
 });
 export type MeResponse = z.infer<typeof MeResponse>;
 

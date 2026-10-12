@@ -7,13 +7,21 @@ export class AppError extends Error {
   readonly status: number;
   readonly code: string;
   readonly fields: Record<string, string> | undefined;
+  readonly details: unknown;
 
-  constructor(status: number, code: string, message: string, fields?: Record<string, string>) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    fields?: Record<string, string>,
+    details?: unknown,
+  ) {
     super(message);
     this.name = 'AppError';
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.details = details;
   }
 }
 
@@ -41,8 +49,20 @@ export const notFoundHandler: RequestHandler = (req, _res, next) => {
   next(new AppError(404, ERROR_CODES.NOT_FOUND, `No route for ${req.method} ${req.path}.`));
 };
 
-function envelope(code: string, message: string, fields?: Record<string, string>): ErrorEnvelope {
-  return { error: { code, message, ...(fields ? { fields } : {}) } };
+function envelope(
+  code: string,
+  message: string,
+  fields?: Record<string, string>,
+  details?: unknown,
+): ErrorEnvelope {
+  return {
+    error: {
+      code,
+      message,
+      ...(fields ? { fields } : {}),
+      ...(details === undefined ? {} : { details }),
+    },
+  };
 }
 
 interface BodyParserError {
@@ -61,7 +81,7 @@ function bodyParserType(err: unknown): string | undefined {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof AppError) {
-    res.status(err.status).json(envelope(err.code, err.message, err.fields));
+    res.status(err.status).json(envelope(err.code, err.message, err.fields, err.details));
     return;
   }
   const type = bodyParserType(err);
