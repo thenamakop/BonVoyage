@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { TRIP_STATUSES } from '../domain-values';
-import { CreateTripInput, TRIP_STATUS_LABELS, TripEventName, UpdateTripInput } from './trips';
+import {
+  CloseSubmissionsInput,
+  CreateTripInput,
+  EVENT_SUMMARIES,
+  TRIP_STATUS_LABELS,
+  TripEventName,
+  UpdateTripInput,
+  summarizeEvent,
+} from './trips';
 
 describe('TRIP_STATUS_LABELS', () => {
   it('has a label and an explanation for every status', () => {
@@ -58,5 +66,32 @@ describe('TripEventName', () => {
   it('covers createTrip for the web to render buttons from legalEvents', () => {
     expect(TripEventName.safeParse('inviteMembers').success).toBe(true);
     expect(TripEventName.safeParse('bogus').success).toBe(false);
+  });
+});
+
+describe('EVENT_SUMMARIES', () => {
+  it('has a sentence naming the actor for every trip event', () => {
+    for (const event of TripEventName.options) {
+      const sentence = EVENT_SUMMARIES[event]('Asha');
+      expect(sentence.startsWith('Asha '), event).toBe(true);
+    }
+    expect(Object.keys(EVENT_SUMMARIES).sort()).toEqual([...TripEventName.options].sort());
+  });
+
+  it('reads the spec examples, "Someone" without an actor, and survives an unknown event', () => {
+    expect(summarizeEvent('createTrip', 'Asha')).toBe('Asha created the trip');
+    expect(summarizeEvent('inviteMembers', 'Asha')).toBe('Asha opened the trip for preferences');
+    expect(summarizeEvent('preferenceSubmitted', 'Meera')).toBe('Meera submitted preferences');
+    expect(summarizeEvent('preferenceRevised', 'Rohan')).toBe('Rohan updated preferences');
+    expect(summarizeEvent('closeSubmissions', 'Asha')).toBe('Asha closed submissions');
+    expect(summarizeEvent('cancelTrip', null)).toBe('Someone cancelled the trip');
+    expect(summarizeEvent('somethingNew', 'Asha')).toBe('Asha changed the trip');
+  });
+});
+
+describe('CloseSubmissionsInput', () => {
+  it('accepts only an empty object', () => {
+    expect(CloseSubmissionsInput.safeParse({}).success).toBe(true);
+    expect(CloseSubmissionsInput.safeParse({ force: true }).success).toBe(false);
   });
 });
