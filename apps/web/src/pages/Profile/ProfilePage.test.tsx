@@ -8,7 +8,7 @@ import { ProfilePage } from './ProfilePage';
 
 // S1-4: the /me profile page.
 
-const ME = { id: 'u4', name: 'Kabir', email: 'kabir@test.bv', homeHubSlug: null };
+const ME = { id: 'u4', name: 'Kabir', email: 'kabir@test.bv', homeHubSlug: null, isAdmin: false };
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
 
 function stubFetch(profile: Record<string, unknown>) {

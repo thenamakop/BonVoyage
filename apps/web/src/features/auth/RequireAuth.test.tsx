@@ -43,7 +43,13 @@ const signedOut = Response.json(
   { status: 401 },
 );
 const signedIn = Response.json(
-  { id: 'u1', name: 'Asha', email: 'asha@demo.bonvoyage.test', homeHubSlug: 'gurugram' },
+  {
+    id: 'u1',
+    name: 'Asha',
+    email: 'asha@demo.bonvoyage.test',
+    homeHubSlug: 'gurugram',
+    isAdmin: false,
+  },
   { status: 200 },
 );
 

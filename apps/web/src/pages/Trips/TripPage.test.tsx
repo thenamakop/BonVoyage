@@ -29,7 +29,13 @@ function stubFetch(trip: TripDetail, meId = trip.myRole === 'organiser' ? 'u1' :
     if (url === `/api/trips/${TRIP_ID}`) return Promise.resolve(Response.json(trip));
     if (url === '/api/me') {
       return Promise.resolve(
-        Response.json({ id: meId, name: 'Me', email: 'me@test.bv', homeHubSlug: null }),
+        Response.json({
+          id: meId,
+          name: 'Me',
+          email: 'me@test.bv',
+          homeHubSlug: null,
+          isAdmin: false,
+        }),
       );
     }
     if (url === `/api/trips/${TRIP_ID}/activity`) {

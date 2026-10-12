@@ -88,7 +88,13 @@ describe('SignInPage', () => {
       vi.fn(() =>
         Promise.resolve(
           signedIn
-            ? Response.json({ id: 'u1', name: 'Asha', email: 'a@test.bv', homeHubSlug: null })
+            ? Response.json({
+                id: 'u1',
+                name: 'Asha',
+                email: 'a@test.bv',
+                homeHubSlug: null,
+                isAdmin: false,
+              })
             : Response.json(
                 { error: { code: 'UNAUTHENTICATED', message: 'Sign in required.' } },
                 { status: 401 },

@@ -14,7 +14,13 @@ vi.mock('../../lib/auth-client', () => ({
   signUpEmail: vi.fn(),
 }));
 
-const asha = { id: 'u1', name: 'Asha', email: 'asha@demo.bonvoyage.test', homeHubSlug: null };
+const asha = {
+  id: 'u1',
+  name: 'Asha',
+  email: 'asha@demo.bonvoyage.test',
+  homeHubSlug: null,
+  isAdmin: false,
+};
 
 function renderMenu() {
   const queryClient = new QueryClient();
