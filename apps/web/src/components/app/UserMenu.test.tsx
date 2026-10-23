@@ -29,6 +29,7 @@ function renderMenu(user = asha) {
     [
       { path: '/', element: <UserMenu user={user} /> },
       { path: '/trips', element: <p>Trips page</p> },
+      { path: '/me', element: <p>Profile page</p> },
     ],
     { initialEntries: ['/'] },
   );
@@ -75,12 +76,34 @@ describe('UserMenu', () => {
     );
   });
 
-  it('closes on Escape', async () => {
+  it('opens with Enter and restores button focus on Escape from a menu item', async () => {
     renderMenu();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /Asha/ }));
+    const button = screen.getByRole('button', { name: /Asha/ });
+    await user.tab();
+    expect(button).toHaveFocus();
+    expect(button).toHaveClass(
+      'focus-visible:outline-white',
+      'focus-visible:outline-2',
+      'focus-visible:outline-offset-2',
+    );
+    await user.keyboard('{Enter}');
     expect(screen.getByRole('menu')).toBeInTheDocument();
+    await user.tab();
+    expect(screen.getByRole('menuitem', { name: 'Your profile' })).toHaveFocus();
     await user.keyboard('{Escape}');
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(button).toHaveFocus();
+  });
+
+  it('keeps navigation behaviour when choosing a profile link by keyboard', async () => {
+    renderMenu();
+    const user = userEvent.setup();
+    await user.tab();
+    await user.keyboard('{Enter}');
+    await user.tab();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('Profile page')).toBeInTheDocument();
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 
@@ -88,9 +111,14 @@ describe('UserMenu', () => {
     signOutUser.mockResolvedValue({ ok: false, code: 'UNKNOWN', message: 'nope' });
     const { queryClient } = renderMenu();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /Asha/ }));
-    await user.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+    await user.tab();
+    await user.keyboard('{Enter}');
+    await user.tab();
+    await user.tab();
+    await user.keyboard('{Enter}');
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(queryClient.getQueryData(['me'])).toEqual(asha);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Asha/ })).toHaveFocus();
   });
 });
