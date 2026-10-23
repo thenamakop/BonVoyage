@@ -19,7 +19,7 @@ export function AppShell() {
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-2">
           <Link
             to={signedIn ? '/trips' : '/'}
-            className="flex min-h-11 items-center text-lg font-bold"
+            className="flex min-h-11 items-center text-lg font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             BonVoyage
           </Link>
@@ -27,7 +27,7 @@ export function AppShell() {
             {signedIn ? (
               <Link
                 to="/trips"
-                className="flex min-h-11 items-center rounded-md px-3 text-sm font-medium hover:bg-brand-900"
+                className="flex min-h-11 items-center rounded-md px-3 text-sm font-medium hover:bg-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Trips
               </Link>
@@ -37,7 +37,7 @@ export function AppShell() {
             ) : (
               <Link
                 to="/sign-in"
-                className="flex min-h-11 items-center rounded-md px-3 text-sm font-medium hover:bg-brand-900"
+                className="flex min-h-11 items-center rounded-md px-3 text-sm font-medium hover:bg-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Sign in
               </Link>

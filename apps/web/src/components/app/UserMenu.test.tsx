@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
@@ -29,6 +29,7 @@ function renderMenu(user = asha) {
     [
       { path: '/', element: <UserMenu user={user} /> },
       { path: '/trips', element: <p>Trips page</p> },
+      { path: '/me', element: <p>Profile page</p> },
     ],
     { initialEntries: ['/'] },
   );
@@ -75,22 +76,69 @@ describe('UserMenu', () => {
     );
   });
 
-  it('closes on Escape', async () => {
+  it('opens with Enter and restores button focus on Escape from a menu item', async () => {
     renderMenu();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /Asha/ }));
+    const button = screen.getByRole('button', { name: /Asha/ });
+    await user.tab();
+    expect(button).toHaveFocus();
+    expect(button).toHaveClass(
+      'focus-visible:outline-white',
+      'focus-visible:outline-2',
+      'focus-visible:outline-offset-2',
+    );
+    await user.keyboard('{Enter}');
     expect(screen.getByRole('menu')).toBeInTheDocument();
+    await user.tab();
+    expect(screen.getByRole('menuitem', { name: 'Your profile' })).toHaveFocus();
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(button).toHaveFocus();
+  });
+
+  it('keeps navigation behaviour when choosing a profile link by keyboard', async () => {
+    renderMenu();
+    const user = userEvent.setup();
+    await user.tab();
+    await user.keyboard('{Enter}');
+    await user.tab();
+    await user.keyboard('{Enter}');
+    expect(await screen.findByText('Profile page')).toBeInTheDocument();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('does not steal focus when sign-out fails after focus moves elsewhere', async () => {
+    let finish: ((result: Awaited<Result>) => void) | undefined;
+    const result = new Promise<Awaited<Result>>((resolve) => {
+      finish = resolve;
+    });
+    signOutUser.mockReturnValue(result);
+    renderMenu();
+    render(<button type="button">Elsewhere</button>);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Asha/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await act(async () => {
+      finish?.({ ok: false });
+      await result;
+    });
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Elsewhere' })).toHaveFocus();
   });
 
   it('shows an error and stays signed in when signOut fails', async () => {
     signOutUser.mockResolvedValue({ ok: false, code: 'UNKNOWN', message: 'nope' });
     const { queryClient } = renderMenu();
     const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /Asha/ }));
-    await user.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+    await user.tab();
+    await user.keyboard('{Enter}');
+    await user.tab();
+    await user.tab();
+    await user.keyboard('{Enter}');
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(queryClient.getQueryData(['me'])).toEqual(asha);
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Asha/ })).toHaveFocus();
   });
 });

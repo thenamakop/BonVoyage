@@ -28,3 +28,5 @@ Each requirement from the MoSCoW document, with its trace and sprint. Add the is
 Board: https://github.com/users/thenamakop/projects/1
 
 Wireframes: docs/wireframes/README.md
+
+Accessibility (SRS 3.3; Sprint 1 review item R9, not requirement R9): #60 fixes visible keyboard focus and menu focus restoration. Tests: apps/web/src/components/ui/ui.test.tsx (ChipGroup and RadioGroup keyboard interaction and label focus classes), apps/web/src/components/app/AppShell.test.tsx (header focus classes and tab order), apps/web/src/components/app/UserMenu.test.tsx (Enter, Escape focus restoration, navigation and failed sign-out focus restoration).

@@ -1,9 +1,80 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { describe, expect, it } from 'vitest';
 import { Button, ButtonLink } from './Button';
 import { TextField } from './TextField';
+import { ChipGroup } from './ChipGroup';
+import { RadioGroup } from './RadioGroup';
+
+const focusRing = [
+  'has-[:focus-visible]:outline-2',
+  'has-[:focus-visible]:outline-offset-2',
+  'has-[:focus-visible]:outline-solid',
+  'has-[:focus-visible]:outline-[#808080]',
+];
+const options = [
+  { value: 'hills', label: 'Hills' },
+  { value: 'beach', label: 'Beach' },
+];
+
+function Chips() {
+  const [selected, setSelected] = useState<string[]>(['beach']);
+  return <ChipGroup legend="Types" options={options} selected={selected} onChange={setSelected} />;
+}
+
+function Radios() {
+  const [value, setValue] = useState('hills');
+  return (
+    <RadioGroup legend="Type" name="type" options={options} value={value} onChange={setValue} />
+  );
+}
+
+describe('ChipGroup keyboard focus', () => {
+  it('tabs through unselected and selected chips with a label focus ring and toggles with Space', async () => {
+    render(<Chips />);
+    const user = userEvent.setup();
+    const hills = screen.getByRole('checkbox', { name: 'Hills' });
+    const beach = screen.getByRole('checkbox', { name: 'Beach' });
+    await user.tab();
+    expect(hills).toHaveFocus();
+    expect(hills).toHaveClass('sr-only');
+    expect(hills.closest('label')).toHaveClass(...focusRing);
+    expect(hills).not.toBeChecked();
+    await user.keyboard(' ');
+    expect(hills).toBeChecked();
+    expect(hills.closest('label')).toHaveClass(...focusRing);
+    await user.tab();
+    expect(beach).toHaveFocus();
+    expect(beach.closest('label')).toHaveClass(...focusRing);
+    await user.keyboard(' ');
+    expect(beach).not.toBeChecked();
+  });
+});
+
+describe('RadioGroup keyboard focus', () => {
+  it('tabs to the selected option with a label focus ring and moves selection with arrow keys', async () => {
+    render(<Radios />);
+    const user = userEvent.setup();
+    const hills = screen.getByRole('radio', { name: 'Hills' });
+    const beach = screen.getByRole('radio', { name: 'Beach' });
+    await user.tab();
+    expect(hills).toHaveFocus();
+    expect(hills).toBeChecked();
+    expect(hills).toHaveClass('sr-only');
+    expect(hills.closest('label')).toHaveClass(...focusRing);
+    await user.keyboard('{ArrowRight}');
+    expect(beach).toHaveFocus();
+    expect(beach).toBeChecked();
+    expect(hills).not.toBeChecked();
+    expect(beach.closest('label')).toHaveClass(...focusRing);
+    await user.keyboard('{ArrowLeft}');
+    expect(hills).toHaveFocus();
+    expect(hills).toBeChecked();
+  });
+});
 
 describe('TextField', () => {
   it('associates the label with the input', () => {

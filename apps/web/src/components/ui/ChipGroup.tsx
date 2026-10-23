@@ -28,7 +28,7 @@ export function ChipGroup({ legend, options, selected, onChange, hint, error }: 
           return (
             <label
               key={opt.value}
-              className={`flex min-h-11 cursor-pointer items-center rounded-full border px-4 text-sm ${
+              className={`flex min-h-11 cursor-pointer items-center rounded-full border px-4 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-[#808080] ${
                 checked
                   ? 'border-brand-700 bg-brand-700 text-white'
                   : 'border-slate-300 bg-white text-slate-900'

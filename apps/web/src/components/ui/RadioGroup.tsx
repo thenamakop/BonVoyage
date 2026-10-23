@@ -31,7 +31,7 @@ export function RadioGroup({
         {options.map((opt) => (
           <label
             key={opt.value}
-            className={`flex min-h-11 cursor-pointer flex-col justify-center rounded-md border px-4 py-1 text-sm ${
+            className={`flex min-h-11 cursor-pointer flex-col justify-center rounded-md border px-4 py-1 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-[#808080] ${
               value === opt.value
                 ? 'border-brand-700 bg-brand-700 text-white'
                 : 'border-slate-300 bg-white text-slate-900'
