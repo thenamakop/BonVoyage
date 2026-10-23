@@ -1,26 +1,40 @@
-# Sprint 1 review (early, 13 October 2026)
+# Sprint 1 review (12 to 23 October 2026)
 
-**Result: provisional pass.** Every item that could be checked today passes: R1, R2, R3, R6, R10 and R11 pass, and R12 is recorded approximately, from PR times.
-- **Pending Maulik:** R4, R5, R7 and R9 need his production walkthrough. They are pending, not failed, and this review stays a draft until they are filled in.
-- **In progress:** R8, because catalogue stage A is due on Sunday 18 October.
-- **Spill issues:** none.
-- **Not closed yet:** issue #37 (catalogue stage A) and the Sprint 1 milestone stay open until Sunday.
+**Result: Pass with spill: catalogue stage A (#37) moves to Sprint 2, and the keyboard focus defects (R9) are a spill issue.**
 
-This is an early review: S1-1 to S1-8 (#29 to #36) are merged; #37 is not judged yet.
+R1 to R7, R10 and R11 pass; R8 is moved, R9 fails with follow-up #60, and R12 is recorded approximately, from PR times. Maulik supplied the production walkthrough results from 23 and 24 October 2026.
+
+S1-1 to S1-8 (#29 to #36) are merged; #37 moved to Sprint 2 and is not judged in this review.
 
 ## Review items
 
 | Item | Check | Evidence | Result | Follow-up issue |
 | --- | --- | --- | --- | --- |
-| R1 | #29 to #36 closed by merged PRs, every acceptance criterion met | `gh issue view` for 29 to 36: all `CLOSED`, closed by #48, #49, #50, #52, #53, #55, #56 and #47. All 36 criteria have evidence below; two are met as their prompts scoped them (#31 T2, #36 desktop), and one waits on R7 (#29 phone session). | pass (one criterion pending Maulik) | — |
+| R1 | #29 to #36 closed by merged PRs, every acceptance criterion met | `gh issue view` for 29 to 36: all `CLOSED`, closed by #48, #49, #50, #52, #53, #55, #56 and #47. All 36 criteria have evidence below; two are met as their prompts scoped them (#31 T2, #36 desktop), and #29's phone criterion is now met through R7. #37 moved to Sprint 2, not judged. | pass | — |
 | R2 | Fresh clone installs, migrates, seeds, verifies; CI green on master | Throwaway clone of master at `6321df0` with fresh secrets: `pnpm install --frozen-lockfile` done in 6.9 s; `db:up` healthy; `db:migrate` ok; `db:seed` → trip 1, trip_member 3, trip_transition 4, preference 2; `pnpm verify` → 58 files, **466 passed + 2 todo**, build ok, exit 0. Clone deleted. `gh run list --branch master`: the last 3 runs are green. The #52 merge run failed on `cancel.test.ts` "a finalised trip starting tomorrow cancels through T16": a UTC "tomorrow" equals India's "today" after 18:30 UTC. It was fixed in #53 (`2bbe931`). | pass | — |
 | R3 | Production health; no pending Neon migrations | `curl -s https://bonvoyage-orpin.vercel.app/api/health` → `{"status":"ok","db":"ok"}` HTTP 200 in 0.25 s. `pnpm db:migrate:remote --target preview --status` → recorded 1, pending 0; `--target production --status` → recorded 1, pending 0 (Postgres 18.6). | pass | — |
-| R4 | Sprint 1 journey on production | Maulik's walkthrough (hand-over a to h) | pending Maulik | — |
-| R5 | SRS 3.3: dashboard updates within 10 s on production | Locally, three runs measured 9.4 s each at the old 10 s interval (PR #53). The poll is now 8 s (`refetchInterval` 8000). Production needs two devices (hand-over b). | pending Maulik | — |
+| R4 | Sprint 1 journey on production | Maulik, 23–24 Oct: Account A created a trip from Gurugram and an invite link: ok. Account C joined without submitting; Close submissions removed C and reached Ready for recommendation: ok. B revised the budget; the saved message mentioned the group profile: ok. The trip was deliberately not cancelled: kept at Ready for recommendation (2 of 2 submitted) to try Get recommendations in production in Sprint 2, not a failure. | pass | — |
+| R5 | SRS 3.3: dashboard updates within 10 s on production | Maulik's two-device production check, 23 Oct: vivo V23e 5G, Android 14 (Funtouch OS 14), Chrome 155.0.8059.84; the desktop dashboard updated without a reload in under 10 s (not timed more precisely). The poll is 8 s (`refetchInterval` 8000). | pass | — |
 | R6 | Access matrix, leak and log tests pass; every route in the inventory | `pnpm vitest run --project integration apps/api/src/security` → 5 files, **44 passed**; the access matrix is 26 endpoints × 6 actors (156 cases): anonymous 2×200 24×401; nonMember 9×200 2×201 2×403 13×404; member 13×200 2×201 1×204 9×403 1×404; excludedMember 11×200 2×201 11×403 1×404 1×409; organiser 16×200 2×201 3×204 2×403 2×409 1×422; admin 11×200 2×201 13×404. `routes.test.ts` checks that the registered routes match the 26-route inventory exactly. | pass | — |
-| R7 | Spike S4 phone session recorded in docs/spikes | `docs/spikes/S4-deploy-and-sessions.md` still says the phone check "moves to Sprint 1 issue 1". PR #48 handed it over ("Android, Chrome: sign up, reload, reopen after 10 min"), but no result is committed. | pending Maulik | — |
-| R8 | `catalogue:check --require a` passes; production holds verified stage A | `pnpm catalogue:check --require a` → exit 1 (`hub "delhi" is still draft`, …), as expected while stage A runs. `pnpm catalogue:check` → **Stage A 0/50**, Stage B 0/253, Stage C 0/21; 0 errors, 42 warnings, 1 info. | in progress: 0/50, due Sun 18 Oct | — (not a fail; #37 stays open) |
-| R9 | Keyboard-only journey; Lighthouse accessibility ≥ 90 on three pages | Maulik's checks (hand-over e and f) | pending Maulik | — |
+| R7 | Spike S4 phone session recorded in docs/spikes | Maulik, production, 23 Oct 2026: vivo V23e 5G, Android 14 (Funtouch OS 14), Chrome 155.0.8059.84. Signed up, survived a reload, still signed in after reopening 10 minutes later. The same phone was the second device for R5. Recorded in `docs/spikes/S4-deploy-and-sessions.md`. | pass | — |
+| R8 | `catalogue:check --require a` passes; production holds verified stage A | stage A 0/50 on 23 Oct, nothing imported; #37 moved to Sprint 2, due Mon 26 Oct | moved | #37 |
+| R9 | Keyboard-only journey; Lighthouse accessibility ≥ 90 on three pages | Lighthouse accessibility (mobile): /sign-in 100 (PageSpeed Insights, 24 Oct), trip dashboard 100 (DevTools, 23 Oct), preference form 100 (DevTools, 24 Oct). Lighthouse does not test visible focus. Keyboard findings reproduced verbatim below. | fail | #60 |
+
+### R9 keyboard findings (Maulik, verbatim)
+
+Keyboard only (checked 24 Oct, Brave, production): problem. Every page is usable by keyboard,
+but focus is not visible on (1) the ChipGroup chips and RadioGroup option cards on the
+preference form (the input is sr-only and the label has no focus style), (2) the header links
+and user-menu button (outline colour equals the header background, rgb 13, 58, 61).
+Minor: Escape in the user menu closes it but leaves focus on <body>, not the menu button.
+Sign out and sign in by keyboard not tested.
+
+Follow-up: #60 (Sprint 2, Must). The three Lighthouse scores of 100 do not override this failure.
+
+### Remaining review items
+
+| Item | Check | Evidence | Result | Follow-up issue |
+| --- | --- | --- | --- | --- |
 | R10 | Traceability lists Sprint 1 test files on R1, R2, R3, R9, R10, R11 and the wireframes | `git diff --stat a9e3b90 HEAD -- docs/traceability.md` → 14 lines changed; each of R1, R2, R3, R9, R10 and R11 names its Sprint 1 test files (for example R10: the five `apps/api/src/security/*.test.ts` files); "Wireframes: docs/wireframes/README.md" present. All 44 test paths it names exist. | pass | — |
 | R11 | No key, connection string or .env in history | `git log --all -- .env .env.neon` → empty. The pattern scan prints **2**: both are fixtures in `packages/db/src/remote.test.ts` (commit `ad586f0`) with user `u`, a 1-character password and host `ep-fake-123…neon.tech`. These are not credentials. No `AIza…` or `AQ.…` key anywhere. | pass (2 fake fixtures) | — |
 | R12 | Actual hours per prompt against the time boxes | Approximate, from PR times (previous merge → this merge); see Velocity. Maulik can correct. | recorded (approximate) | — |
@@ -31,7 +45,7 @@ This is an early review: S1-1 to S1-8 (#29 to #36) are merged; #37 is not judged
 - Sign-up rejects a password under 12 characters: `SignUpPage.test.tsx` "rejects a short password without sending anything"; `SignUpInput` has `password.min(12)`.
 - A registered user can sign in and sign out: `auth.test.ts` "signs up, then GET /api/me returns the user" and "after sign out GET /api/me is 401 with the UNAUTHENTICATED envelope"; `SignInPage.test.tsx`; `UserMenu.test.tsx` "opens, calls signOut and clears the cache".
 - Protected API routes reject an unauthenticated request: the access matrix gives anonymous 401 on all 24 non-public routes.
-- The session survives a reload on a preview in Chrome on Android: **pending Maulik** (R7, hand-over g).
+- The phone session criterion is met through R7 on production (23 Oct): vivo V23e 5G, Android 14, Chrome 155.0.8059.84; signed up, survived a reload and reopening 10 minutes later. This is production evidence rather than the originally specified preview.
 
 **#30 Create a trip, T1 (PR #49)**
 - An organiser can create a trip from a curated hub: `trips.test.ts` "201: creates a draft trip with one organiser member and one T1 row" and "400 fields.originHubSlug for an unknown hub".
@@ -54,7 +68,7 @@ This is an early review: S1-1 to S1-8 (#29 to #36) are merged; #37 is not judged
 
 **#33 Dashboard, 8-second poll (PR #53)**
 - Every member's submission status shows: `Roster` shows "Submitted" or "Waiting" in words; the S1-5 screenshots.
-- It polls every 8 seconds: `TripDashboard.test.tsx` "polls every 8 s, announces a status change, and reloads activity only when it moves" (no refetch at 7.999 s, one at 8 s). The production time is **pending Maulik** (R5).
+- It polls every 8 seconds: `TripDashboard.test.tsx` "polls every 8 s, announces a status change, and reloads activity only when it moves" (no refetch at 7.999 s, one at 8 s). Maulik's production two-device check was under 10 s without a reload, not timed more precisely (R5, 23 Oct).
 - A changed status appears without a reload: the same test, plus the announcer; three local two-browser runs at 9.4 s.
 - Usable at 360 px: the S1-5 screenshots at 360 px; the scripted runs found no horizontal scroll.
 
@@ -151,7 +165,8 @@ All POST, PUT and PATCH routes need `Content-Type: application/json`, otherwise 
 - **Referrer policy:** `same-origin` on the SPA (meta tag and a Vercel headers route); the API keeps helmet's `no-referrer`.
 - **Seed:** it follows the state machine (T1, T2, then an I1 per submission), with preference dates relative to today (S1-6 part A).
 - **Catalogue counts:** `importParsedCatalogue` counts updated rows as rows whose values changed, and rewrites a row only then. `pnpm catalogue:import` keeps its old count, so its output is unchanged (S1-7).
-- **Account deletion:** deferred to issue #54 (Sprint 2).
+- **Account deletion:** deferred to issue #54; the R10 epic moves to Sprint 3 for this last criterion.
+- **Preference revision:** epic R3's revision criterion is met under decision 0001(b), which narrows the SRS's "before package selection" rule to collecting/ready states; later states reject revisions.
 - **Fixed during the sprint:** sign-in and sign-up now honour `next` once a session appears (S1-3). The evening T16 test failure was fixed (S1-5). The 12 lint warnings are down to 0 (S1-6).
 
 ## Known gaps
@@ -162,12 +177,17 @@ All POST, PUT and PATCH routes need `Content-Type: application/json`, otherwise 
 - The group-profile aggregate (R4) does not exist yet; the group sees only names and submitted flags.
 - Lint warnings left: none (`pnpm lint` → 0 problems).
 
-## To finish on Sunday (18 October)
+- Keyboard focus is not visible on preference ChipGroup chips, RadioGroup option cards, header links and the user-menu button; Escape closes the menu but leaves focus on body. Sign out/sign in by keyboard remain untested. Spill #60 (Sprint 2, Must).
 
-- Catalogue stage A: `pnpm catalogue:check --require a` must pass (it is 0/50 today).
-- Import the verified rows into preview and production (`pnpm catalogue:import --target …` or `/admin/catalogue` once `ADMIN_EMAILS` is set in Vercel).
-- Re-check R8 and record the production stage A line; then close #37 and the Sprint 1 milestone.
-- Fill in R4, R5, R7 and R9 from Maulik's walkthrough.
+## Closed on 23 October
+
+- R4, R5 and R7 filled in as pass from the production walkthrough; S4 is Done. R9 fails on visible focus despite three Lighthouse scores of 100; spill #60 tracks the keyboard defects. The keyboard and remaining Lighthouse checks were supplied on 24 October as a close-out addendum.
+- R8 moved: catalogue stage A is 0/50 on 23 Oct, nothing imported; #37 moved to Sprint 2, due Mon 26 Oct. No milestone or catalogue issue was renamed; S2-1 handles that.
+- Closed epics R1 (#11), R2 (#12), R3 (#13, under decision 0001(b)) and R9 (#19, trip parameters, not review item R9). Moved R10 (#20) to Sprint 3: deleting personal data is the last criterion, tracked by #54.
+- With no open issues left, closed the Sprint 1 (12-18 Oct) milestone.
+- Kept the walkthrough trip deliberately at Ready for recommendation, 2 of 2 submitted, for Get recommendations on production in Sprint 2. It was not cancelled and this is not a failure.
+- R12 and the approximate hours from PR times are unchanged.
+- Close-out verification: local lint, typecheck and Prettier checks passed on Node 24.21.0. `pnpm test` could not complete: integration setup returned `ECONNREFUSED` on local db-test port 5433; Sprint 2 spill #62 records the blocker. The initial Node 25 runtime mismatch (#61) was resolved by selecting the already-installed Node 24, without project configuration changes. PR checks are verified separately before merge.
 
 ## Velocity
 
@@ -193,10 +213,10 @@ Catalogue stage A (#37, about 1 h a day) is not included.
    - Owner: Maulik.
    - Why it matters: `memberScore` and `rankDestinations` turn two `it.todo` tests into real ones; a wrong weight or a missed past-trip rule changes every shortlist.
    - Mitigation: build against `docs/specs/scoring.md` and the S0-6 golden fixture first, keep alpha, beta and gamma in configuration, and review the fixture numbers by hand before the UI uses them.
-2. **Catalogue stage B workload.**
+2. **Catalogue stage A slip and stage B workload.**
    - Owner: Maulik.
-   - Why it matters: 253 rows of costs, fares and cost rules are due 25 October while filtering depends on them.
-   - Mitigation: start Monday, verify in daily batches as for stage A, and import through `/admin/catalogue` after each verified batch.
+   - Why it matters: stage A slipped from 18 to 26 Oct and remains 0/50; filtering depends on verified catalogue data.
+   - Mitigation: complete #37 by Mon 26 Oct. S2-1 splits stage B into B1 (137 rows, due 1 Nov) and B2 (best effort); verify in daily batches and import through `/admin/catalogue` after each verified batch.
 3. **The empty-shortlist diagnostic (T6 > T8).**
    - Owner: Maulik.
    - Why it matters: with draft costs, many groups may get fewer than 3 feasible destinations.
