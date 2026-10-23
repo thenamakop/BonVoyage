@@ -39,9 +39,14 @@ export function UserMenu({ user }: { user: MeResponse }) {
     const result = await signOutUser();
     setBusy(false);
     if (!result.ok) {
+      const root = rootRef.current;
+      const restoreFocus =
+        root &&
+        (root.contains(document.activeElement) ||
+          (document.activeElement === document.body && root.querySelector('[role="menu"]')));
       setError(true);
       setOpen(false);
-      buttonRef.current?.focus();
+      if (restoreFocus) buttonRef.current?.focus();
       return;
     }
     queryClient.clear();

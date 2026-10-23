@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
@@ -105,6 +105,26 @@ describe('UserMenu', () => {
     await user.keyboard('{Enter}');
     expect(await screen.findByText('Profile page')).toBeInTheDocument();
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+  });
+
+  it('does not steal focus when sign-out fails after focus moves elsewhere', async () => {
+    let finish: ((result: Awaited<Result>) => void) | undefined;
+    const result = new Promise<Awaited<Result>>((resolve) => {
+      finish = resolve;
+    });
+    signOutUser.mockReturnValue(result);
+    renderMenu();
+    render(<button type="button">Elsewhere</button>);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /Asha/ }));
+    await user.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+    await user.click(screen.getByRole('button', { name: 'Elsewhere' }));
+    await act(async () => {
+      finish?.({ ok: false });
+      await result;
+    });
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Elsewhere' })).toHaveFocus();
   });
 
   it('shows an error and stays signed in when signOut fails', async () => {
