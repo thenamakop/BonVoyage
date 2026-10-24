@@ -6,6 +6,28 @@ export { sortRankedDestinations, rankDestinations } from './scoring/rank';
 export { explainMatch, groupSummary } from './scoring/explain';
 export { groupProfile } from './group/profile';
 export type { GroupConflict, GroupProfile } from './group/profile';
+export {
+  carSharePerPersonOneWay,
+  cheapestOneWay,
+  composeEstimate,
+  estimatedGroupCost,
+} from './costs/costs';
+export type { CheapestOneWay, CostRules, OneWayFares } from './costs/costs';
+export { capSource, windowDays } from './feasibility/context';
+export { evaluateCandidate, monthShift, windowMonths } from './feasibility/evaluate';
+export { buildDiagnostic } from './feasibility/diagnostic';
+export type {
+  CandidateFacts,
+  ConstraintId,
+  CostedDestination,
+  Diagnostic,
+  DiagnosticInput,
+  EvaluatedConstraintId,
+  Evaluation,
+  Failure,
+  FeasibilityContext,
+  Suggestion,
+} from './feasibility/types';
 export type {
   DestinationInput,
   GroupFit,
