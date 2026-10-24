@@ -416,7 +416,7 @@ Sprint 1 starts on Oct 12, 2026 only if every box below is ticked at the gate re
 
 ## After pre-dev: the sprint map
 
-Four one-week feature sprints run from 12 October to 7 November 2026, followed by a three-day buffer: the group recommendation flow must work at gate G1, the MVP (R1 to R11) is accepted at G2, and G3 is submission on 10 November.
+The [23 October re-plan](sprints/replan-2026-10-23.md) supersedes the original weekly calendar: Sprint 1 closed on 23 October, Sprint 2 runs 24–27 October, Sprint 3 runs 28 October–2 November and Sprint 4 runs 3–7 November 2026. The three-day buffer is unchanged: the group recommendation flow must work at gate G1, the MVP (R1 to R11) is accepted at G2, and G3 is submission on 10 November.
 
 &#91;embedded content: sprint map · 3 phases, 14 sprints, 3 gates\]
 
@@ -425,10 +425,10 @@ The next phase starts only when its gate holds. Features freeze on 8 November; a
 | Sprint | Dates | Goal | Requirements |
 | --- | --- | --- | --- |
 | S0 | 8 to 11 Oct | Tools, accounts, scaffold, CI and deploy, schema, state machine, Gemini spike | R11 |
-| S1 | 12 to 18 Oct | Accounts, trips, link invitations, preference form, dashboard, access rules; catalogue complete | R1, R2, R3, R9, R10 |
-| S2 | 19 to 25 Oct | Group profile and conflicts, feasibility filter with distance estimate, group-fit ranking, reasons, diagnostic | R4, R5, R6, R7, R16 |
-| S3 | 26 Oct to 1 Nov | Transport comparison, three or more costed packages, provenance labels, package decisions | R8, R14 |
-| S4 | 2 to 7 Nov | Grounded itinerary and validator; accept, modify or reject; trip history | R12, R13 |
+| S1 | 12 to 23 Oct | Accounts, trips, link invitations, preference form, dashboard, access rules; stage A moved to S2 | R1, R2, R3, R9, R10 |
+| S2 | 24 to 27 Oct | Group profile and conflicts, feasibility filter with distance estimate, group-fit ranking, reasons, diagnostic; G1 group flow works | R4, R5, R6, R7, R16 |
+| S3 | 28 Oct to 2 Nov | Transport comparison, three or more costed packages, provenance labels, package decisions, account deletion (#54); G2 MVP accepted | R8, R10, R14 |
+| S4 | 3 to 7 Nov | Grounded itinerary and validator; accept, modify or reject; trip history | R12, R13 |
 | Buffer | 8 to 10 Nov | Feature freeze; fixes, response-time check, demo data, report, submission | R15 |
 
 Out of scope for 10 November: R17 fairness rounds, R18 voting, reminders (C4), email and the user study. R16 is met by the integrations module with the straight-line distance estimate; live routing (Google or openrouteservice) is added only if a key is ready by S2. If S3 slips, cut R13's modify step first, then R12. A Must Have is never cut.

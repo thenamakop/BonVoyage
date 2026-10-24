@@ -12,12 +12,14 @@ sets `review_status` to `verified` with `collected_on` = the day it was checked.
 
 | Stage | Due | Covers |
 | --- | --- | --- |
-| A | 2026-10-18 | `hubs.csv` rows; destination identity columns |
-| B | 2026-10-25 | Destination cost columns (`cost_*` trio), `fares.csv`, `cost-rules.json` |
+| A | 2026-10-26 | `hubs.csv` rows; destination identity columns (50 rows) |
+| B1 | 2026-11-01 | `cost-rules.json` (5), destination cost columns (`cost_*` trio, 44), car distance/duration in `fares.csv` (88): 137 rows |
+| B2 | Best effort by 2026-11-05 | Bus and train fares in `fares.csv` (116 rows); labelled estimated while draft |
 | C | 2026-11-01 | `pois.csv` |
 
-`pnpm catalogue:check --require a|b|c` fails while rows of that stage or any earlier
-stage are still `draft`.
+The dates and B split follow [decision 0004](../../../docs/decisions/0004-recommendation-rules.md) and the [23 October re-plan](../../../docs/sprints/replan-2026-10-23.md). B1 is needed for filtering and packages; B2 is best effort.
+
+`pnpm catalogue:check --require a|b1|b2|b|c` fails while rows of that stage or any earlier stage in A, B1, B2, C order are still `draft`. `b` is an alias for B1 and B2 together (including A). The CLI verification table shows A, B1, B2 and C; the existing administrator page keeps its combined B progress until its separate implementation update.
 
 **How to verify a row.** Open the source, check each number, set `collected_on` to
 the day you checked, set `review_status` to `verified`, and record the page you

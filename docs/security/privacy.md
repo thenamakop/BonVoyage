@@ -54,7 +54,7 @@ Every change to your data goes through a JSON request (`Content-Type: applicatio
 
 - **Leave a trip** (a member, while preferences are open): your membership and your preferences for that trip are deleted.
 - **Removed by the organiser:** your preferences for that trip are deleted; you keep read-only access.
-- **Delete your account:** not built yet; tracked in issue #54 for Sprint 2. Until then, ask the administrator, who can delete the account. Deleting a user removes their memberships, preferences, past trips and profile, because each table cascades from the user. A trip the user organises is deleted with it, which is why the planned feature will refuse while you organise an open trip.
+- **Delete your account:** not built yet; tracked in issue #54 for Sprint 3. Until then, ask the administrator, who can delete the account. Deleting a user removes their memberships, preferences, past trips and profile, because each table cascades from the user. A trip the user organises is deleted with it, which is why the planned feature will refuse while you organise an open trip.
 
 ## How this is tested
 
