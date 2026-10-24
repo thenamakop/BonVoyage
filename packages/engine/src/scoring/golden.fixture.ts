@@ -2,20 +2,22 @@
 // (the spec calls it 6.7 in the S0-6 prompt). Scoring itself lands in Sprint 2
 // (R6); this file commits the expected values so the S2 work is testable.
 
+import type { Activity, Climate, ClimatePreference, DestinationType } from '@bonvoyage/shared';
+
 export const GOLDEN_WEIGHTS = { alpha: 0.5, beta: 0.3, gamma: 0.2 } as const;
 
 export interface GoldenMember {
   id: string;
-  types: string[];
-  activities: string[];
-  climate: string;
+  types: DestinationType[];
+  activities: Activity[];
+  climate: ClimatePreference;
 }
 
 export interface GoldenDestination {
   id: string;
-  types: string[];
-  activities: string[];
-  climate: string;
+  types: DestinationType[];
+  activities: Activity[];
+  climate: Climate;
   memberScores: number[];
   expected: { mean: number; min: number; sd: number; gfs: number };
 }
