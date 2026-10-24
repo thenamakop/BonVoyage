@@ -31,6 +31,13 @@ describe('haversineKm', () => {
 });
 
 describe('estimateRoadKm', () => {
+  it('rounds a positive fractional road estimate upward rather than down to zero', () => {
+    const nearby = { lat: 28.6149, lng: 77.209 };
+    const roadKm = haversineKm(delhi, nearby) * 1.3;
+    expect(roadKm).toBeGreaterThan(0);
+    expect(roadKm).toBeLessThan(0.5);
+    expect(estimateRoadKm(delhi, nearby)).toEqual({ distanceKm: 1, provenance: 'estimated' });
+  });
   it('gives 1493 km, labelled estimated, for Delhi to Mumbai', () => {
     expect(estimateRoadKm(delhi, mumbai)).toEqual({ distanceKm: 1493, provenance: 'estimated' });
   });
