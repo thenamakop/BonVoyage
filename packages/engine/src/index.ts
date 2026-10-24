@@ -2,7 +2,7 @@ export { ROAD_FACTOR, estimateRoadKm, haversineKm } from './geo';
 export { jaccard, memberTypeWeights, weightedJaccard } from './scoring/similarity';
 export { memberScore } from './scoring/member-score';
 export { groupFit } from './scoring/group-fit';
-export { compareRankedDestinations, rankDestinations } from './scoring/rank';
+export { sortRankedDestinations, rankDestinations } from './scoring/rank';
 export { explainMatch, groupSummary } from './scoring/explain';
 export { groupProfile } from './group/profile';
 export type { GroupConflict, GroupProfile } from './group/profile';

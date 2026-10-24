@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { groupFit, memberScore, rankDestinations } from '../index';
-import { compareRankedDestinations } from './rank';
+import { sortRankedDestinations } from './rank';
 import type { DestinationInput, MemberInput, RankedDestination } from './types';
 
 const member = (overrides: Partial<MemberInput> = {}): MemberInput => ({
@@ -121,22 +121,39 @@ describe('ranking', () => {
     ).toEqual(['a', 'z', 'b']);
   });
 
-  it('applies the 1e-12 tolerance at each numeric key and a deterministic text order', () => {
-    expect(compareRankedDestinations(ranked({ gfs: 0.5 }), ranked({ gfs: 0.2 }))).toBeLessThan(0);
-    expect(compareRankedDestinations(ranked({ gfs: 0.2 }), ranked({ gfs: 0.5 }))).toBeGreaterThan(
-      0,
-    );
-    expect(
-      compareRankedDestinations(ranked({ mean: 0.5 }), ranked({ gfs: 1e-13, mean: 0.2 })),
-    ).toBeLessThan(0);
-    expect(compareRankedDestinations(ranked({ slug: 'z', mean: 1e-13 }), ranked())).toBeGreaterThan(
-      0,
-    );
-    expect(compareRankedDestinations(ranked(), ranked({ slug: 'z' }))).toBeLessThan(0);
-    expect(compareRankedDestinations(ranked(), ranked())).toBe(0);
-    expect(
-      compareRankedDestinations(ranked({ slug: 'z', gfs: 1e-12, mean: 1e-12 }), ranked()),
-    ).toBeGreaterThan(0);
-    expect(compareRankedDestinations(ranked({ slug: 'z', mean: 2e-12 }), ranked())).toBeLessThan(0);
+  it('uses quantised keys for ties without rounding returned statistics', () => {
+    const a = ranked({ slug: 'a', gfs: 0.25, mean: 0.4 });
+    const z = ranked({ slug: 'z', gfs: 0.25 + 1e-10, mean: 0.4 + 1e-10 });
+    expect(sortRankedDestinations([z, a])).toEqual([a, z]);
+    const higherMean = ranked({ slug: 'z', gfs: 0.25 + 1e-10, mean: 0.5 });
+    expect(sortRankedDestinations([a, higherMean])).toEqual([higherMean, a]);
+    const higherGfs = ranked({ gfs: 0.25 + 1e-9 });
+    expect(sortRankedDestinations([a, higherGfs])).toEqual([higherGfs, a]);
+    expect(sortRankedDestinations([higherGfs, a])).toEqual([higherGfs, a]);
+    expect(sortRankedDestinations([a, z])).toEqual([a, z]);
+    expect(sortRankedDestinations([a, a])).toEqual([a, a]);
+    const before = JSON.stringify([z, a]);
+    const result = sortRankedDestinations([z, a]);
+    expect(result[0]).toBe(a);
+    expect(result[1]).toBe(z);
+    expect(JSON.stringify([z, a])).toBe(before);
+    expect(z.gfs).toBe(0.25 + 1e-10);
+    expect(z.mean).toBe(0.4 + 1e-10);
+  });
+
+  it('gives the same order for every permutation of the former non-transitive triple', () => {
+    const a = ranked({ slug: 'a', gfs: 0 });
+    const b = ranked({ slug: 'b', gfs: 0.75e-12 });
+    const c = ranked({ slug: 'c', gfs: 1.5e-12 });
+    for (const input of [
+      [a, b, c],
+      [a, c, b],
+      [b, a, c],
+      [b, c, a],
+      [c, a, b],
+      [c, b, a],
+    ]) {
+      expect(sortRankedDestinations(input)).toEqual([a, b, c]);
+    }
   });
 });
