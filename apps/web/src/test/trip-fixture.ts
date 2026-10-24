@@ -67,6 +67,7 @@ export function tripDetail(overrides: Partial<TripDetail> = {}): TripDetail {
     title: 'Long weekend in the hills',
     status: 'collecting_preferences' as const,
     originHub: { slug: 'gurugram', name: 'Gurugram', state: 'Haryana' },
+    selectedDestination: null,
     durationNights: 2,
     budgetTotalInr: 48000,
     radiusKm: 450,

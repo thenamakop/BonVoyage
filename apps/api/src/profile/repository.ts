@@ -26,7 +26,7 @@ export async function upsertHomeHub(db: Db, userId: string, homeHubId: string | 
 
 export interface PastTripRow {
   id: string;
-  placeName: string;
+  placeName: string | null;
   visitedOn: string | null;
   rating: number;
   destinationSlug: string | null;
@@ -68,7 +68,7 @@ export async function insertPastTrip(
   values: {
     userId: string;
     destinationId: string | null;
-    placeName: string;
+    placeName: string | null;
     visitedOn: string | null;
     rating: number;
   },

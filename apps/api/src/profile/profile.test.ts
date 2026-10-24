@@ -1,5 +1,5 @@
 import { createDb } from '@bonvoyage/db';
-import { destination } from '@bonvoyage/db/schema';
+import { destination, pastTrip } from '@bonvoyage/db/schema';
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import {
@@ -108,6 +108,12 @@ describe('POST and DELETE /api/me/past-trips', () => {
       visitedOn: '2025-03-10',
       rating: 4,
     });
+    const [stored] = await db
+      .select()
+      .from(pastTrip)
+      .where(eq(pastTrip.id, PastTrip.parse(a.body).id));
+    expect(stored?.placeName).toBeNull();
+    expect(stored?.destinationId).not.toBeNull();
     const b = await agent
       .post('/api/me/past-trips')
       .set(H)

@@ -7,6 +7,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   smallint,
   text,
   time,
@@ -169,5 +170,18 @@ export const distanceCache = pgTable(
   (t) => [
     uniqueIndex('distance_cache_key').on(t.originKey, t.destinationId, t.provider),
     index('distance_cache_destination_idx').on(t.destinationId),
+  ],
+);
+
+export const providerUsage = pgTable(
+  'provider_usage',
+  {
+    provider: text('provider').notNull(),
+    day: date('day').notNull(),
+    calls: integer('calls').default(0).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.provider, t.day] }),
+    check('provider_usage_calls_nonnegative', sql`${t.calls} >= 0`),
   ],
 );

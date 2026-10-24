@@ -1,5 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { afterAll, describe, expect, it } from 'vitest';
+import { readMigrationFiles } from 'drizzle-orm/migrator';
+import { resolve } from 'node:path';
+import { afterAll, assert, describe, expect, it } from 'vitest';
 import { createDb } from '../src/client';
 import * as s from '../src/schema';
 import { user } from '../src/schema/auth';
@@ -164,6 +166,59 @@ afterAll(async () => {
 });
 
 describe('schema', () => {
+  it('migration 0001 clears copied names before enforcing the one-of CHECK', async () => {
+    const migration = readMigrationFiles({
+      migrationsFolder: resolve(import.meta.dirname, '../migrations'),
+    })[1];
+    assert(migration);
+    await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`create temporary table past_trip (destination_id uuid, place_name text not null) on commit drop`,
+      );
+      await tx.execute(
+        sql`insert into past_trip values ('11111111-1111-4111-8111-111111111111', 'Copied name'), (null, 'Free place')`,
+      );
+      for (const statement of migration.sql) {
+        if (statement.includes('"past_trip"')) await tx.execute(sql.raw(statement));
+      }
+      const result = await tx.execute<{ destination_id: string | null; place_name: string | null }>(
+        sql`select destination_id, place_name from past_trip order by destination_id nulls last`,
+      );
+      expect(result.rows).toEqual([
+        { destination_id: '11111111-1111-4111-8111-111111111111', place_name: null },
+        { destination_id: null, place_name: 'Free place' },
+      ]);
+    });
+  });
+
+  it('provider usage enforces its primary key, default and nonnegative calls', async () => {
+    await db.insert(s.providerUsage).values({ provider: 'fixture', day: '2026-11-01' });
+    const result = await db
+      .select()
+      .from(s.providerUsage)
+      .where(sql`${s.providerUsage.provider} = 'fixture'`);
+    expect(result[0]?.calls).toBe(0);
+    await expectSqlState(
+      db.insert(s.providerUsage).values({ provider: 'fixture', day: '2026-11-01' }),
+      '23505',
+    );
+    await db.insert(s.providerUsage).values([
+      { provider: 'fixture', day: '2026-11-02', calls: 1 },
+      { provider: 'other', day: '2026-11-01', calls: 2 },
+    ]);
+    await expectSqlState(
+      db.insert(s.providerUsage).values({ provider: 'negative', day: '2026-11-01', calls: -1 }),
+      '23514',
+    );
+    await expectSqlState(
+      db
+        .update(s.providerUsage)
+        .set({ calls: -1 })
+        .where(sql`${s.providerUsage.provider} = 'other'`),
+      '23514',
+    );
+  });
+
   it('deleting a trip cascades to every dependent table', async () => {
     const { tripId } = await seedChain();
     await db.delete(s.trip).where(sql`${s.trip.id} = ${tripId}`);
@@ -273,6 +328,35 @@ describe('schema', () => {
       .values({ tripId: t!.id, userId: uid('c'), role: 'organiser' })
       .returning({ id: s.tripMember.id });
 
+    assert(d && t);
+    await expectSqlState(
+      db
+        .update(s.trip)
+        .set({ selectedDestinationId: '00000000-0000-4000-8000-000000000000' })
+        .where(sql`${s.trip.id} = ${t.id}`),
+      '23503',
+    );
+    await db
+      .update(s.trip)
+      .set({ selectedDestinationId: d.id })
+      .where(sql`${s.trip.id} = ${t.id}`);
+    await expect(
+      db.delete(s.destination).where(sql`${s.destination.id} = ${d.id}`),
+    ).rejects.toMatchObject({
+      cause: { code: '23001', constraint: 'trip_selected_destination_id_destination_id_fk' },
+    });
+    await expectSqlState(
+      db
+        .insert(s.pastTrip)
+        .values({ userId: uid('c'), destinationId: d.id, placeName: 'Both', rating: 4 }),
+      '23514',
+    );
+    await expectSqlState(db.insert(s.pastTrip).values({ userId: uid('c'), rating: 4 }), '23514');
+    await db.insert(s.pastTrip).values([
+      { userId: uid('c'), destinationId: d.id, rating: 4 },
+      { userId: uid('c'), placeName: 'Free place', rating: 5 },
+    ]);
+
     await expectSqlState(
       db.insert(s.preference).values({
         tripMemberId: m!.id,
@@ -304,7 +388,7 @@ describe('schema', () => {
     );
     await expectSqlState(
       db.insert(s.poi).values({
-        destinationId: d!.id,
+        destinationId: d.id,
         poiKey: 'bad-hours',
         name: 'X',
         category: 'sight',

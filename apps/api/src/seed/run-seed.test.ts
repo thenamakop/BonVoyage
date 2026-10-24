@@ -1,5 +1,12 @@
 import { createDb } from '@bonvoyage/db';
-import { preference, trip, tripMember, tripTransition } from '@bonvoyage/db/schema';
+import {
+  destination,
+  pastTrip,
+  preference,
+  trip,
+  tripMember,
+  tripTransition,
+} from '@bonvoyage/db/schema';
 import { asc, eq, sql } from 'drizzle-orm';
 import { resolve } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -26,19 +33,25 @@ describe('runSeed', () => {
   it('runs twice with identical row counts and the expected trip shape', async () => {
     await runSeed({ db, auth, catalogueDir, password: PASSWORD, log: () => {} });
     const first = await Promise.all(
-      [trip, tripMember, preference, tripTransition].map(async (t) => {
+      [trip, tripMember, preference, tripTransition, pastTrip].map(async (t) => {
         const rows = await db.select({ n: sql<number>`count(*)::int` }).from(t);
         return rows[0]!.n;
       }),
     );
     await runSeed({ db, auth, catalogueDir, password: PASSWORD, log: () => {} });
     const second = await Promise.all(
-      [trip, tripMember, preference, tripTransition].map(async (t) => {
+      [trip, tripMember, preference, tripTransition, pastTrip].map(async (t) => {
         const rows = await db.select({ n: sql<number>`count(*)::int` }).from(t);
         return rows[0]!.n;
       }),
     );
     expect(second).toEqual(first);
+    const past = await db
+      .select({ placeName: pastTrip.placeName })
+      .from(pastTrip)
+      .innerJoin(destination, eq(destination.id, pastTrip.destinationId))
+      .where(eq(destination.slug, 'rishikesh'));
+    expect(past).toEqual([{ placeName: null }]);
 
     const demo = await db.select().from(trip).where(eq(trip.title, 'Long weekend in the hills'));
     expect(demo).toHaveLength(1);

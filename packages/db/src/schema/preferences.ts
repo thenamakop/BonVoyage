@@ -49,10 +49,11 @@ export const pastTrip = pgTable(
     userId: text('user_id')
       .notNull()
       .references(() => user.id, { onDelete: 'cascade' }),
+    // Destinations are deactivated, never deleted (0003), so this is not nulled in practice.
     destinationId: uuid('destination_id').references(() => destination.id, {
       onDelete: 'set null',
     }),
-    placeName: text('place_name').notNull(),
+    placeName: text('place_name'),
     visitedOn: date('visited_on'),
     rating: smallint('rating').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -61,5 +62,6 @@ export const pastTrip = pgTable(
     index('past_trip_user_idx').on(t.userId),
     index('past_trip_destination_idx').on(t.destinationId),
     check('past_trip_rating', sql`${t.rating} between 1 and 5`),
+    check('past_trip_place_one_of', sql`num_nonnulls(${t.destinationId}, ${t.placeName}) = 1`),
   ],
 );

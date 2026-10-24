@@ -116,6 +116,7 @@ export const TripDetail = z.object({
   title: z.string(),
   status: TripStatus,
   originHub: HubSummary,
+  selectedDestination: HubSummary.nullable(),
   durationNights: z.number(),
   budgetTotalInr: z.number(),
   radiusKm: z.number(),

@@ -26,6 +26,7 @@ import {
 import {
   countActiveMembers,
   findHubBySlug,
+  findSelectedDestination,
   insertOrganiserMember,
   insertTrip,
   listActivity,
@@ -68,6 +69,7 @@ function toDetail(
   members: MemberWithName[],
   caller: MembershipRow,
   lastActivityAt: Date | null,
+  selectedDestination: TripDetail['selectedDestination'],
 ): TripDetail {
   const organiser = members.find((m) => m.member.role === 'organiser');
   const progress = progressOf(members);
@@ -76,6 +78,7 @@ function toDetail(
     title: row.title,
     status: row.status,
     originHub: { slug: hubRow.slug, name: hubRow.name, state: hubRow.state },
+    selectedDestination,
     durationNights: row.durationNights,
     budgetTotalInr: row.budgetTotalInr,
     radiusKm: row.radiusKm,
@@ -111,13 +114,14 @@ function toDetail(
 }
 
 async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<TripDetail> {
-  const [hubRow, members, lastActivityAt] = await Promise.all([
+  const [hubRow, members, lastActivityAt, selectedDestination] = await Promise.all([
     db.query.hub.findFirst({ where: (h, { eq }) => eq(h.id, row.originHubId) }),
     listMembersWithNames(db, row.id),
     newestTransitionAt(db, row.id),
+    findSelectedDestination(db, row.selectedDestinationId),
   ]);
   if (!hubRow) throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
-  return toDetail(row, hubRow, members, caller, lastActivityAt);
+  return toDetail(row, hubRow, members, caller, lastActivityAt, selectedDestination);
 }
 
 export async function getDestinations(db: Db): Promise<DestinationsResponse> {
