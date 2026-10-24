@@ -25,6 +25,8 @@ The dates and B split follow [decision 0004](../../../docs/decisions/0004-recomm
 the day you checked, set `review_status` to `verified`, and record the page you
 actually used — prefer official or operator pages (IRCTC, state transport, ASI,
 hotel sites). Never mark a number verified that you have not checked yourself.
+An AI verification report that Maulik reviews and spot-checks before merge may stand in
+for this check ([decision 0002](../../../docs/decisions/0002-catalogue-format.md), amended 2026-10-24).
 
 ## File format
 

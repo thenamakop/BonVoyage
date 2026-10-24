@@ -2,6 +2,10 @@
 
 Status: Accepted · Date: 2026-10-10 · Supersedes: none
 
+Amended 2026-10-24: catalogue rows may be verified by an AI assistant against the cited
+sources when a per-row report is committed and Maulik reviews it and a spot check (by Maulik or an independent agent session) is recorded in the report before merge
+(stage A: docs/sprints/stage-a-verification-2026-10-24.md).
+
 Dates amended by 0004 and docs/sprints/replan-2026-10-23.md
 
 ## Context
@@ -37,7 +41,8 @@ in these ways:
 - Stage C, due 2026-11-01: POIs — needed by Sprint 4 itineraries.
 
 An AI may draft rows, but only Maulik marks a row `verified`, after checking its
-numbers against the source page. `pnpm catalogue:check --require a|b|c` fails on
+numbers against the source page (or approves an AI verification report, see the
+amendment above). `pnpm catalogue:check --require a|b|c` fails on
 rows of that stage and every earlier stage that are still `draft`.
 
 A destination more than 800 km from the `gurugram` hub by `estimateRoadKm` is a
