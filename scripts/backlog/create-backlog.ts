@@ -132,9 +132,9 @@ for (const [name, color, description] of labelSpecs) {
 
 const milestoneSpecs = [
   ['Sprint 1 (12-18 Oct)', '2026-10-18T18:29:59Z'],
-  ['Sprint 2 (19-25 Oct)', '2026-10-25T18:29:59Z'],
-  ['Sprint 3 (26 Oct-1 Nov)', '2026-11-01T18:29:59Z'],
-  ['Sprint 4 (2-7 Nov)', '2026-11-07T18:29:59Z'],
+  ['Sprint 2 (24-27 Oct)', '2026-10-27T18:29:59Z'],
+  ['Sprint 3 (28 Oct-2 Nov)', '2026-11-02T18:29:59Z'],
+  ['Sprint 4 (3-7 Nov)', '2026-11-07T18:29:59Z'],
   ['Buffer (8-10 Nov)', '2026-11-10T18:29:59Z'],
 ] as const;
 const milestones = json<{ number: number; title: string; due_on: string | null }[]>([
@@ -309,6 +309,10 @@ function createIssue(title: string, body: string, labels: string[], milestone?: 
   for (const label of labels) args.push('--label', label);
   if (milestone) args.push('--milestone', milestone);
   const output = gh(args, true);
+  if (dryRun) {
+    created += 1;
+    return 0;
+  }
   const number = Number(output.match(/\/(\d+)$/)?.[1]);
   if (!number) throw new Error(`Could not read issue number from ${output}`);
   created += 1;
@@ -342,6 +346,7 @@ for (const row of workItems) {
     );
   if (existing) unchanged += 1;
   childNumbers.set(row.key, number);
+  if (!number) continue;
   const parent = epicNumbers.get(row.epics.split(',')[0] ?? '');
   if (!parent) throw new Error(`Missing parent epic for ${row.key}`);
   const children = json<{ number: number }[]>([
@@ -410,7 +415,7 @@ function setField(item: ProjectItem, name: string, value: string): void {
 function addAndSet(number: number, values: Record<string, string>): void {
   let item = projectItems.find((candidate) => candidate.content?.number === number);
   if (!item) {
-    const added = json<{ id: string }>([
+    const args = [
       'project',
       'item-add',
       projectNumber,
@@ -420,7 +425,13 @@ function addAndSet(number: number, values: Record<string, string>): void {
       `https://github.com/${owner}/${repo}/issues/${number}`,
       '--format',
       'json',
-    ]);
+    ];
+    const output = gh(args, true);
+    if (dryRun) {
+      created += 1;
+      return;
+    }
+    const added = JSON.parse(output) as { id: string };
     item = { id: added.id, content: { number } };
     projectItems.push(item);
     created += 1;

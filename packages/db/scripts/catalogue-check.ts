@@ -2,19 +2,19 @@ import { parseArgs } from 'node:util';
 import { resolve } from 'node:path';
 import { DESTINATION_TYPES } from '@bonvoyage/shared';
 import { loadCatalogue, type CatalogueIssue } from '../src/catalogue/load';
-import {
-  CATALOGUE_STAGES,
-  CATALOGUE_STAGE_ORDER,
-  type CatalogueStage,
-} from '../src/catalogue/stages';
 
 // S0-4: validates packages/db/catalogue and reports verification progress.
 // Exit 1 on any error; --require a|b|c also fails on draft rows of that stage
 // and every earlier stage.
 
-const STAGES = CATALOGUE_STAGES;
-type Stage = CatalogueStage;
-const STAGE_ORDER = CATALOGUE_STAGE_ORDER;
+const STAGES = {
+  a: { name: 'A (hubs, destination identity)', due: '2026-10-26' },
+  b1: { name: 'B1 (cost rules, destination costs, car rows)', due: '2026-11-01' },
+  b2: { name: 'B2 (bus and train fares, best effort)', due: '2026-11-05' },
+  c: { name: 'C (POIs)', due: '2026-11-01' },
+} as const;
+type Stage = keyof typeof STAGES;
+const STAGE_ORDER: Stage[] = ['a', 'b1', 'b2', 'c'];
 
 const { values } = parseArgs({
   options: {
@@ -25,9 +25,9 @@ const { values } = parseArgs({
 });
 
 const today = values.today ?? new Date().toISOString().slice(0, 10);
-const requireStage = values.require as Stage | undefined;
+const requireStage = (values.require === 'b' ? 'b2' : values.require) as Stage | undefined;
 if (requireStage !== undefined && !(requireStage in STAGES)) {
-  console.error('Usage: pnpm catalogue:check [--require a|b|c] [--today YYYY-MM-DD]');
+  console.error('Usage: pnpm catalogue:check [--require a|b1|b2|b|c] [--today YYYY-MM-DD]');
   process.exit(2);
 }
 
@@ -50,7 +50,7 @@ if (requireStage) {
   if (upto >= 1) {
     for (const d of destinations)
       drafts(`destination "${d.slug}" costs`, d.cost_review_status, 'destinations.csv');
-    for (const f of fares)
+    for (const f of fares.filter((fare) => fare.mode === 'car'))
       drafts(
         `fare "${f.origin_hub} -> ${f.destination_slug}" (${f.mode})`,
         f.review_status,
@@ -63,6 +63,14 @@ if (requireStage) {
     }
   }
   if (upto >= 2) {
+    for (const f of fares.filter((fare) => fare.mode !== 'car'))
+      drafts(
+        `fare "${f.origin_hub} -> ${f.destination_slug}" (${f.mode})`,
+        f.review_status,
+        'fares.csv',
+      );
+  }
+  if (upto >= 3) {
     for (const p of pois)
       drafts(`POI "${p.destination_slug}/${p.poi_key}"`, p.review_status, 'pois.csv');
   }
@@ -96,14 +104,21 @@ const stageCount = {
       destinations.filter((d) => d.review_status === 'verified').length,
     total: hubs.length + destinations.length,
   },
-  b: {
+  b1: {
     verified:
       destinations.filter((d) => d.cost_review_status === 'verified').length +
-      fares.filter((f) => f.review_status === 'verified').length +
+      fares.filter((f) => f.mode === 'car' && f.review_status === 'verified').length +
       (costRules
         ? Object.values(costRules).filter((e) => e.review_status === 'verified').length
         : 0),
-    total: destinations.length + fares.length + (costRules ? Object.keys(costRules).length : 0),
+    total:
+      destinations.length +
+      fares.filter((f) => f.mode === 'car').length +
+      (costRules ? Object.keys(costRules).length : 0),
+  },
+  b2: {
+    verified: fares.filter((f) => f.mode !== 'car' && f.review_status === 'verified').length,
+    total: fares.filter((f) => f.mode !== 'car').length,
   },
   c: {
     verified: pois.filter((p) => p.review_status === 'verified').length,

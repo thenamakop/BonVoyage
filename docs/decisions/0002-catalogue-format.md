@@ -2,6 +2,8 @@
 
 Status: Accepted · Date: 2026-10-10 · Supersedes: none
 
+Dates amended by 0004 and docs/sprints/replan-2026-10-23.md
+
 ## Context
 
 RUNBOOK Phase 6 specifies three CSVs (`destinations.csv`, `pois.csv`, `fares.csv`)
