@@ -12,7 +12,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth';
-import { hub } from './catalogue';
+import { destination, hub } from './catalogue';
 import { invitationStatusEnum, memberRoleEnum, memberStatusEnum, tripStatusEnum } from './enums';
 import { timestamps } from './helpers';
 
@@ -39,6 +39,9 @@ export const trip = pgTable(
     originHubId: uuid('origin_hub_id')
       .notNull()
       .references(() => hub.id, { onDelete: 'restrict' }),
+    selectedDestinationId: uuid('selected_destination_id').references(() => destination.id, {
+      onDelete: 'restrict',
+    }),
     durationNights: smallint('duration_nights').notNull(),
     budgetTotalInr: integer('budget_total_inr').notNull(),
     radiusKm: integer('radius_km').notNull(),
@@ -51,6 +54,7 @@ export const trip = pgTable(
     index('trip_status_idx').on(t.status),
     index('trip_organiser_idx').on(t.organiserId),
     index('trip_origin_hub_idx').on(t.originHubId),
+    index('trip_selected_destination_idx').on(t.selectedDestinationId),
     check('trip_title_len', sql`length(${t.title}) between 1 and 120`),
     check('trip_duration_nights', sql`${t.durationNights} between 1 and 14`),
     check('trip_budget_positive', sql`${t.budgetTotalInr} > 0`),

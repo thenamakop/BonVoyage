@@ -25,7 +25,7 @@ import {
   userProfile,
 } from '@bonvoyage/db/schema';
 import { account, session, user, verification } from '@bonvoyage/db/schema/auth';
-import { distanceCache } from '@bonvoyage/db/schema';
+import { distanceCache, providerUsage } from '@bonvoyage/db/schema';
 import { indiaDate, type PreferenceInput } from '@bonvoyage/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
@@ -74,6 +74,7 @@ async function tableCounts(db: Db): Promise<Record<string, number>> {
     fare_fallback: fareFallback,
     cost_rule: costRule,
     distance_cache: distanceCache,
+    provider_usage: providerUsage,
     trip,
     trip_member: tripMember,
     invitation,
@@ -269,14 +270,21 @@ export async function runSeed({
     await db
       .select({ id: pastTrip.id })
       .from(pastTrip)
-      .where(and(eq(pastTrip.userId, asha), eq(pastTrip.placeName, 'Rishikesh')))
+      .where(
+        and(
+          eq(pastTrip.userId, asha),
+          rishikesh
+            ? eq(pastTrip.destinationId, rishikesh.id)
+            : eq(pastTrip.placeName, 'Rishikesh'),
+        ),
+      )
       .limit(1)
   )[0];
   if (!hasPast) {
     await db.insert(pastTrip).values({
       userId: asha,
       destinationId: rishikesh?.id ?? null,
-      placeName: 'Rishikesh',
+      placeName: rishikesh ? null : 'Rishikesh',
       rating: 5,
     });
   }

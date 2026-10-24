@@ -35,7 +35,7 @@ function toPastTrip(row: PastTripRow): PastTrip {
       row.destinationSlug && row.destinationName
         ? { slug: row.destinationSlug, name: row.destinationName }
         : null,
-    // place_name also stores the destination's name; expose it only for free-text trips.
+    // Catalogue picks use destination_id only; place_name is reserved for free-text trips.
     placeName: row.destinationSlug ? null : row.placeName,
     visitedOn: row.visitedOn,
     rating: row.rating,
@@ -78,7 +78,7 @@ export async function addPastTrip(
     if (!dest) throw invalid('destinationSlug', 'Choose a destination from the list.');
   }
   // AddPastTripInput guarantees exactly one of destinationSlug and placeName.
-  const placeName = dest?.name ?? input.placeName ?? '';
+  const placeName = input.placeName ?? null;
   const id = await insertPastTrip(db, {
     userId,
     destinationId: dest?.id ?? null,

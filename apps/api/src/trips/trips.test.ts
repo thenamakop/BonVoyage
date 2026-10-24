@@ -1,11 +1,11 @@
 import { createDb } from '@bonvoyage/db';
-import { tripMember, tripTransition } from '@bonvoyage/db/schema';
+import { destination, trip, tripMember, tripTransition } from '@bonvoyage/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import type { ErrorEnvelope } from '@bonvoyage/shared';
 import { HubsResponse, TripDetail, TripsResponse } from '@bonvoyage/shared';
 import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, assert, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { createTestUser, createTripAs, ensureHub, setTripStatus } from '../test/helpers';
@@ -64,6 +64,7 @@ describe('POST /api/trips', () => {
     expect(res.status).toBe(201);
     const detail = TripDetail.parse(res.body);
     expect(detail.status).toBe('draft');
+    expect(detail.selectedDestination).toBeNull();
     expect(detail.myRole).toBe('organiser');
     expect(detail.members).toHaveLength(1);
     expect(detail.members[0]).toMatchObject({ userId, role: 'organiser', status: 'active' });
@@ -179,6 +180,39 @@ describe('GET /api/me/trips', () => {
 });
 
 describe('GET /api/trips/:id', () => {
+  it('returns the stored selected destination even after catalogue deactivation', async () => {
+    const { agent } = await createTestUser(app);
+    const detail = await createTripAs(agent);
+    const [chosen] = await db
+      .insert(destination)
+      .values({
+        slug: 'selected-test',
+        name: 'Selected place',
+        state: 'Uttarakhand',
+        lat: 30,
+        lng: 78,
+        types: ['mountain'],
+        activities: ['trekking'],
+        climate: 'mild',
+        bestMonths: [10],
+        minNights: 1,
+        collectedOn: '2026-10-12',
+        reviewStatus: 'draft',
+        costReviewStatus: 'draft',
+        active: false,
+      })
+      .returning();
+    assert(chosen);
+    await db.update(trip).set({ selectedDestinationId: chosen.id }).where(eq(trip.id, detail.id));
+    const response = await agent.get(`/api/trips/${detail.id}`).set(H);
+    expect(response.status).toBe(200);
+    expect(TripDetail.parse(response.body).selectedDestination).toEqual({
+      slug: 'selected-test',
+      name: 'Selected place',
+      state: 'Uttarakhand',
+    });
+  });
+
   it('200 for a member', async () => {
     const { agent } = await createTestUser(app);
     const detail = await createTripAs(agent);

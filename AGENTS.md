@@ -164,6 +164,10 @@ These come from the SRS and the runbook. Breaking one is a bug, even if tests pa
 
 ## 10. Database
 
+Migration 0001 (Sprint 2): trip.selected_destination_id, past_trip.place_name nullable with a one-of CHECK, provider_usage.
+
+- PostgreSQL 18 reports SQLSTATE `23001` for an `ON DELETE RESTRICT` refusal; an invalid foreign-key reference reports `23503`.
+
 - Change the schema only in `packages/db`, then generate a migration with drizzle-kit and commit the SQL.
 - **Never edit a migration that is already on `master`.** Fixes are new migrations.
 - Never run migrations, seeds or resets against Neon unless the task explicitly says so, and then only through `pnpm db:migrate:remote`.

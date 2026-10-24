@@ -24,6 +24,16 @@ export async function listActiveDestinations(db: Db) {
     .orderBy(asc(destination.name));
 }
 
+export async function findSelectedDestination(db: Db, id: string | null) {
+  if (id === null) return null;
+  const rows = await db
+    .select({ slug: destination.slug, name: destination.name, state: destination.state })
+    .from(destination)
+    .where(eq(destination.id, id))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export async function insertTrip(
   tx: Tx,
   values: {
