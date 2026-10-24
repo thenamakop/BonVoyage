@@ -19,7 +19,7 @@ Each requirement from the MoSCoW document, with its trace and sprint. Add the is
 | R13 | Accept, modify or reject generated output | Should | Trip & Feedback | 2.2, Table 9 | Review & Decide on Itinerary, 7.0 | S4 | #23 |  |
 | R14 | Cached or curated fallback, labelled by provenance | Should | External Data Integration | 3.5, Table 8 | 5.0 and D4 | S3 | #24, #37 (CAT-A), #38 (CAT-B), #39 (CAT-C) | packages/db/src/catalogue/catalogue.test.ts |
 | R15 | Screens within 3 s, shortlist within 10 s | Should | all modules | 3.3 | none | S2, Buffer | #25, #68 (S2-6), #70 (S2-8) |  |
-| R16 | One mediating module with caching and quota control | Should | External Data Integration | 3.1.3 | 4.0, 5.0 and 6.0 | S2 | #26, #64 (S2-2), #67 (S2-5) | packages/db/test/schema.test.ts (provider_usage primary key, default and nonnegative calls; routing/quota behaviour follows in S2-5) |
+| R16 | One mediating module with caching and quota control | Should | External Data Integration | 3.1.3 | 4.0, 5.0 and 6.0 | S2 | #26, #64 (S2-2), #67 (S2-5) | packages/db/test/schema.test.ts (provider_usage constraints), packages/integrations/test/routing.test.ts (provider ordering/provenance, external cache, India-day quota/concurrency and 44-destination query counts), packages/integrations/src/routing/estimate.test.ts, apps/api/src/routing.test.ts (default and injectable routing dependencies) |
 | R17 | Fairness across recommendation rounds | Could | Recommendation Engine | none | Recommend Destinations | deferred | #27 |  |
 | R18 | Voting on the shortlist | Could | Trip & Feedback | 2.5 | none yet | deferred | #28 |  |
 | R19 | Online payment and booking | Won't | none | 1.2 | none | Won't |  |  |

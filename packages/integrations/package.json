@@ -4,14 +4,18 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./routing": "./src/routing.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@bonvoyage/db": "workspace:*",
+    "@bonvoyage/engine": "workspace:*",
     "@bonvoyage/shared": "workspace:*",
     "@google/genai": "2.28.0",
+    "drizzle-orm": "0.45.4",
     "zod": "^4.6.5"
   }
 }

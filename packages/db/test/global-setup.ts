@@ -9,8 +9,10 @@ const DEFAULT_URL = 'postgres://bonvoyage:bonvoyage@localhost:5433/bonvoyage_tes
 export default async function setup(): Promise<() => Promise<void>> {
   const url = process.env.TEST_DATABASE_URL ?? DEFAULT_URL;
   const database = new URL(url).pathname.replace(/^\//, '');
-  if (!isLocalHost(url) || !database.endsWith('_test')) {
-    throw new Error(`Refusing to reset ${describeTarget(url)}: not a local *_test database.`);
+  if (!isLocalHost(url) || !database.endsWith('_test') || new URL(url).port !== '5433') {
+    throw new Error(
+      `Refusing to reset ${describeTarget(url)}: not a local *_test database on port 5433.`,
+    );
   }
   const { db, pool } = createDb(url);
   await pool.query('drop schema if exists public cascade');

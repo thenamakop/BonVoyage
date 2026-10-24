@@ -41,7 +41,11 @@ export default defineConfig({
       {
         test: {
           name: 'integration',
-          include: ['apps/api/src/**/*.test.ts', 'packages/db/test/**/*.test.ts'],
+          include: [
+            'apps/api/src/**/*.test.ts',
+            'packages/db/test/**/*.test.ts',
+            'packages/integrations/test/**/*.test.ts',
+          ],
           environment: 'node',
           fileParallelism: false,
           globalSetup: ['packages/db/test/global-setup.ts'],

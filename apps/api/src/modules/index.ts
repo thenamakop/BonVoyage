@@ -1,4 +1,5 @@
 import type { Db } from '@bonvoyage/db';
+import type { Routing } from '@bonvoyage/integrations/routing';
 import express from 'express';
 import type { Auth } from '../auth/auth';
 import { router as filtering } from './filtering/router';
@@ -21,6 +22,7 @@ export function createApiRouter(deps: {
   auth: Auth;
   clock?: () => Date;
   adminEmails: readonly string[];
+  routing: Routing;
 }) {
   const apiRouter = express.Router();
 

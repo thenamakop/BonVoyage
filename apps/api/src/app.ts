@@ -1,6 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { Db } from '@bonvoyage/db';
 import { probeDb } from '@bonvoyage/db';
+import {
+  createRouting,
+  curatedProvider,
+  estimateProvider,
+  type Routing,
+} from '@bonvoyage/integrations/routing';
 import { ERROR_CODES } from '@bonvoyage/shared';
 import type { HealthOk } from '@bonvoyage/shared';
 import { toNodeHandler } from 'better-auth/node';
@@ -27,10 +33,28 @@ export interface AppDeps {
   clock?: () => Date;
   /** Lowercased administrator emails from ADMIN_EMAILS (S1-7); none by default. */
   adminEmails?: readonly string[];
+  routing?: Routing;
 }
 
-export function createApp({ db, pool, logger, auth, clock, adminEmails = [] }: AppDeps): Express {
+export function createApp({
+  db,
+  pool,
+  logger,
+  auth,
+  clock,
+  adminEmails = [],
+  routing,
+}: AppDeps): Express {
   const app = express();
+  const appRouting =
+    routing ??
+    createRouting({
+      db,
+      providers: [curatedProvider(db), estimateProvider()],
+      clock: clock ?? (() => new Date()),
+      ttlDays: 30,
+      logger,
+    });
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
@@ -94,7 +118,10 @@ export function createApp({ db, pool, logger, auth, clock, adminEmails = [] }: A
     throw new AppError(503, ERROR_CODES.DB_UNAVAILABLE, 'The database is not reachable.');
   });
 
-  app.use('/api', createApiRouter({ db, auth, adminEmails, ...(clock ? { clock } : {}) }));
+  app.use(
+    '/api',
+    createApiRouter({ db, auth, adminEmails, routing: appRouting, ...(clock ? { clock } : {}) }),
+  );
 
   app.use(notFoundHandler);
   app.use(errorHandler);

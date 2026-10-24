@@ -35,5 +35,5 @@ export function estimateRoadKm(
   a: LatLng,
   b: LatLng,
 ): { distanceKm: number; provenance: Provenance } {
-  return { distanceKm: Math.round(haversineKm(a, b) * ROAD_FACTOR), provenance: 'estimated' };
+  return { distanceKm: Math.ceil(haversineKm(a, b) * ROAD_FACTOR), provenance: 'estimated' };
 }

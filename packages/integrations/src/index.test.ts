@@ -4,8 +4,10 @@ import { IntegrationError } from './index';
 
 describe('integration interfaces', () => {
   it('RoutingProvider returns DistanceResult values', () => {
-    expectTypeOf<RoutingProvider['distance']>().returns.toEqualTypeOf<Promise<DistanceResult>>();
-    expectTypeOf<RoutingProvider['matrix']>().returns.toEqualTypeOf<Promise<DistanceResult[]>>();
+    expectTypeOf<RoutingProvider['getDistances']>().returns.toEqualTypeOf<
+      Promise<Map<string, DistanceResult>>
+    >();
+    expectTypeOf<RoutingProvider['cacheable']>().toEqualTypeOf<boolean>();
   });
 
   it('CatalogueSource resolves to a number or null', () => {
