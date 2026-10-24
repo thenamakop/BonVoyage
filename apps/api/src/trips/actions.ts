@@ -18,6 +18,8 @@ export interface ActionInput {
   myStatus: MemberStatus;
   mySubmitted: boolean;
   progress: TripProgress;
+  /** A recommendation run exists for this trip (S2-6). */
+  hasRecommendation: boolean;
 }
 
 const PLANNING = PLANNING_STATUSES as readonly TripStatus[];
@@ -25,9 +27,25 @@ const PLANNING = PLANNING_STATUSES as readonly TripStatus[];
 // T3b's guard (0001 f): closing needs at least two submissions.
 const MIN_SUBMITTED_TO_CLOSE = 2;
 
-export function tripActions({ status, myRole, myStatus, progress }: ActionInput): TripAction[] {
-  // Removed members can read the trip but not act (conventions rule 4).
-  if (myStatus === 'excluded') return [];
+// 0004 j: details stay editable until the shortlist is made.
+const EDITABLE: readonly TripStatus[] = [
+  'draft',
+  'collecting_preferences',
+  'ready_for_recommendation',
+];
+
+export function tripActions({
+  status,
+  myRole,
+  myStatus,
+  progress,
+  hasRecommendation,
+}: ActionInput): TripAction[] {
+  // Removed members can read the trip but not act (conventions rule 4); reading
+  // the recommendations is not acting.
+  if (myStatus === 'excluded') {
+    return hasRecommendation ? [{ action: 'viewRecommendations', enabled: true }] : [];
+  }
 
   const legal = new Set(legalEvents(status));
   const organiser = myRole === 'organiser';
@@ -35,7 +53,8 @@ export function tripActions({ status, myRole, myStatus, progress }: ActionInput)
   const actions: TripAction[] = [];
 
   if (organiser && open) actions.push({ action: 'invite', enabled: true });
-  if (organiser && status === 'draft') actions.push({ action: 'editDetails', enabled: true });
+  if (organiser && EDITABLE.includes(status))
+    actions.push({ action: 'editDetails', enabled: true });
 
   if (status === 'draft') {
     actions.push({
@@ -58,6 +77,14 @@ export function tripActions({ status, myRole, myStatus, progress }: ActionInput)
             reason: 'At least 2 members need to submit first.',
           },
     );
+  }
+
+  if (organiser && status === 'ready_for_recommendation' && legal.has('recommendationRequested')) {
+    actions.push({ action: 'requestRecommendations', enabled: true });
+  }
+  if (hasRecommendation) actions.push({ action: 'viewRecommendations', enabled: true });
+  if (organiser && status === 'shortlisted' && legal.has('destinationSelected')) {
+    actions.push({ action: 'chooseDestination', enabled: true });
   }
 
   if (organiser && PLANNING.includes(status) && legal.has('cancelTrip')) {

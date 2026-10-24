@@ -18,6 +18,7 @@ const organiser = (status: TripStatus, submitted = 0): ActionInput => ({
   myStatus: 'active',
   mySubmitted: false,
   progress: progress(submitted),
+  hasRecommendation: false,
 });
 const member = (status: TripStatus, submitted = 0): ActionInput => ({
   ...organiser(status, submitted),
@@ -56,6 +57,7 @@ describe('tripActions', () => {
       const actions = tripActions(organiser('collecting_preferences', submitted));
       expect(names(actions)).toEqual([
         'invite',
+        'editDetails',
         'editPreferences',
         'closeSubmissions',
         'cancelTrip',
@@ -82,23 +84,48 @@ describe('tripActions', () => {
     ]);
   });
 
-  it('ready: organiser can revise and cancel; member can only revise', () => {
+  it('ready: organiser can edit details, revise, ask for recommendations and cancel; member can only revise', () => {
     expect(names(tripActions(organiser('ready_for_recommendation', 3)))).toEqual([
+      'editDetails',
       'editPreferences',
+      'requestRecommendations',
       'cancelTrip',
     ]);
     expect(names(tripActions(member('ready_for_recommendation', 3)))).toEqual(['editPreferences']);
   });
 
-  it('shortlisted: organiser can only cancel; member has nothing', () => {
-    expect(names(tripActions(organiser('shortlisted', 3)))).toEqual(['cancelTrip']);
-    expect(tripActions(member('shortlisted', 3))).toEqual([]);
+  it('shortlisted: organiser can view, choose and cancel; member can view', () => {
+    const run = { hasRecommendation: true };
+    expect(names(tripActions({ ...organiser('shortlisted', 3), ...run }))).toEqual([
+      'viewRecommendations',
+      'chooseDestination',
+      'cancelTrip',
+    ]);
+    expect(names(tripActions({ ...member('shortlisted', 3), ...run }))).toEqual([
+      'viewRecommendations',
+    ]);
   });
 
-  it('excluded: no actions in any status', () => {
+  it('back to collecting after a diagnostic: the run stays viewable', () => {
+    const actions = tripActions({
+      ...member('collecting_preferences', 3),
+      hasRecommendation: true,
+    });
+    expect(names(actions)).toEqual(['editPreferences', 'viewRecommendations', 'leaveTrip']);
+  });
+
+  it('shortlisted: organiser details are locked (0004 j)', () => {
+    const actions = tripActions({ ...organiser('shortlisted', 3), hasRecommendation: true });
+    expect(names(actions)).not.toContain('editDetails');
+  });
+
+  it('excluded: no actions, except viewing a run that exists', () => {
     for (const status of ['draft', 'collecting_preferences', 'ready_for_recommendation'] as const) {
       expect(tripActions({ ...member(status), myStatus: 'excluded' })).toEqual([]);
     }
+    expect(
+      tripActions({ ...member('shortlisted'), myStatus: 'excluded', hasRecommendation: true }),
+    ).toEqual([{ action: 'viewRecommendations', enabled: true }]);
   });
 
   it('cancelled: nobody has an action', () => {

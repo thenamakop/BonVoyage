@@ -41,6 +41,7 @@ import {
   type MemberWithName,
   type Tx,
 } from './repository';
+import { findLatestRun } from '../recommendations/repository';
 import { tripActions } from './actions';
 import { transitionTrip } from './transition-trip';
 
@@ -50,6 +51,13 @@ interface Deps {
 }
 
 const iso = (d: Date) => d.toISOString();
+
+/** 0004 j: trip parameters stay editable until the shortlist is made. */
+export const EDITABLE_STATUSES: readonly TripRow['status'][] = [
+  'draft',
+  'collecting_preferences',
+  'ready_for_recommendation',
+];
 
 function progressOf(members: MemberWithName[]): TripProgress {
   const active = members.filter((m) => m.member.status === 'active');
@@ -70,6 +78,7 @@ function toDetail(
   caller: MembershipRow,
   lastActivityAt: Date | null,
   selectedDestination: TripDetail['selectedDestination'],
+  latestRecommendation: TripDetail['latestRecommendation'],
 ): TripDetail {
   const organiser = members.find((m) => m.member.role === 'organiser');
   const progress = progressOf(members);
@@ -106,22 +115,41 @@ function toDetail(
       myStatus: caller.status,
       mySubmitted: caller.submittedAt !== null,
       progress,
+      hasRecommendation: latestRecommendation !== null,
     }),
     lastActivityAt: lastActivityAt ? iso(lastActivityAt) : null,
+    latestRecommendation,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
 }
 
 async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<TripDetail> {
-  const [hubRow, members, lastActivityAt, selectedDestination] = await Promise.all([
+  const [hubRow, members, lastActivityAt, selectedDestination, latestRun] = await Promise.all([
     db.query.hub.findFirst({ where: (h, { eq }) => eq(h.id, row.originHubId) }),
     listMembersWithNames(db, row.id),
     newestTransitionAt(db, row.id),
     findSelectedDestination(db, row.selectedDestinationId),
+    findLatestRun(db, row.id),
   ]);
   if (!hubRow) throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
-  return toDetail(row, hubRow, members, caller, lastActivityAt, selectedDestination);
+  const latestRecommendation = latestRun
+    ? {
+        round: latestRun.round,
+        kind: latestRun.kind,
+        feasibleCount: latestRun.feasibleCount,
+        createdAt: iso(latestRun.createdAt),
+      }
+    : null;
+  return toDetail(
+    row,
+    hubRow,
+    members,
+    caller,
+    lastActivityAt,
+    selectedDestination,
+    latestRecommendation,
+  );
 }
 
 export async function getDestinations(db: Db): Promise<DestinationsResponse> {
@@ -212,8 +240,8 @@ export async function getTrip(db: Db, tripId: string, userId: string): Promise<T
   return detailFor(db, row, membership);
 }
 
-// PATCH /api/trips/:id — organiser only, and only while the trip is a draft.
-// The status is re-read under FOR UPDATE so an edit cannot race T2.
+// PATCH /api/trips/:id — organiser only, until the shortlist is made (0004 j).
+// The status is re-read under FOR UPDATE so an edit cannot race a transition.
 export async function updateTrip(
   { db }: Deps,
   tripId: string,
@@ -241,11 +269,11 @@ export async function updateTrip(
 
   await db.transaction(async (tx) => {
     const status = await lockTripStatus(tx, tripId);
-    if (status !== 'draft') {
+    if (!status || !EDITABLE_STATUSES.includes(status)) {
       throw new AppError(
         409,
         ERROR_CODES.TRIP_NOT_EDITABLE,
-        'Trip details can be changed only before anyone is invited.',
+        'Trip details can be changed until the shortlist is made.',
       );
     }
     await updateTripFields(tx, tripId, patch);

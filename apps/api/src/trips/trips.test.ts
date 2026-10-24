@@ -323,17 +323,32 @@ describe('PATCH /api/trips/:id', () => {
     expect((res.body as ErrorEnvelope).error.code).toBe('NOT_FOUND');
   });
 
-  it('409 TRIP_NOT_EDITABLE once the trip is collecting_preferences', async () => {
-    const { agent } = await createTestUser(app);
-    const detail = await createTripAs(agent);
-    await setTripStatus(db, detail.id, 'collecting_preferences');
-    const res = await agent.patch(`/api/trips/${detail.id}`).set(H).send({ title: 'Too late' });
-    expect(res.status).toBe(409);
-    expect((res.body as ErrorEnvelope).error).toMatchObject({
-      code: 'TRIP_NOT_EDITABLE',
-      message: 'Trip details can be changed only before anyone is invited.',
-    });
-  });
+  it.each(['collecting_preferences', 'ready_for_recommendation'] as const)(
+    '200 while the trip is %s (0004 j)',
+    async (status) => {
+      const { agent } = await createTestUser(app);
+      const detail = await createTripAs(agent);
+      await setTripStatus(db, detail.id, status);
+      const res = await agent.patch(`/api/trips/${detail.id}`).set(H).send({ radiusKm: 600 });
+      expect(res.status).toBe(200);
+      expect((res.body as { radiusKm: number }).radiusKm).toBe(600);
+    },
+  );
+
+  it.each(['shortlisted', 'packages_proposed'] as const)(
+    '409 TRIP_NOT_EDITABLE once the trip is %s',
+    async (status) => {
+      const { agent } = await createTestUser(app);
+      const detail = await createTripAs(agent);
+      await setTripStatus(db, detail.id, status);
+      const res = await agent.patch(`/api/trips/${detail.id}`).set(H).send({ title: 'Too late' });
+      expect(res.status).toBe(409);
+      expect((res.body as ErrorEnvelope).error).toMatchObject({
+        code: 'TRIP_NOT_EDITABLE',
+        message: 'Trip details can be changed until the shortlist is made.',
+      });
+    },
+  );
 
   it('400 for an empty body', async () => {
     const { agent } = await createTestUser(app);

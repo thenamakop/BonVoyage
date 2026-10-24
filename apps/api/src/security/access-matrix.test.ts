@@ -217,20 +217,58 @@ const CASES: Case[] = [
     ],
   },
 
-  // Collecting preferences: details are locked, and 1 submission is too few to close.
+  // S2-6: recommendations. Any member reads the latest run and the group
+  // profile; only the organiser asks or chooses, and only in the right state
+  // (the fixture trip is still collecting preferences, so both are 409).
   {
-    method: 'PATCH',
-    path: '/api/trips/:id',
-    url: (f) => `/api/trips/${f.tripId}`,
-    body: { title: 'Renamed' },
+    method: 'GET',
+    path: '/api/trips/:id/recommendations/latest',
+    url: (f) => `/api/trips/${f.tripId}/recommendations/latest`,
+    expected: ['401', '404 NOT_FOUND', '200', '200', '200', '404 NOT_FOUND'],
+  },
+  {
+    method: 'GET',
+    path: '/api/trips/:id/group-profile',
+    url: (f) => `/api/trips/${f.tripId}/group-profile`,
+    expected: ['401', '404 NOT_FOUND', '200', '200', '200', '404 NOT_FOUND'],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/recommendations',
+    url: (f) => `/api/trips/${f.tripId}/recommendations`,
+    body: {},
     expected: [
       '401',
       '404 NOT_FOUND',
       '403 FORBIDDEN',
       '403 FORBIDDEN',
-      '409 TRIP_NOT_EDITABLE',
+      '409 ILLEGAL_TRANSITION',
       '404 NOT_FOUND',
     ],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/destination',
+    url: (f) => `/api/trips/${f.tripId}/destination`,
+    body: { destinationSlug: 'nowhere' },
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '403 FORBIDDEN',
+      '403 FORBIDDEN',
+      '409 ILLEGAL_TRANSITION',
+      '404 NOT_FOUND',
+    ],
+  },
+
+  // Collecting preferences: details are editable until the shortlist (0004 j),
+  // and 1 submission is too few to close.
+  {
+    method: 'PATCH',
+    path: '/api/trips/:id',
+    url: (f) => `/api/trips/${f.tripId}`,
+    body: { title: 'Renamed' },
+    expected: ['401', '404 NOT_FOUND', '403 FORBIDDEN', '403 FORBIDDEN', '200', '404 NOT_FOUND'],
   },
   {
     method: 'POST',

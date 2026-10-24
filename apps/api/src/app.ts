@@ -7,6 +7,7 @@ import {
   estimateProvider,
   type Routing,
 } from '@bonvoyage/integrations/routing';
+import type { Weights } from '@bonvoyage/engine';
 import { ERROR_CODES } from '@bonvoyage/shared';
 import type { HealthOk } from '@bonvoyage/shared';
 import { toNodeHandler } from 'better-auth/node';
@@ -17,10 +18,12 @@ import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import { pinoHttp } from 'pino-http';
 import type { Auth } from './auth/auth';
+import { SCORING_WEIGHTS } from './config/scoring';
 import { AppError, errorHandler, notFoundHandler } from './http/errors';
 import { requireJson } from './http/json-only';
 import type { SessionUser } from './http/session';
 import { createApiRouter } from './modules';
+import type { RecommendationHooks } from './recommendations/service';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
 
@@ -34,6 +37,10 @@ export interface AppDeps {
   /** Lowercased administrator emails from ADMIN_EMAILS (S1-7); none by default. */
   adminEmails?: readonly string[];
   routing?: Routing;
+  /** Group-fit weights; defaults to apps/api/config/scoring.json (0004 h). */
+  scoringWeights?: Weights;
+  /** Test-only seams around the recommendation request (S2-6 staleness test). */
+  recommendationHooks?: RecommendationHooks;
 }
 
 export function createApp({
@@ -44,6 +51,8 @@ export function createApp({
   clock,
   adminEmails = [],
   routing,
+  scoringWeights = SCORING_WEIGHTS,
+  recommendationHooks,
 }: AppDeps): Express {
   const app = express();
   const appRouting =
@@ -120,7 +129,15 @@ export function createApp({
 
   app.use(
     '/api',
-    createApiRouter({ db, auth, adminEmails, routing: appRouting, ...(clock ? { clock } : {}) }),
+    createApiRouter({
+      db,
+      auth,
+      adminEmails,
+      routing: appRouting,
+      scoringWeights,
+      ...(recommendationHooks ? { recommendationHooks } : {}),
+      ...(clock ? { clock } : {}),
+    }),
   );
 
   app.use(notFoundHandler);

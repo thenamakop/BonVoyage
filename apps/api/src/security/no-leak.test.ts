@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { ENDPOINTS } from '../test/endpoint-inventory';
-import { createTestUser, createTripAs, ensureHub } from '../test/helpers';
+import { createTestUser, createTripAs, ensureCostRules, ensureHub } from '../test/helpers';
 
 // S1-6 step 3 (R10, SRS 3.4): every GET endpoint, called by every kind of
 // caller, is searched as raw text for anything private to another user.
@@ -55,6 +55,7 @@ let outsiderTripBudget: string;
 
 beforeAll(async () => {
   await ensureHub(db, 'test-hub');
+  await ensureCostRules(db);
   const make = async (key: string, name: string, min: number, max: number) => {
     const u = await createTestUser(app, name);
     await u.agent
@@ -76,6 +77,10 @@ beforeAll(async () => {
   for (const p of [asha, rohan]) {
     await p.agent.put(`/api/trips/${tripId}/preferences/me`).set(H).send(prefs(p.min, p.max));
   }
+  // S2-6: a stored run, so the recommendation and group-profile GETs carry
+  // real content (group budgets are rounded to ₹500, never a member's limit).
+  const run = await asha.agent.post(`/api/trips/${tripId}/recommendations`).set(H).send({});
+  expect(run.status, JSON.stringify(run.body)).toBe(200);
   outsiderTripBudget = '987659';
   const other = await createTripAs(outsider.agent, { budgetTotalInr: 987659, durationNights: 2 });
   const otherToken = InvitationResponse.parse(

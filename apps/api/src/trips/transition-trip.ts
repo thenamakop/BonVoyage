@@ -77,13 +77,24 @@ const ACTION_HANDLERS = (tx: Tx, tripId: string, logger: Logger) =>
     notifyMembers: deferred('notifyMembers', 'S1', logger),
     openSubmissionWindow: deferred('openSubmissionWindow', 'S1', logger),
     validateTripParameters: deferred('validateTripParameters', 'S1', logger),
-    // S2
-    computeGroupProfile: deferred('computeGroupProfile', 'S2', logger),
-    reportConflict: deferred('reportConflict', 'S2', logger),
-    filterByHardConstraints: deferred('filterByHardConstraints', 'S2', logger),
-    rankByGroupFit: deferred('rankByGroupFit', 'S2', logger),
-    saveRankedShortlist: deferred('saveRankedShortlist', 'S2', logger),
-    showEmptyShortlistDiagnostic: deferred('showEmptyShortlistDiagnostic', 'S2', logger),
+    // S2 (S2-6): these stay no-ops on purpose. The group profile is computed on
+    // read (0004 b), and the filtering, ranking and diagnostic are computed in
+    // apps/api/src/recommendations before the lock; that service stores the run
+    // and its items in beforeDecide, inside this same transaction (rule S7).
+    computeGroupProfile: deferred('computeGroupProfile', 'apps/api/src/recommendations', logger),
+    reportConflict: deferred('reportConflict', 'apps/api/src/recommendations', logger),
+    filterByHardConstraints: deferred(
+      'filterByHardConstraints',
+      'apps/api/src/recommendations',
+      logger,
+    ),
+    rankByGroupFit: deferred('rankByGroupFit', 'apps/api/src/recommendations', logger),
+    saveRankedShortlist: deferred('saveRankedShortlist', 'apps/api/src/recommendations', logger),
+    showEmptyShortlistDiagnostic: deferred(
+      'showEmptyShortlistDiagnostic',
+      'apps/api/src/recommendations',
+      logger,
+    ),
     // S3
     generateAndCostPackages: deferred('generateAndCostPackages', 'S3', logger),
     recomputeCost: deferred('recomputeCost', 'S3', logger),
@@ -109,6 +120,25 @@ const ACTION_HANDLERS = (tx: Tx, tripId: string, logger: Logger) =>
         );
     },
   }) satisfies Record<ActionName, () => Promise<unknown>>;
+
+/**
+ * Rejects an event the trip's current state cannot take, with the same 409 code
+ * transitionTrip would give, before any slow work starts (S2-6). Guards are not
+ * evaluated here; transitionTrip checks them under the lock.
+ */
+export function assertEventLegal(status: TripStatus, event: TripEvent, today: string): void {
+  const result = nextState(status, event, {
+    pendingCount: 0,
+    submittedCount: 2,
+    feasibleCount: 3,
+    alternativesLeft: 1,
+    today,
+    startDate: null,
+  });
+  if (!result.ok && result.reason !== 'GUARD_FAILED') {
+    throw new AppError(409, REASON_TO_ERROR[result.reason]!, result.message);
+  }
+}
 
 export async function transitionTrip(
   { db, logger, clock }: Deps,

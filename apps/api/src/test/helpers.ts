@@ -1,5 +1,5 @@
 import type { Db } from '@bonvoyage/db';
-import { hub, trip } from '@bonvoyage/db/schema';
+import { costRule, destination, hub, trip } from '@bonvoyage/db/schema';
 import { eq } from 'drizzle-orm';
 import type { Express } from 'express';
 import request from 'supertest';
@@ -93,4 +93,106 @@ export async function createTripAs(
  */
 export async function setTripStatus(db: Db, tripId: string, status: TripStatus) {
   await db.update(trip).set({ status }).where(eq(trip.id, tripId));
+}
+
+/** The real catalogue's car-cost inputs (packages/db/catalogue/cost-rules.json). */
+const COST_RULES: Record<string, { value: number; unit: string }> = {
+  fuel_price_inr_per_litre: { value: 102.12, unit: 'INR/litre' },
+  car_km_per_litre: { value: 15, unit: 'km/litre' },
+  toll_inr_per_km: { value: 1.6, unit: 'INR/km' },
+  persons_per_car: { value: 4, unit: 'persons' },
+  car_rental_inr_per_day: { value: 2500, unit: 'INR/day' },
+};
+
+/**
+ * Insert the five cost rules when they are missing (S2-6). Existing rows, for
+ * example from a real catalogue import, are left alone; the values match.
+ */
+export async function ensureCostRules(db: Db): Promise<void> {
+  await db
+    .insert(costRule)
+    .values(
+      Object.entries(COST_RULES).map(([key, { value, unit }]) => ({
+        key,
+        value,
+        unit,
+        collectedOn: '2026-10-12',
+        reviewStatus: 'draft' as const,
+      })),
+    )
+    .onConflictDoNothing({ target: costRule.key });
+}
+
+/** Insert a catalogue hub with real coordinates if the slug is missing (S2-6). */
+export async function ensureHubAt(
+  db: Db,
+  slug: string,
+  lat: number,
+  lng: number,
+): Promise<{ id: string; slug: string }> {
+  const existing = await db.select().from(hub).where(eq(hub.slug, slug)).limit(1);
+  if (existing[0]) return existing[0];
+  const rows = await db
+    .insert(hub)
+    .values({
+      slug,
+      name: slug,
+      state: 'Testland',
+      lat,
+      lng,
+      collectedOn: '2026-10-12',
+      reviewStatus: 'draft',
+    })
+    .returning();
+  return rows[0]!;
+}
+
+export interface FixtureDestination {
+  slug: string;
+  lat: number;
+  lng: number;
+  types?: string[];
+  activities?: string[];
+  climate?: 'cold' | 'mild' | 'warm';
+  bestMonths?: number[];
+  minNights?: number;
+  /** Null leaves the destination incomplete (no costs yet). */
+  stayBudgetInr?: number | null;
+  foodPerDayInr?: number;
+  localPerDayInr?: number;
+}
+
+/** Insert a fixture destination if the slug is missing (S2-6). Costs default to complete. */
+export async function ensureDestination(db: Db, d: FixtureDestination): Promise<string> {
+  const existing = await db
+    .select({ id: destination.id })
+    .from(destination)
+    .where(eq(destination.slug, d.slug))
+    .limit(1);
+  if (existing[0]) return existing[0].id;
+  const incomplete = d.stayBudgetInr === null;
+  const rows = await db
+    .insert(destination)
+    .values({
+      slug: d.slug,
+      name: `Name of ${d.slug}`,
+      state: 'Testland',
+      lat: d.lat,
+      lng: d.lng,
+      types: d.types ?? ['mountain'],
+      activities: d.activities ?? ['trekking'],
+      climate: d.climate ?? 'mild',
+      bestMonths: d.bestMonths ?? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      minNights: d.minNights ?? 1,
+      stayBudgetInr: incomplete ? null : (d.stayBudgetInr ?? 1500),
+      stayMidInr: incomplete ? null : 3000,
+      stayPremiumInr: incomplete ? null : 6000,
+      foodPerDayInr: incomplete ? null : (d.foodPerDayInr ?? 500),
+      localPerDayInr: incomplete ? null : (d.localPerDayInr ?? 300),
+      collectedOn: '2026-10-12',
+      reviewStatus: 'draft',
+      costReviewStatus: 'draft',
+    })
+    .returning({ id: destination.id });
+  return rows[0]!.id;
 }
