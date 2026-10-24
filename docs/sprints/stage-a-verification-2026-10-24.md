@@ -4,7 +4,7 @@ Stage A covers the 6 hubs in `hubs.csv` and the identity columns of the 44 desti
 
 **Result:** 50 of 50 rows checked and set to `verified`, `collected_on` 2026-10-24. `pnpm catalogue:check --require a` passes with 0 errors.
 
-**Who checked:** Claude (AI assistant) read each cited source page on 24 October 2026 and applied the corrections below; Maulik reviewed this report and spot-checked rows before merging (see the end). Decision 0002 is amended to record this.
+**Who checked:** Claude (AI assistant) read each cited source page on 24 October 2026 and applied the corrections below; Maulik reviewed this report, and a second, independent agent session spot-checked five rows before merging (see the end). Decision 0002 is amended to record this.
 
 ## Method
 
@@ -14,60 +14,59 @@ Stage A covers the 6 hubs in `hubs.csv` and the identity columns of the 44 desti
 - **Climate:** applied the app's own definitions shown on the preference form (cold: days mostly below 15 C; mild: 15 to 25 C; warm: above 25 C) to typical daytime highs across each destination's best months. This moved 11 hill stations from cold to mild; cold now means the snow destinations (Auli, Kanatal, Narkanda).
 - **Best months and minimum nights:** checked against the source's seasons (monsoon, peak heat, snow, park or activity seasons) and travel time from Delhi.
 
-## Changes (50)
+## Changes (49)
 
-| Row                  | Field       | Was                                         | Now                                                      | Why                                                               |
-| -------------------- | ----------- | ------------------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------- | -------------- | -------------- | ------------------------------------------------ | ------------------------------------------------------- | -------------------------------- | --- | --- | --- | --- | --------------------------------------------------------- | ----------------------------------------------- | ------------------------------- | --- | --- | ------------------------------------------------------- |
-| delhi (hub)          | lat,lng     | `28.6139,77.2090`                           | `28.61,77.23`                                            | more than 0.02 deg from the source                                |
-| noida (hub)          | lat,lng     | `28.5355,77.3910`                           | `28.57,77.32`                                            | more than 0.02 deg from the source                                |
-| jaipur (hub)         | lat,lng     | `26.9124,75.7873`                           | `26.915,75.82`                                           | more than 0.02 deg from the source                                |
-| ajmer                | activities  | `temples                                    | museums`                                                 | `temples                                                          | museums        | forts_palaces` | Taragarh and Akbari forts                        |
-| amritsar             | types       | `spiritual                                  | city`                                                    | `spiritual                                                        | heritage       | city`          | Golden Temple, Jallianwala Bagh, Gobindgarh Fort |
-| amritsar             | activities  | `temples                                    | food_trails                                              | shopping`                                                         | `temples       | museums        | food_trails                                      | shopping`                                               | Partition Museum                 |
-| amritsar             | climate     | `warm`                                      | `mild`                                                   | Oct-Mar daytime highs average about 22 C                          |
-| auli                 | source_url  | `https://en.wikipedia.org/wiki/Auli`        | `https://en.wikipedia.org/wiki/Auli,_India`              | old link is a disambiguation or redirect page                     |
-| auli                 | best_months | `11                                         | 12                                                       | 1                                                                 | 2              | 3              | 4`                                               | `11                                                     | 12                               | 1   | 2   | 3   | 4   | 5                                                         | 6`                                              | adds the May-June summer season |
-| auli                 | min_nights  | `2`                                         | `3`                                                      | about 500 km and 12+ hours from Delhi                             |
-| bharatpur            | source_url  | `https://en.wikipedia.org/wiki/Bharatpur`   | `https://en.wikipedia.org/wiki/Bharatpur,_Rajasthan`     | old link is a disambiguation or redirect page                     |
-| bharatpur            | activities  | `wildlife_safari                            | museums`                                                 | `wildlife_safari                                                  | museums        | forts_palaces` | Lohagarh Fort                                    |
-| bhimtal              | activities  | `boating                                    | trekking                                                 | yoga_wellness`                                                    | `boating       | trekking       | paragliding`                                     | source lists boating, kayaking and paragliding; no yoga |
-| bikaner              | activities  | `forts_palaces                              | museums                                                  | food_trails`                                                      | `forts_palaces | museums        | food_trails                                      | temples`                                                | Karni Mata and Bhandasar temples |
-| bir                  | source_url  | `https://en.wikipedia.org/wiki/Bir_Billing` | `https://en.wikipedia.org/wiki/Bir,_Himachal_Pradesh`    | old link is a disambiguation or redirect page                     |
-| bir                  | climate     | `cold`                                      | `mild`                                                   | about 1,500 m; season highs 15-25 C                               |
-| bir                  | best_months | `3                                          | 4                                                        | 5                                                                 | 6              | 10             | 11`                                              | `3                                                      | 4                                | 5   | 9   | 10  | 11` | paragliding seasons; flying stops before the June monsoon |
-| chail                | source_url  | `https://en.wikipedia.org/wiki/Chail`       | `https://en.wikipedia.org/wiki/Chail,_Himachal_Pradesh`  | old link is a disambiguation or redirect page                     |
-| chail                | climate     | `cold`                                      | `mild`                                                   | source: pleasant summers; season highs 15-25 C                    |
-| chakrata             | activities  | `trekking                                   | camping`                                                 | `trekking                                                         | camping        | temples`       | Lakhamandal temple                               |
-| chakrata             | climate     | `cold`                                      | `mild`                                                   | season highs 15-25 C                                              |
-| dalhousie            | source_url  | `https://en.wikipedia.org/wiki/Dalhousie`   | `https://en.wikipedia.org/wiki/Dalhousie,_India`         | old link is a disambiguation or redirect page                     |
-| dalhousie            | activities  | `trekking                                   | boating                                                  | shopping`                                                         | `trekking      | temples        | shopping`                                        | no lake boating; Chamunda Devi temple                   |
-| dalhousie            | climate     | `cold`                                      | `mild`                                                   | season highs 15-25 C                                              |
-| dehradun             | lat,lng     | `30.32,78.03`                               | `30.345,78.029`                                          | more than 0.02 deg from the source                                |
-| dehradun             | best_months | `1                                          | 2                                                        | 3                                                                 | 4              | 5              | 6                                                | 9                                                       | 10                               | 11  | 12` | `10 | 11  | 12                                                        | 1                                               | 2                               | 3   | 4`  | drops hot May-June (source: temperatures peak May-June) |
-| dhanaulti            | lat,lng     | `30.42,78.25`                               | `30.45,78.25`                                            | more than 0.02 deg from the source                                |
-| dhanaulti            | activities  | `camping                                    | trekking`                                                | `camping                                                          | trekking       | temples`       | Surkanda Devi temple                             |
-| dhanaulti            | climate     | `cold`                                      | `mild`                                                   | source: summers 20-25 C                                           |
-| dharamshala          | climate     | `cold`                                      | `mild`                                                   | about 1,450 m; source: summer up to 36 C                          |
-| jaipur (destination) | lat,lng     | `26.91,75.79`                               | `26.915,75.82`                                           | more than 0.02 deg from the source                                |
-| jim-corbett          | lat,lng     | `29.53,78.77`                               | `29.5486,78.9353`                                        | more than 0.02 deg from the source                                |
-| jim-corbett          | climate     | `mild`                                      | `warm`                                                   | Nov-Jun highs average about 29 C; summers up to 40 C              |
-| jodhpur              | lat,lng     | `26.24,73.02`                               | `26.28,73.02`                                            | more than 0.02 deg from the source                                |
-| kanatal              | activities  | `camping                                    | trekking`                                                | `camping                                                          | trekking       | temples`       | Surkanda Devi temple                             |
-| kasauli              | climate     | `cold`                                      | `mild`                                                   | source: summers rarely above 32 C                                 |
-| kasol                | climate     | `cold`                                      | `mild`                                                   | about 1,580 m; season highs 15-25 C                               |
-| kurukshetra          | lat,lng     | `29.97,76.88`                               | `29.9657,76.837`                                         | more than 0.02 deg from the source                                |
-| lansdowne            | source_url  | `https://en.wikipedia.org/wiki/Lansdowne`   | `https://en.wikipedia.org/wiki/Lansdowne,_India`         | old link is a disambiguation or redirect page                     |
-| lansdowne            | activities  | `trekking                                   | boating                                                  | camping`                                                          | `trekking      | boating        | camping                                          | museums`                                                | Garhwal Rifles regimental museum |
-| manali               | source_url  | `https://en.wikipedia.org/wiki/Manali`      | `https://en.wikipedia.org/wiki/Manali,_Himachal_Pradesh` | old link is a disambiguation or redirect page                     |
-| manali               | climate     | `cold`                                      | `mild`                                                   | season highs average about 18 C                                   |
-| mathura              | activities  | `temples                                    | museums`                                                 | `temples                                                          | museums        | food_trails`   | Mathura peda and Braj food (source)              |
-| mukteshwar           | climate     | `cold`                                      | `mild`                                                   | season highs 15-25 C                                              |
-| rishikesh            | lat,lng     | `30.09,78.27`                               | `30.1083,78.2972`                                        | more than 0.02 deg from the source                                |
-| rishikesh            | climate     | `mild`                                      | `warm`                                                   | source: hottest May-June; Feb-Dec season highs average about 29 C |
-| sariska              | lat,lng     | `27.34,76.44`                               | `27.3175,76.4369`                                        | more than 0.02 deg from the source                                |
-| shimla               | climate     | `cold`                                      | `mild`                                                   | source: summers 16-25 C; season highs average about 19 C          |
-| udaipur              | lat,lng     | `24.58,73.71`                               | `24.58,73.68`                                            | more than 0.02 deg from the source                                |
-| udaipur              | best_months | `9                                          | 10                                                       | 11                                                                | 12             | 1              | 2`                                               | `9                                                      | 10                               | 11  | 12  | 1   | 2   | 3`                                                        | source: peak season mid-September to late March |
+| Row | Field | Was | Now | Why |
+| --- | --- | --- | --- | --- |
+| delhi (hub) | lat,lng | `28.6139,77.2090` | `28.61,77.23` | more than 0.02 deg from the source |
+| noida (hub) | lat,lng | `28.5355,77.3910` | `28.57,77.32` | more than 0.02 deg from the source |
+| jaipur (hub) | lat,lng | `26.9124,75.7873` | `26.915,75.82` | more than 0.02 deg from the source |
+| ajmer | activities | `temples\|museums` | `temples\|museums\|forts_palaces` | Taragarh and Akbari forts |
+| amritsar | types | `spiritual\|city` | `spiritual\|heritage\|city` | Golden Temple, Jallianwala Bagh, Gobindgarh Fort |
+| amritsar | activities | `temples\|food_trails\|shopping` | `temples\|museums\|food_trails\|shopping` | Partition Museum |
+| amritsar | climate | `warm` | `mild` | Oct-Mar daytime highs average about 22 C |
+| auli | source_url | `https://en.wikipedia.org/wiki/Auli` | `https://en.wikipedia.org/wiki/Auli,_India` | old link is a disambiguation or redirect page |
+| auli | min_nights | `2` | `3` | Delhi to Auli is about 500 km and 17+ hours by road via Haridwar and Joshimath ([Wikivoyage](https://en.wikivoyage.org/wiki/Auli)) |
+| bharatpur | source_url | `https://en.wikipedia.org/wiki/Bharatpur` | `https://en.wikipedia.org/wiki/Bharatpur,_Rajasthan` | old link is a disambiguation or redirect page |
+| bharatpur | activities | `wildlife_safari\|museums` | `wildlife_safari\|museums\|forts_palaces` | Lohagarh Fort |
+| bhimtal | activities | `boating\|trekking\|yoga_wellness` | `boating\|trekking\|paragliding` | source lists boating, kayaking and paragliding; no yoga |
+| bikaner | activities | `forts_palaces\|museums\|food_trails` | `forts_palaces\|museums\|food_trails\|temples` | Karni Mata and Bhandasar temples |
+| bir | source_url | `https://en.wikipedia.org/wiki/Bir_Billing` | `https://en.wikipedia.org/wiki/Bir,_Himachal_Pradesh` | old link is a disambiguation or redirect page |
+| bir | climate | `cold` | `mild` | about 1,500 m; season highs 15-25 C |
+| bir | best_months | `3\|4\|5\|6\|10\|11` | `3\|4\|5\|9\|10\|11` | paragliding seasons; flying stops before the June monsoon |
+| chail | source_url | `https://en.wikipedia.org/wiki/Chail` | `https://en.wikipedia.org/wiki/Chail,_Himachal_Pradesh` | old link is a disambiguation or redirect page |
+| chail | climate | `cold` | `mild` | source: pleasant summers; season highs 15-25 C |
+| chakrata | activities | `trekking\|camping` | `trekking\|camping\|temples` | Lakhamandal temple |
+| chakrata | climate | `cold` | `mild` | season highs 15-25 C |
+| dalhousie | source_url | `https://en.wikipedia.org/wiki/Dalhousie` | `https://en.wikipedia.org/wiki/Dalhousie,_India` | old link is a disambiguation or redirect page |
+| dalhousie | activities | `trekking\|boating\|shopping` | `trekking\|temples\|shopping` | no lake boating; Chamunda Devi temple |
+| dalhousie | climate | `cold` | `mild` | season highs 15-25 C |
+| dehradun | lat,lng | `30.32,78.03` | `30.345,78.029` | more than 0.02 deg from the source |
+| dehradun | best_months | `1\|2\|3\|4\|5\|6\|9\|10\|11\|12` | `10\|11\|12\|1\|2\|3\|4` | drops hot May-June (source: temperatures peak May-June) |
+| dhanaulti | lat,lng | `30.42,78.25` | `30.45,78.25` | more than 0.02 deg from the source |
+| dhanaulti | activities | `camping\|trekking` | `camping\|trekking\|temples` | Surkanda Devi temple |
+| dhanaulti | climate | `cold` | `mild` | source: summers 20-25 C |
+| dharamshala | climate | `cold` | `mild` | about 1,450 m; source: summer up to 36 C |
+| jaipur (destination) | lat,lng | `26.91,75.79` | `26.915,75.82` | more than 0.02 deg from the source |
+| jim-corbett | lat,lng | `29.53,78.77` | `29.5486,78.9353` | more than 0.02 deg from the source |
+| jim-corbett | climate | `mild` | `warm` | nearest IMD station [Pantnagar](https://en.wikipedia.org/wiki/Pantnagar) (Wikipedia climate table, 1991-2020): Nov-Jun mean daily max 28.8 C; Wikipedia: summers up to 40 C |
+| jodhpur | lat,lng | `26.24,73.02` | `26.28,73.02` | more than 0.02 deg from the source |
+| kanatal | activities | `camping\|trekking` | `camping\|trekking\|temples` | Surkanda Devi temple |
+| kasauli | climate | `cold` | `mild` | source: summers rarely above 32 C |
+| kasol | climate | `cold` | `mild` | about 1,580 m; season highs 15-25 C |
+| kurukshetra | lat,lng | `29.97,76.88` | `29.9657,76.837` | more than 0.02 deg from the source |
+| lansdowne | source_url | `https://en.wikipedia.org/wiki/Lansdowne` | `https://en.wikipedia.org/wiki/Lansdowne,_India` | old link is a disambiguation or redirect page |
+| lansdowne | activities | `trekking\|boating\|camping` | `trekking\|boating\|camping\|museums` | Garhwal Rifles regimental museum |
+| manali | source_url | `https://en.wikipedia.org/wiki/Manali` | `https://en.wikipedia.org/wiki/Manali,_Himachal_Pradesh` | old link is a disambiguation or redirect page |
+| manali | climate | `cold` | `mild` | season highs average about 18 C |
+| mathura | activities | `temples\|museums` | `temples\|museums\|food_trails` | Mathura peda and Braj food (source) |
+| mukteshwar | climate | `cold` | `mild` | season highs 15-25 C |
+| rishikesh | lat,lng | `30.09,78.27` | `30.1083,78.2972` | more than 0.02 deg from the source |
+| rishikesh | climate | `mild` | `warm` | Wikipedia climate table: hottest May-June (daily highs May 39 C, Jun 38 C); Feb-Dec season highs average about 29 C |
+| sariska | lat,lng | `27.34,76.44` | `27.3175,76.4369` | more than 0.02 deg from the source |
+| shimla | climate | `cold` | `mild` | source: summers 16-25 C; season highs average about 19 C |
+| udaipur | lat,lng | `24.58,73.71` | `24.58,73.68` | more than 0.02 deg from the source |
+| udaipur | best_months | `9\|10\|11\|12\|1\|2` | `9\|10\|11\|12\|1\|2\|3` | source: peak season mid-September to late March |
 
 ## Every row
 
@@ -84,7 +83,7 @@ Stage A covers the 6 hubs in `hubs.csv` and the identity columns of the 44 desti
 | destinations | almora      | 29.6, 79.66      | [Almora](https://en.wikipedia.org/wiki/Almora)                                       | checked, unchanged                             |
 | destinations | alwar       | 27.56, 76.63     | [Alwar](https://en.wikipedia.org/wiki/Alwar)                                         | checked, unchanged                             |
 | destinations | amritsar    | 31.63, 74.87     | [Amritsar](https://en.wikipedia.org/wiki/Amritsar)                                   | corrected: types, activities, climate          |
-| destinations | auli        | 30.53, 79.57     | [Auli,\_India](https://en.wikipedia.org/wiki/Auli,_India)                            | corrected: source_url, best_months, min_nights |
+| destinations | auli        | 30.53, 79.57     | [Auli,\_India](https://en.wikipedia.org/wiki/Auli,_India)                            | corrected: source_url, min_nights |
 | destinations | bharatpur   | 27.22, 77.49     | [Bharatpur,\_Rajasthan](https://en.wikipedia.org/wiki/Bharatpur,_Rajasthan)          | corrected: source_url, activities              |
 | destinations | bhimtal     | 29.35, 79.56     | [Bhimtal](https://en.wikipedia.org/wiki/Bhimtal)                                     | corrected: activities                          |
 | destinations | bikaner     | 28.02, 73.31     | [Bikaner](https://en.wikipedia.org/wiki/Bikaner)                                     | corrected: activities                          |
@@ -126,4 +125,4 @@ Stage A covers the 6 hubs in `hubs.csv` and the identity columns of the 44 desti
 
 ## Spot check before merging
 
-Maulik re-checked these rows against their sources before the merge: _(fill in, for example shimla, rishikesh, jim-corbett, auli, delhi)_.
+Spot check (24 October 2026), by a second, independent agent session: delhi, shimla and rishikesh hold against Wikipedia; jim-corbett holds with the Pantnagar IMD table; auli's link, climate and minimum nights hold (Wikivoyage), and its best_months change was not supported by a readable source and was reverted. Maulik reviewed the report.

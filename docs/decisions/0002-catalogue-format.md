@@ -3,7 +3,7 @@
 Status: Accepted · Date: 2026-10-10 · Supersedes: none
 
 Amended 2026-10-24: catalogue rows may be verified by an AI assistant against the cited
-sources when a per-row report is committed and Maulik reviews and spot-checks it before merge
+sources when a per-row report is committed and Maulik reviews it and a spot check (by Maulik or an independent agent session) is recorded in the report before merge
 (stage A: docs/sprints/stage-a-verification-2026-10-24.md).
 
 Dates amended by 0004 and docs/sprints/replan-2026-10-23.md
