@@ -7,7 +7,7 @@ import {
   tripMember,
   tripTransition,
 } from '@bonvoyage/db/schema';
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, eq, inArray, sql } from 'drizzle-orm';
 import { resolve } from 'node:path';
 import { createRouting, curatedProvider, estimateProvider } from '@bonvoyage/integrations/routing';
 import { pino } from 'pino';
@@ -26,6 +26,7 @@ import {
   TIGHT_BUDGET_MARGIN,
 } from './demo-trips';
 import { runSeed } from './run-seed';
+import { createHillsCopies } from './timing-copies';
 
 // S0-5: the seed is idempotent and leaves the expected trip shape.
 // S1-6: it follows the state machine (T1, T2, then an I1 per submission).
@@ -181,5 +182,30 @@ describe('Sprint 2 demo trips', () => {
       blocking: true,
     });
     expect(DATE_CLASH_GAP_DAYS).toBeGreaterThanOrEqual(5);
+  });
+});
+
+// S2-8: the R15 timing script's copies reach ready_for_recommendation through
+// the same seed helper, each under its own title.
+describe('timing copies of the hills demo', () => {
+  it('creates ready copies with distinct titles', async () => {
+    const copies = await createHillsCopies(process.env.DATABASE_URL ?? '', 2, 'test');
+    try {
+      expect(new Set(copies.tripIds).size).toBe(2);
+      const rows = await db
+        .select({ title: trip.title, status: trip.status })
+        .from(trip)
+        .where(inArray(trip.id, copies.tripIds));
+      expect(rows.map((r) => r.status)).toEqual([
+        'ready_for_recommendation',
+        'ready_for_recommendation',
+      ]);
+      expect(rows.map((r) => r.title).sort()).toEqual([
+        'Hills shortlist demo (timing test-1)',
+        'Hills shortlist demo (timing test-2)',
+      ]);
+    } finally {
+      await copies.close();
+    }
   });
 });
