@@ -41,6 +41,9 @@ function stubFetch(trip: TripDetail, meId = trip.myRole === 'organiser' ? 'u1' :
     if (url === `/api/trips/${TRIP_ID}/activity`) {
       return Promise.resolve(Response.json({ items: [] }));
     }
+    if (url === `/api/trips/${TRIP_ID}/group-profile`) {
+      return Promise.resolve(Response.json({ ready: false, memberCount: 0 }));
+    }
     if (url === `/api/trips/${TRIP_ID}/invitations/active`) {
       return Promise.resolve(
         Response.json({

@@ -21,6 +21,10 @@ export function TripParameters({ trip }: { trip: TripDetail }) {
     <Card>
       <h2 className="text-sm font-semibold text-slate-900">Trip parameters</h2>
       <dl className="mt-2 space-y-2 text-sm">
+        {trip.selectedDestination ? (
+          // T9: the organiser's choice from the shortlist.
+          <Row label="Destination">{formatHub(trip.selectedDestination)}</Row>
+        ) : null}
         <Row label="Starting city">{formatHub(trip.originHub)}</Row>
         <Row label="Nights">
           {n} {n === 1 ? 'night' : 'nights'}

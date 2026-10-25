@@ -12,6 +12,7 @@ import { statusTone } from '../../features/trips/status-tone';
 import { ApiError } from '../../lib/api';
 import { useDocumentTitle } from '../../lib/use-document-title';
 import { useNow } from '../../lib/use-now';
+import { GroupProfileCard } from './dashboard/GroupProfileCard';
 import { LiveFooter, StatusAnnouncer } from './dashboard/LiveStatus';
 import { NextStep } from './dashboard/NextStep';
 import { OrganiserActions } from './dashboard/OrganiserActions';
@@ -88,15 +89,20 @@ export function TripPage() {
           <div className="order-2 lg:order-none">
             <ProgressCard trip={t} />
           </div>
-          <div className="order-5 lg:order-none">
+          {t.status !== 'draft' && t.status !== 'cancelled' ? (
+            <div className="order-3 lg:order-none">
+              <GroupProfileCard trip={t} />
+            </div>
+          ) : null}
+          <div className="order-6 lg:order-none">
             <RecentActivity tripId={t.id} lastActivityAt={t.lastActivityAt} now={now} />
           </div>
         </div>
         <div className="contents lg:flex lg:flex-col lg:gap-4">
-          <div className="order-3 lg:order-none">
+          <div className="order-4 lg:order-none">
             <Roster trip={t} />
           </div>
-          <div className="order-4 empty:hidden lg:order-none">
+          <div className="order-5 empty:hidden lg:order-none">
             <OrganiserActions trip={t} />
           </div>
         </div>

@@ -1,6 +1,8 @@
 import type { TripDetail } from '@bonvoyage/shared';
 import type { ReactNode } from 'react';
 import { ButtonLink } from '../../../components/ui/Button';
+import { useLatestRecommendation } from '../../../features/recommendations/api';
+import { lastRoundText } from '../../../features/recommendations/wording';
 import { waitingFor } from './wording';
 
 // The next-step callout, worded for this viewer (wireframe 06).
@@ -18,6 +20,14 @@ function Callout({ text, children }: { text: string; children?: ReactNode }) {
 }
 
 export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: string | undefined }) {
+  // After T4 or T6>T8 the dashboard says what the last round found; F3 needs
+  // the run's bindingConstraint, which TripDetail's summary does not carry.
+  const afterDiagnostic =
+    trip.status === 'collecting_preferences' && trip.latestRecommendation?.kind === 'diagnostic';
+  const latest = useLatestRecommendation(trip.id, trip.latestRecommendation, {
+    enabled: afterDiagnostic,
+  });
+  const diagnostic = afterDiagnostic ? latest.data?.run : null;
   const prefs = trip.availableActions.find((a) => a.action === 'editPreferences');
   const me = trip.members.find((m) => m.userId === myUserId);
   const prefsLink = (label: string) =>
@@ -27,8 +37,21 @@ export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: strin
       </ButtonLink>
     ) : null;
 
+  const shortlistLink = (label: string) => (
+    <ButtonLink to={`/trips/${trip.id}/shortlist`} variant="secondary" fullWidth>
+      {label}
+    </ButtonLink>
+  );
+  const organiserName = trip.organiser.name;
+  const organiser = trip.myRole === 'organiser';
+
   if (trip.myStatus === 'excluded') {
-    return <Callout text="You were removed from this trip, so you can only view it." />;
+    const view = trip.availableActions.some((a) => a.action === 'viewRecommendations');
+    return (
+      <Callout text="You were removed from this trip, so you can only view it.">
+        {view ? shortlistLink('See the recommendations') : null}
+      </Callout>
+    );
   }
   if (trip.status === 'draft') {
     return trip.myRole === 'organiser' ? (
@@ -38,6 +61,14 @@ export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: strin
     );
   }
   if (trip.status === 'collecting_preferences') {
+    if (diagnostic) {
+      return (
+        <Callout text={lastRoundText(diagnostic)}>
+          {shortlistLink('See why')}
+          {prefsLink('Edit your preferences')}
+        </Callout>
+      );
+    }
     if (!me?.submitted) {
       return (
         <Callout text="Fill in your preferences.">{prefsLink('Fill in your preferences')}</Callout>
@@ -50,9 +81,35 @@ export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: strin
   }
   if (trip.status === 'ready_for_recommendation') {
     return (
-      <Callout text="Everyone is in. Recommendations arrive in the next release.">
+      <Callout
+        text={
+          organiser
+            ? 'Get recommendations when you are ready.'
+            : `Waiting for ${organiserName} to get recommendations.`
+        }
+      >
         {prefsLink('Edit your preferences')}
       </Callout>
+    );
+  }
+  if (trip.status === 'shortlisted') {
+    return (
+      <Callout
+        text={
+          organiser
+            ? 'Choose a destination from the shortlist.'
+            : `Waiting for ${organiserName} to choose a destination.`
+        }
+      >
+        {shortlistLink('See the shortlist')}
+      </Callout>
+    );
+  }
+  if (trip.status === 'packages_proposed' && trip.selectedDestination) {
+    return (
+      <Callout
+        text={`${trip.selectedDestination.name} chosen. Packages arrive in the next release.`}
+      />
     );
   }
   if (trip.status === 'cancelled') return <Callout text="This trip was cancelled." />;

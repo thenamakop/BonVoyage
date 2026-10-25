@@ -178,7 +178,9 @@ export const TRIP_STATUS_LABELS: Record<TripStatusType, { label: string; explana
   },
   packages_proposed: {
     label: 'Packages proposed',
-    explanation: 'Costed packages are ready for the group to compare and decide on.',
+    // T9 reaches this state before Sprint 3 builds packages (R8); restore the
+    // "costed packages are ready" wording when they ship.
+    explanation: 'The destination is chosen; packages come next.',
   },
   package_selected: {
     label: 'Package selected',
