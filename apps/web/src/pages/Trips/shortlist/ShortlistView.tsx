@@ -1,0 +1,51 @@
+import { useState } from 'react';
+import type { RecommendationItem, RecommendationRun, TripDetail } from '@bonvoyage/shared';
+import { Alert } from '../../../components/ui/Alert';
+import { Button } from '../../../components/ui/Button';
+import { DestinationCard } from './DestinationCard';
+
+// Wireframe 07 (R6, R7): every feasible destination is stored ranked; the page
+// shows five, then "Show all" (0004 m).
+
+const FIRST = 5;
+
+export function ShortlistView({
+  trip,
+  run,
+  items,
+}: {
+  trip: TripDetail;
+  run: RecommendationRun;
+  items: RecommendationItem[];
+}) {
+  const [all, setAll] = useState(false);
+  const canChoose = trip.availableActions.some(
+    (a) => a.action === 'chooseDestination' && a.enabled,
+  );
+  const shown = all ? items : items.slice(0, FIRST);
+  return (
+    <div className="space-y-4">
+      {run.weakMatch ? (
+        // 0004 g: types are soft preferences, so a weak match is still a shortlist.
+        <Alert tone="info">
+          These are the closest options; none match the types the group asked for well.
+        </Alert>
+      ) : null}
+      <ol className="space-y-3" aria-label="Ranked destinations">
+        {shown.map((item) => (
+          <li key={item.destination.slug}>
+            <DestinationCard item={item} tripId={trip.id} canChoose={canChoose} />
+          </li>
+        ))}
+      </ol>
+      {!all && items.length > FIRST ? (
+        <Button variant="secondary" onClick={() => setAll(true)}>
+          Show all {items.length}
+        </Button>
+      ) : null}
+      <p role="status" className="sr-only">
+        {all ? `Showing all ${items.length} destinations` : ''}
+      </p>
+    </div>
+  );
+}

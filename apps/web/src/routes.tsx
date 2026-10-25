@@ -14,6 +14,7 @@ import { TripEditPage } from './pages/Trips/TripEditPage';
 import { TripNewPage } from './pages/Trips/TripNewPage';
 import { TripPage } from './pages/Trips/TripPage';
 import { TripsPage } from './pages/Trips/TripsPage';
+import { ShortlistPage } from './pages/Trips/shortlist/ShortlistPage';
 
 export const routes: RouteObject[] = [
   {
@@ -32,6 +33,7 @@ export const routes: RouteObject[] = [
           { path: '/trips/:id', element: <TripPage /> },
           { path: '/trips/:id/edit', element: <TripEditPage /> },
           { path: '/trips/:id/preferences', element: <PreferencesPage /> },
+          { path: '/trips/:id/shortlist', element: <ShortlistPage /> },
           { path: '/me', element: <ProfilePage /> },
           {
             element: <RequireAdmin />,
