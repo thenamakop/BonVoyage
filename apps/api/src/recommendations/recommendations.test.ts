@@ -184,6 +184,8 @@ describe('POST /api/trips/:id/recommendations', () => {
       diagnostic: null,
       weights: { alpha: 0.5, beta: 0.3, gamma: 0.2 },
     });
+    // 0004 e: a shortlist run still names destinations left out for missing costs.
+    expect(body.run!.incomplete).toContain('rec-incomplete');
     expect(body.items.map((i) => i.destination.slug).sort()).toEqual(['rec-a', 'rec-b', 'rec-c']);
     const gfs = body.items.map((i) => i.gfs);
     expect(gfs).toEqual([...gfs].sort((a, b) => b - a));
@@ -241,6 +243,7 @@ describe('POST /api/trips/:id/recommendations', () => {
     expect(f1).toMatchObject({ newRadiusKm: Math.ceil(roadKm('rec-b') / 10) * 10 });
     expect(f1!.unlocks).toContain('rec-b');
     expect(diagnostic.incomplete).toContain('rec-incomplete');
+    expect(body.run!.incomplete).toEqual(diagnostic.incomplete);
     expect((await tripOf(members[0]!, tripId)).status).toBe('collecting_preferences');
   });
 
@@ -327,6 +330,33 @@ describe('POST /api/trips/:id/recommendations', () => {
     expect((again.body as ErrorEnvelope).error.code).toBe('ILLEGAL_TRANSITION');
   });
 
+  it('losing a race to another run gives the state machine 409 and stores nothing', async () => {
+    const { tripId, members } = await readyTrip([prefs(), prefs()]);
+    const organiser = members[0]!;
+    // The outer request computes, then a second request runs to completion before
+    // the outer one takes the trip lock.
+    let started = false;
+    let inner: Awaited<ReturnType<typeof recommend>> | undefined;
+    hooks.afterCompute = async () => {
+      if (started) return;
+      started = true;
+      inner = await recommend(organiser, tripId);
+    };
+    try {
+      const outer = await recommend(organiser, tripId);
+      expect(inner?.status).toBe(200);
+      expect(outer.status).toBe(409);
+      expect((outer.body as ErrorEnvelope).error.code).toBe('ILLEGAL_TRANSITION');
+    } finally {
+      delete hooks.afterCompute;
+    }
+    const runs = await db
+      .select()
+      .from(recommendationRun)
+      .where(eq(recommendationRun.tripId, tripId));
+    expect(runs).toHaveLength(1);
+  });
+
   it('groups of 2 get no score range (the range would reveal the other score)', async () => {
     const { tripId, members } = await readyTrip([prefs(), prefs()]);
     const body = RequestRecommendationsResponse.parse((await recommend(members[0]!, tripId)).body);
@@ -337,40 +367,10 @@ describe('POST /api/trips/:id/recommendations', () => {
   });
 });
 
-describe('privacy of recommendation responses (rule S4)', () => {
-  it("A's responses hold none of the values only B wants; group lists count 2 or more", async () => {
-    const { tripId, members } = await readyTrip([
-      prefs({ destinationTypes: ['mountain', 'adventure'], activities: ['trekking', 'rafting'] }),
-      prefs({ destinationTypes: ['mountain', 'lake'], activities: ['trekking', 'boating'] }),
-    ]);
-    const [a, b] = members as [Member, Member];
-    expect((await recommend(a, tripId)).status).toBe(200);
-    for (const path of ['recommendations/latest', 'group-profile']) {
-      const asA = await a.agent.get(`/api/trips/${tripId}/${path}`).set(H);
-      for (const onlyB of ['boating', 'lake']) {
-        expect(asA.text, `${path} leaked ${onlyB}`).not.toContain(onlyB);
-      }
-      const asB = await b.agent.get(`/api/trips/${tripId}/${path}`).set(H);
-      for (const onlyA of ['rafting', 'adventure']) {
-        expect(asB.text, `${path} leaked ${onlyA}`).not.toContain(onlyA);
-      }
-    }
-    const body = await latest(a, tripId);
-    for (const item of body.items) {
-      for (const v of [...item.group.sharedTypes, ...item.group.sharedActivities]) {
-        expect(v.count).toBeGreaterThanOrEqual(2);
-      }
-    }
-    const profile = body.run!.groupProfile;
-    for (const v of [...profile.typeVotes, ...profile.activityVotes, ...profile.climateVotes]) {
-      expect(v.count).toBeGreaterThanOrEqual(2);
-    }
-    expect(profile.otherInterestCount).toBe(4);
-  });
-});
+// The privacy of these responses (rule S4) is tested in ../security/no-leak.test.ts.
 
 describe('GET /api/trips/:id/group-profile', () => {
-  it('not ready with one submission; ready with two, budgets rounded to ₹500', async () => {
+  it('not ready with one submission; ready with two, member budgets rounded inwards to ₹500', async () => {
     const organiser = await createTestUser(app, 'Profile Organiser');
     const member = await createTestUser(app, 'Profile Member');
     const { id: tripId } = await createTripAs(organiser.agent, { originHubSlug: HUB.slug });
@@ -399,11 +399,42 @@ describe('GET /api/trips/:id/group-profile', () => {
       memberCount: 2,
       commonWindow: { start: '2026-11-14', end: '2026-11-16', days: 3 },
       windowFits: true,
-      budgetBand: { minInr: 12500, maxInr: 25500, overlaps: true },
-      perPersonCapInr: 25500,
+      // Minimum up, maximum and caps down: never a cap above the real one.
+      budgetBand: { minInr: 12500, maxInr: 25000, overlaps: true },
+      perPersonCapInr: 25000,
+      // The trip budget (₹20,000) sets the cap; members already see it, so it stays exact.
+      groupCapInr: 20000,
       conflicts: [],
     });
     expect(JSON.stringify(after)).not.toMatch(/12340|30120|25260/);
+
+    // A band narrower than one step would round to min > max: it is shown closed.
+    await member.agent
+      .put(`/api/trips/${tripId}/preferences/me`)
+      .set(H)
+      .send(prefs({ budgetMinInr: 9000, budgetMaxInr: 12400 }));
+    const narrow = GroupProfileResponse.parse(
+      (await organiser.agent.get(`/api/trips/${tripId}/group-profile`).set(H)).body,
+    );
+    expect(narrow).toMatchObject({
+      budgetBand: { minInr: 12000, maxInr: 12000, overlaps: true },
+      perPersonCapInr: 12000,
+      groupCapInr: 20000,
+    });
+  });
+
+  it('a cap set by members is n times the rounded-down per-person cap', async () => {
+    const { tripId, members } = await readyTrip(
+      [
+        prefs({ budgetMinInr: 1000, budgetMaxInr: 9001 }),
+        prefs({ budgetMinInr: 2000, budgetMaxInr: 4250 }),
+      ],
+      { budgetTotalInr: 120000 },
+    );
+    const profile = GroupProfileResponse.parse(
+      (await members[0]!.agent.get(`/api/trips/${tripId}/group-profile`).set(H)).body,
+    );
+    expect(profile).toMatchObject({ perPersonCapInr: 4000, groupCapInr: 8000 });
   });
 });
 

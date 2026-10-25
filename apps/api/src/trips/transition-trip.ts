@@ -136,6 +136,7 @@ export function assertEventLegal(status: TripStatus, event: TripEvent, today: st
     startDate: null,
   });
   if (!result.ok && result.reason !== 'GUARD_FAILED') {
+    // Safe: REASON_TO_ERROR has an entry for every reason nextState returns.
     throw new AppError(409, REASON_TO_ERROR[result.reason]!, result.message);
   }
 }

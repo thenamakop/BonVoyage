@@ -71,6 +71,16 @@ const failure = (
   actual: number,
   relative = actual / 10,
 ) => ({ id, limit: 0, actual, relaxation: actual, relative, unit: 'km' as const });
+// F2 as evaluateCandidate builds it: limit = the destination's minimum nights,
+// actual = the trip's nights.
+const f2 = (minNights: number, tripNights = 2) => ({
+  id: 'F2' as const,
+  limit: minNights,
+  actual: tripNights,
+  relaxation: minNights - tripNights,
+  relative: (minNights - tripNights) / tripNights,
+  unit: 'nights' as const,
+});
 
 const profile = (blocking: boolean): DiagnosticInput['profile'] => ({
   conflicts: blocking ? [{ code: 'NO_COMMON_WINDOW' as const, blocking: true }] : [],
@@ -289,14 +299,21 @@ describe('buildDiagnostic', () => {
   });
 
   it('suggests new nights but drops F2 when it would break the window (F3)', () => {
-    const fits = buildDiagnostic(diagnosticInput([evaluation('long-stay', [failure('F2', 3)])]));
+    const fits = buildDiagnostic(diagnosticInput([evaluation('long-stay', [f2(3)])]));
     expect(fits.suggestions).toEqual([{ constraint: 'F2', newNights: 3, unlocks: ['long-stay'] }]);
     const tooLong = buildDiagnostic(
-      diagnosticInput([evaluation('long-stay', [failure('F2', 6)])], {
+      diagnosticInput([evaluation('long-stay', [f2(6)])], {
         ctx: ctx({ commonWindow: { start: '2026-11-10', end: '2026-11-15' } }),
       }),
     );
     expect(tooLong.suggestions).toEqual([]);
+  });
+
+  it('suggests the smallest minimum stay, not the current nights, and unlocks only those', () => {
+    const result = buildDiagnostic(
+      diagnosticInput([evaluation('three', [f2(3)]), evaluation('four', [f2(4)])]),
+    );
+    expect(result.suggestions).toEqual([{ constraint: 'F2', newNights: 3, unlocks: ['three'] }]);
   });
 
   it('suggests the smallest season shift that unlocks a near miss', () => {

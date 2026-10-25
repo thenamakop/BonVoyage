@@ -38,14 +38,16 @@ function buildSuggestions(
         unlocks: slugs(misses.filter((e) => failureOf(e).actual <= newRadiusKm)),
       });
     } else if (id === 'F2') {
-      const newNights = Math.min(...actuals);
+      // An F2 failure's limit is the destination's minimum nights and its actual is
+      // the trip's current nights, so the stay to suggest comes from the limits.
+      const newNights = Math.min(...misses.map((e) => failureOf(e).limit));
       // Clarification of section 6: drop the suggestion when the longer stay would
       // exceed the common window and break F3.
       if (newNights + 1 <= windowDays(ctx.commonWindow.start, ctx.commonWindow.end)) {
         out.push({
           constraint: 'F2',
           newNights,
-          unlocks: slugs(misses.filter((e) => failureOf(e).actual <= newNights)),
+          unlocks: slugs(misses.filter((e) => failureOf(e).limit <= newNights)),
         });
       }
     } else if (id === 'F4') {

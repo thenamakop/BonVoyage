@@ -11,6 +11,7 @@ import {
   type CostedDestination,
   type DestinationInput,
   type Evaluation,
+  type Failure,
   type FeasibilityContext,
   type GroupProfile,
   type GroupSummary,
@@ -89,15 +90,25 @@ interface RequestDeps extends Deps {
 const SHORTLIST_SIZE = 3;
 /** 0004 g: below this best mean the page says the match is weak. */
 const WEAK_MATCH_MEAN = 0.25;
-/** Group budget figures are rounded to this many rupees (0004 i). */
+/**
+ * Group budget figures that come from members' limits are rounded to this many
+ * rupees (0004 i), maxima and caps down, minima up, so a response never carries
+ * a member's exact limit and never shows a cap above the real one.
+ */
 const GROUP_BUDGET_STEP = 500;
 /** Score ranges are shown only for groups at least this large. */
 const MIN_MEMBERS_FOR_RANGE = 3;
 
 // ---------------------------------------------------------------------------
 // Stored shapes. The run's `diagnostic` jsonb column holds the whole run
-// document (profile, member count, weak-match flag and, for diagnostic runs,
-// the diagnostic itself); each item's `reasons` holds per-member explanations.
+// document: the inputs the run was computed from (the group profile snapshot,
+// member count, whose cap bound), the weak-match flag, the incomplete
+// destinations and, for diagnostic runs, the diagnostic itself. The snapshot
+// keeps a run auditable; it is never returned unrounded (views below), and
+// GET group-profile still computes the live profile on read (0004 b). Each
+// item's `reasons` holds per-member explanations.
+
+type CapSource = ReturnType<typeof capSource>;
 
 interface StoredEvaluation {
   slug: string;
@@ -110,6 +121,10 @@ interface RunDocument {
   memberCount: number;
   weakMatch: boolean;
   groupProfile: GroupProfile;
+  /** Whose limit set the group cap at run time (0004 c). */
+  capSource: CapSource;
+  /** 0004 e: active destinations left out for missing costs, on every run. */
+  incomplete: string[];
   diagnostic: {
     feasible: string[];
     nearMisses: StoredEvaluation[];
@@ -186,27 +201,42 @@ async function loadMembers(db: Db, tripId: string) {
 // ---------------------------------------------------------------------------
 // Group-facing views (0004 i).
 
-const roundToStep = (inr: number) => Math.round(inr / GROUP_BUDGET_STEP) * GROUP_BUDGET_STEP;
+const floorStep = (inr: number) => Math.floor(inr / GROUP_BUDGET_STEP) * GROUP_BUDGET_STEP;
+const ceilStep = (inr: number) => Math.ceil(inr / GROUP_BUDGET_STEP) * GROUP_BUDGET_STEP;
 const score10 = (score: number) => Math.round(score * 100) / 10;
 
-export function groupProfileView(profile: GroupProfile): GroupProfileReady {
+/**
+ * The group cap as the group may see it: the trip budget is shared with every
+ * member, so a trip-sourced cap stays exact; a cap set by members' maxima is
+ * n times the per-person cap rounded down.
+ */
+function shownGroupCap(profile: GroupProfile, source: CapSource): number {
+  return source === 'trip'
+    ? profile.groupCapInr
+    : profile.memberCount * floorStep(profile.perPersonCapInr);
+}
+
+export function groupProfileView(profile: GroupProfile, source: CapSource): GroupProfileReady {
   const shared = <T extends string>(votes: { value: T; count: number }[]) =>
     votes.filter((v) => v.count >= 2);
   const singles = [...profile.typeVotes, ...profile.activityVotes, ...profile.climateVotes].filter(
     (v) => v.count === 1,
   ).length;
+  const minInr = ceilStep(profile.budgetBand.minInr);
+  const maxInr = floorStep(profile.budgetBand.maxInr);
   return {
     ready: true,
     memberCount: profile.memberCount,
     commonWindow: profile.commonWindow,
     windowFits: profile.windowFits,
     budgetBand: {
-      minInr: roundToStep(profile.budgetBand.minInr),
-      maxInr: roundToStep(profile.budgetBand.maxInr),
+      // A band narrower than one step would round to min > max; show it closed.
+      minInr: profile.budgetBand.overlaps ? Math.min(minInr, maxInr) : minInr,
+      maxInr,
       overlaps: profile.budgetBand.overlaps,
     },
-    perPersonCapInr: roundToStep(profile.perPersonCapInr),
-    groupCapInr: roundToStep(profile.groupCapInr),
+    perPersonCapInr: floorStep(profile.perPersonCapInr),
+    groupCapInr: shownGroupCap(profile, source),
     typeVotes: shared(profile.typeVotes),
     activityVotes: shared(profile.activityVotes),
     climateVotes: shared(profile.climateVotes),
@@ -215,18 +245,42 @@ export function groupProfileView(profile: GroupProfile): GroupProfileReady {
   };
 }
 
+/**
+ * F5 compares the estimate with the group cap. When members' maxima set the
+ * cap, the exact limit is n times the lowest member maximum, so the view
+ * replaces it with the rounded cap the profile shows and recomputes the gap.
+ */
+function failureView(failure: Failure, source: CapSource, shownCapInr: number): Failure {
+  if (failure.id !== 'F5' || source === 'trip') return failure;
+  const relaxation = failure.actual - shownCapInr;
+  return {
+    ...failure,
+    limit: shownCapInr,
+    relaxation,
+    relative: shownCapInr > 0 ? relaxation / shownCapInr : 1,
+  };
+}
+
+/** Runs stored before capSource and incomplete were added fall back safely. */
+function sourceOf(doc: RunDocument): CapSource {
+  if (doc.capSource) return doc.capSource;
+  const p = doc.groupProfile;
+  return p.groupCapInr < p.memberCount * p.perPersonCapInr ? 'trip' : 'members';
+}
+
 function toRunView(run: RunRow, doc: RunDocument): RecommendationRun {
+  const source = sourceOf(doc);
+  const shownCap = shownGroupCap(doc.groupProfile, source);
+  const evaluationView = (e: StoredEvaluation) => ({
+    ...e,
+    name: doc.names[e.slug] ?? e.slug,
+    failures: e.failures.map((f) => failureView(f, source, shownCap)),
+  });
   const diagnostic = doc.diagnostic
     ? {
         feasible: doc.diagnostic.feasible,
-        nearMisses: doc.diagnostic.nearMisses.map((e) => ({
-          ...e,
-          name: doc.names[e.slug] ?? e.slug,
-        })),
-        alternatives: doc.diagnostic.alternatives.map((e) => ({
-          ...e,
-          name: doc.names[e.slug] ?? e.slug,
-        })),
+        nearMisses: doc.diagnostic.nearMisses.map(evaluationView),
+        alternatives: doc.diagnostic.alternatives.map(evaluationView),
         suggestions: doc.diagnostic.suggestions,
         incomplete: doc.diagnostic.incomplete,
       }
@@ -241,8 +295,9 @@ function toRunView(run: RunRow, doc: RunDocument): RecommendationRun {
     feasibleCount: run.feasibleCount,
     bindingConstraint: run.bindingConstraint as RecommendationRun['bindingConstraint'],
     weakMatch: doc.weakMatch,
+    incomplete: doc.incomplete ?? doc.diagnostic?.incomplete ?? [],
     diagnostic,
-    groupProfile: groupProfileView(doc.groupProfile),
+    groupProfile: groupProfileView(doc.groupProfile, source),
   };
 }
 
@@ -316,7 +371,11 @@ export async function getGroupProfile(
   const { trip: row } = await loadTripForMember(db, tripId, userId);
   const members = await loadMembers(db, tripId);
   if (members.length < 2) return { ready: false, memberCount: members.length };
-  return groupProfileView(groupProfile(members, row));
+  const profile = groupProfile(members, row);
+  return groupProfileView(
+    profile,
+    capSource(row.budgetTotalInr, members.length, profile.perPersonCapInr),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -363,6 +422,7 @@ async function planRun(
   const { db, routing, weights } = deps;
   const profile = groupProfile(members, tripRow);
   const n = members.length;
+  const source = capSource(tripRow.budgetTotalInr, n, profile.perPersonCapInr);
 
   // F3 (0004 c): a blocking window conflict sends the group back (T4).
   if (profile.commonWindow === null || profile.conflicts.some((c) => c.blocking)) {
@@ -375,6 +435,9 @@ async function planRun(
         memberCount: n,
         weakMatch: false,
         groupProfile: profile,
+        capSource: source,
+        // The catalogue is not read when the window blocks (F3).
+        incomplete: [],
         diagnostic: {
           feasible: [],
           nearMisses: [],
@@ -424,7 +487,7 @@ async function planRun(
     durationNights: tripRow.durationNights,
     radiusKm: tripRow.radiusKm,
     groupCapInr: profile.groupCapInr,
-    capSource: capSource(tripRow.budgetTotalInr, n, profile.perPersonCapInr),
+    capSource: source,
     perPersonCapInr: profile.perPersonCapInr,
     commonWindow: { start: profile.commonWindow.start, end: profile.commonWindow.end },
   };
@@ -501,6 +564,8 @@ async function planRun(
       memberCount: n,
       weakMatch: ranked.length > 0 && Math.max(...ranked.map((r) => r.mean)) < WEAK_MATCH_MEAN,
       groupProfile: profile,
+      capSource: source,
+      incomplete: diagnostic.incomplete,
       diagnostic:
         kind === 'diagnostic'
           ? {
@@ -545,7 +610,10 @@ export async function requestRecommendations(
       event: plan.event,
       actorUserId: userId,
       ...(plan.event === 'recommendationRequested' ? { feasibleCount: plan.feasibleCount } : {}),
-      beforeDecide: async (tx) => {
+      beforeDecide: async (tx, locked) => {
+        // A request that lost a race to another run sees the new status here and
+        // gets the state machine's 409, not a misleading staleness message.
+        assertEventLegal(locked.status, plan.event, indiaDate(clock()));
         if ((await readStalenessStamp(tx, tripId)) !== stamp) {
           throw new AppError(
             409,

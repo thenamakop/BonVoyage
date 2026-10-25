@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { RecommendationKind, TripStatus } from '../domain';
+import { Provenance } from '../provenance';
 import { Activity, ClimatePreference, DestinationType, TransportMode } from '../vocab';
 
 // S2-6 recommendation contracts (decision 0004). Group views carry counts and
@@ -9,10 +10,6 @@ import { Activity, ClimatePreference, DestinationType, TransportMode } from '../
 
 const ValueCountOf = <T extends z.ZodType<string>>(value: T) =>
   z.object({ value, count: z.number().int() });
-
-/** Same values as the shared Provenance enum (kept local to avoid a circular import). */
-export const DistanceProvenance = z.enum(['live', 'cached', 'curated', 'estimated']);
-export type DistanceProvenance = z.infer<typeof DistanceProvenance>;
 
 export const ConstraintId = z.enum(['F1', 'F2', 'F3', 'F4', 'F5']);
 export type ConstraintId = z.infer<typeof ConstraintId>;
@@ -28,15 +25,15 @@ export const GroupProfileReady = z.object({
   memberCount: z.number().int(),
   commonWindow: z.object({ start: z.string(), end: z.string(), days: z.number().int() }).nullable(),
   windowFits: z.boolean(),
-  /** Per person, rounded to ₹500. */
+  /** Per person: the minimum rounded up and the maximum down to ₹500. */
   budgetBand: z.object({
     minInr: z.number().int(),
     maxInr: z.number().int(),
     overlaps: z.boolean(),
   }),
-  /** Rounded to ₹500. */
+  /** The lowest member maximum, rounded down to ₹500. */
   perPersonCapInr: z.number().int(),
-  /** Rounded to ₹500. */
+  /** Exact when the trip budget sets it; n x perPersonCapInr when members' maxima do. */
   groupCapInr: z.number().int(),
   typeVotes: z.array(ValueCountOf(DestinationType)),
   activityVotes: z.array(ValueCountOf(Activity)),
@@ -108,6 +105,8 @@ export const RecommendationRun = z.object({
   bindingConstraint: ConstraintId.nullable(),
   /** The best mean score is below 0.25: the shortlist fits the hard limits but not the tastes. */
   weakMatch: z.boolean(),
+  /** 0004 e: active destinations left out because their costs are missing, on every run. */
+  incomplete: z.array(z.string()),
   diagnostic: RecommendationDiagnostic.nullable(),
   groupProfile: GroupProfileReady,
 });
@@ -136,7 +135,7 @@ export const RecommendationItem = z.object({
   perPersonInr: z.number().int(),
   cheapestMode: TransportMode,
   distanceKm: z.number().int(),
-  distanceProvenance: DistanceProvenance,
+  distanceProvenance: Provenance,
   group: z.object({
     memberCount: z.number().int(),
     climateMetCount: z.number().int(),

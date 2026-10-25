@@ -1,12 +1,24 @@
 import { createDb } from '@bonvoyage/db';
 import { pino } from 'pino';
-import { InvitationResponse, TripDetail } from '@bonvoyage/shared';
+import {
+  GroupProfileResponse,
+  InvitationResponse,
+  LatestRecommendationResponse,
+  TripDetail,
+} from '@bonvoyage/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { ENDPOINTS } from '../test/endpoint-inventory';
-import { createTestUser, createTripAs, ensureCostRules, ensureHub } from '../test/helpers';
+import {
+  createTestUser,
+  createTripAs,
+  ensureCostRules,
+  ensureDestination,
+  ensureHub,
+  ensureHubAt,
+} from '../test/helpers';
 
 // S1-6 step 3 (R10, SRS 3.4): every GET endpoint, called by every kind of
 // caller, is searched as raw text for anything private to another user.
@@ -176,4 +188,135 @@ describe('no response leaks another user’s private data', () => {
     // The organiser's name is the one name it may carry.
     expect(text).toContain('Leak Asha');
   });
+});
+
+// S2-6 (R10, 0004 i): recommendation responses. Two members with values only
+// one of them chose, and a group cap set by members' maxima (not the trip
+// budget), so the diagnostic's F5 figures would carry the lowest member
+// maximum if they were not rounded. Numbers are compared as values, not as
+// text, so a short secret can never match inside an id.
+describe('recommendation responses hold no other member’s answers or exact budget', () => {
+  const numbersIn = (value: unknown): number[] => {
+    if (typeof value === 'number') return [value];
+    if (Array.isArray(value)) return value.flatMap(numbersIn);
+    if (value !== null && typeof value === 'object') return Object.values(value).flatMap(numbersIn);
+    return [];
+  };
+  const recPrefs = (over: Record<string, unknown>) => ({
+    climate: 'mild',
+    travelStyle: 'comfort',
+    dateStart: '2026-11-13',
+    dateEnd: '2026-11-16',
+    ...over,
+  });
+  // B's private figures: odd values, and what an unrounded cap would be.
+  const B_MIN = 1997;
+  const B_MAX = 3003;
+  const B_SECRETS = [B_MIN, B_MAX, 2 * B_MAX];
+
+  let a: Awaited<ReturnType<typeof createTestUser>>;
+  let b: Awaited<ReturnType<typeof createTestUser>>;
+  let recTripId: string;
+
+  beforeAll(async () => {
+    await ensureHubAt(db, 'leak-hub', 10, 77);
+    for (const [slug, lat, lng] of [
+      ['leak-a', 10.3, 77],
+      ['leak-b', 10, 77.4],
+      ['leak-c', 9.7, 77],
+    ] as const) {
+      await ensureDestination(db, { slug, lat, lng });
+    }
+    a = await createTestUser(app, 'Leak Rec A');
+    b = await createTestUser(app, 'Leak Rec B');
+    recTripId = (
+      await createTripAs(a.agent, {
+        originHubSlug: 'leak-hub',
+        radiusKm: 150,
+        budgetTotalInr: 900000,
+        durationNights: 2,
+      })
+    ).id;
+    const recToken = InvitationResponse.parse(
+      (await a.agent.post(`/api/trips/${recTripId}/invitations`).set(H).send({})).body,
+    ).token;
+    await b.agent.post(`/api/invitations/${recToken}/accept`).set(H).send({});
+    await a.agent
+      .put(`/api/trips/${recTripId}/preferences/me`)
+      .set(H)
+      .send(
+        recPrefs({
+          destinationTypes: ['mountain', 'adventure'],
+          activities: ['trekking', 'rafting'],
+          budgetMinInr: 1000,
+          budgetMaxInr: 9001,
+        }),
+      );
+    await b.agent
+      .put(`/api/trips/${recTripId}/preferences/me`)
+      .set(H)
+      .send(
+        recPrefs({
+          destinationTypes: ['mountain', 'lake'],
+          activities: ['trekking', 'boating'],
+          budgetMinInr: B_MIN,
+          budgetMaxInr: B_MAX,
+        }),
+      );
+    const run = await a.agent.post(`/api/trips/${recTripId}/recommendations`).set(H).send({});
+    expect(run.status, JSON.stringify(run.body)).toBe(200);
+  });
+
+  it('the fixture really produces F5 near misses against a cap set by members', async () => {
+    const body = LatestRecommendationResponse.parse(
+      (await a.agent.get(`/api/trips/${recTripId}/recommendations/latest`).set(H)).body,
+    );
+    const f5 = body.run!.diagnostic!.nearMisses.flatMap((e) =>
+      e.failures.filter((f) => f.id === 'F5'),
+    );
+    expect(f5.length).toBeGreaterThan(0);
+    for (const failure of f5) {
+      // n x (B's maximum rounded down to ₹500), never n x B's exact maximum.
+      expect(failure.limit).toBe(6000);
+      expect(failure.relaxation).toBe(failure.actual - 6000);
+      expect(failure.relative).toBeCloseTo((failure.actual - 6000) / 6000, 12);
+    }
+    expect(body.run!.groupProfile).toMatchObject({
+      budgetBand: { minInr: 2000, maxInr: 3000, overlaps: true },
+      perPersonCapInr: 3000,
+      groupCapInr: 6000,
+    });
+  });
+
+  it.each(['recommendations/latest', 'group-profile'])(
+    "%s: A sees none of B's own values, B none of A's; group lists count 2 or more",
+    async (path) => {
+      const asA = await a.agent.get(`/api/trips/${recTripId}/${path}`).set(H);
+      const asB = await b.agent.get(`/api/trips/${recTripId}/${path}`).set(H);
+      expect([asA.status, asB.status]).toEqual([200, 200]);
+      for (const onlyB of ['boating', 'lake']) expect(asA.text).not.toContain(onlyB);
+      for (const onlyA of ['rafting', 'adventure']) expect(asB.text).not.toContain(onlyA);
+
+      const numbers = numbersIn(asA.body);
+      for (const secret of B_SECRETS)
+        expect(numbers, `${path} carried ${secret}`).not.toContain(secret);
+
+      const profile =
+        path === 'group-profile'
+          ? GroupProfileResponse.parse(asA.body)
+          : LatestRecommendationResponse.parse(asA.body).run!.groupProfile;
+      if (!profile.ready) throw new Error('group profile should be ready');
+      for (const v of [...profile.typeVotes, ...profile.activityVotes, ...profile.climateVotes]) {
+        expect(v.count).toBeGreaterThanOrEqual(2);
+      }
+      expect(profile.otherInterestCount).toBe(4);
+      if (path === 'recommendations/latest') {
+        for (const item of LatestRecommendationResponse.parse(asA.body).items) {
+          for (const v of [...item.group.sharedTypes, ...item.group.sharedActivities]) {
+            expect(v.count).toBeGreaterThanOrEqual(2);
+          }
+        }
+      }
+    },
+  );
 });

@@ -356,9 +356,6 @@ describe('India-day quotas', () => {
       { day: '2026-11-01', calls: 2 },
       { day: '2026-11-02', calls: 1 },
     ]);
-    process.stdout.write(
-      'Quota: limit 2/day; calls 1 and 2 live, call 3 falls back; next India day resets to 1.\n',
-    );
   });
 
   it('runs exactly one of two parallel reservations with limit one', async () => {
@@ -376,9 +373,6 @@ describe('India-day quotas', () => {
     ).toBe(true);
     expect(fn).toHaveBeenCalledTimes(1);
     expect(await usage(options.provider)).toEqual([{ day: options.day, calls: 1 }]);
-    process.stdout.write(
-      'Quota concurrency: exactly 1 of 2 parallel calls ran; recorded calls = 1.\n',
-    );
   });
 
   it('commits reservations before invoking slow work and counts attempts even if they fail', async () => {
@@ -429,9 +423,6 @@ describe('batched 44-destination query counts', () => {
     const results = await routing.getDistances(origin, destinations);
     expect(results.size).toBe(44);
     expect(query).toHaveBeenCalledTimes(1);
-    process.stdout.write(
-      `Routing 44 destinations: ${query.mock.calls.length} SQL query (curated + estimate, uncached).\n`,
-    );
   });
 
   it('batches all 44 external cache reads/writes and needs only one warm read', async () => {
@@ -445,8 +436,5 @@ describe('batched 44-destination query counts', () => {
     expect([...cached.values()].every((result) => result.fromCache)).toBe(true);
     expect(query).toHaveBeenCalledTimes(1);
     expect(live.getDistances).toHaveBeenCalledTimes(1);
-    process.stdout.write(
-      'Routing external cache for 44 destinations: cold 2 SQL queries; warm 1 SQL query; provider called once.\n',
-    );
   });
 });

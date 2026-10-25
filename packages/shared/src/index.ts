@@ -17,9 +17,7 @@ export const ErrorEnvelope = z.object({
 });
 export type ErrorEnvelope = z.infer<typeof ErrorEnvelope>;
 
-export const Provenance = z.enum(['live', 'cached', 'curated', 'estimated']);
-export type Provenance = z.infer<typeof Provenance>;
-
+export * from './provenance';
 export * from './vocab';
 export * from './domain';
 export * from './itinerary';
