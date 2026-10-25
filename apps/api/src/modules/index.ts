@@ -1,4 +1,5 @@
 import type { Db } from '@bonvoyage/db';
+import type { Weights } from '@bonvoyage/engine';
 import type { Routing } from '@bonvoyage/integrations/routing';
 import express from 'express';
 import type { Auth } from '../auth/auth';
@@ -16,6 +17,7 @@ import { createRouter as invitations } from '../invitations/router';
 import { createRouter as profile } from '../profile/router';
 import { createRouter as trips } from '../trips/router';
 import { createRouter as usersGroups } from './users-groups/router';
+import type { RecommendationHooks } from '../recommendations/service';
 
 export function createApiRouter(deps: {
   db: Db;
@@ -23,6 +25,8 @@ export function createApiRouter(deps: {
   clock?: () => Date;
   adminEmails: readonly string[];
   routing: Routing;
+  scoringWeights: Weights;
+  recommendationHooks?: RecommendationHooks;
 }) {
   const apiRouter = express.Router();
 

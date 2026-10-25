@@ -27,7 +27,12 @@ function actionsFor(t: Omit<TripDetail, 'availableActions'>): TripAction[] {
   const out: TripAction[] = [];
   const open = t.status === 'draft' || t.status === 'collecting_preferences';
   if (organiser && open) out.push({ action: 'invite', enabled: true });
-  if (organiser && t.status === 'draft') out.push({ action: 'editDetails', enabled: true });
+  // 0004 j: details stay editable until the shortlist is made.
+  if (
+    organiser &&
+    ['draft', 'collecting_preferences', 'ready_for_recommendation'].includes(t.status)
+  )
+    out.push({ action: 'editDetails', enabled: true });
   if (t.status === 'draft') {
     out.push({
       action: 'editPreferences',
@@ -78,6 +83,7 @@ export function tripDetail(overrides: Partial<TripDetail> = {}): TripDetail {
     myStatus: 'active' as const,
     legalEvents: [],
     lastActivityAt: '2026-10-13T09:00:00.000Z',
+    latestRecommendation: null,
     createdAt: '2026-10-12T00:00:00.000Z',
     updatedAt: '2026-10-12T00:00:00.000Z',
     ...overrides,

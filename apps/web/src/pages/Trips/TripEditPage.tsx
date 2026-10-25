@@ -43,11 +43,13 @@ export function TripEditPage() {
   }
 
   const t = trip.data;
-  if (t.myRole !== 'organiser' || t.status !== 'draft') {
+  // 0004 j: the server lists editDetails until the shortlist is made.
+  const canEdit = t.availableActions.some((a) => a.action === 'editDetails' && a.enabled);
+  if (t.myRole !== 'organiser' || !canEdit) {
     const reason =
       t.myRole !== 'organiser'
         ? 'Only the organiser can edit the trip details.'
-        : 'Trip details can be changed only before anyone is invited.';
+        : 'Trip details can be changed until the shortlist is made.';
     return (
       <div className="max-w-md space-y-4">
         <PageHeader title="Edit trip" />

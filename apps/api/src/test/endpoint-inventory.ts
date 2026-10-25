@@ -43,6 +43,8 @@ export const ENDPOINTS: readonly Endpoint[] = [
   { method: 'GET', path: '/api/trips/:id', access: 'member' },
   { method: 'GET', path: '/api/trips/:id/activity', access: 'member' },
   { method: 'GET', path: '/api/trips/:id/preferences/me', access: 'member' },
+  { method: 'GET', path: '/api/trips/:id/recommendations/latest', access: 'member' },
+  { method: 'GET', path: '/api/trips/:id/group-profile', access: 'member' },
 
   { method: 'PUT', path: '/api/trips/:id/preferences/me', access: 'activeMember' },
   { method: 'DELETE', path: '/api/trips/:id/members/me', access: 'activeMember' },
@@ -54,6 +56,8 @@ export const ENDPOINTS: readonly Endpoint[] = [
   { method: 'GET', path: '/api/trips/:id/invitations/active', access: 'organiser' },
   { method: 'DELETE', path: '/api/trips/:id/invitations/active', access: 'organiser' },
   { method: 'DELETE', path: '/api/trips/:id/members/:userId', access: 'organiser' },
+  { method: 'POST', path: '/api/trips/:id/recommendations', access: 'organiser' },
+  { method: 'POST', path: '/api/trips/:id/destination', access: 'organiser' },
 
   { method: 'GET', path: '/api/admin/catalogue/status', access: 'admin' },
   { method: 'POST', path: '/api/admin/catalogue/import', access: 'admin' },

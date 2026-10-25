@@ -649,7 +649,7 @@ Internal transitions keep the state unchanged: preferenceSubmitted \[pending > 0
 | --- | --- | --- |
 | `POST /api/auth/*` | Register, sign in, sign out (Better Auth) | none |
 | `POST /api/trips` | Create a trip | T1 |
-| `PATCH /api/trips/:id` | Edit draft parameters | none |
+| `PATCH /api/trips/:id` | Edit trip parameters until the shortlist is made | none |
 | `POST /api/trips/:id/invitations` | Invite members by link | T2 |
 | `POST /api/invitations/:token/accept` | Join a trip | none |
 | `DELETE /api/trips/:id/members/:userId` | Remove a member | none |
@@ -657,7 +657,8 @@ Internal transitions keep the state unchanged: preferenceSubmitted \[pending > 0
 | `POST /api/me/past-trips` | Record a past trip and rating | none |
 | `POST /api/trips/:id/close-submissions` | Organiser closes submissions | T3b |
 | `GET /api/trips/:id/group-profile` | Group profile, common window, conflicts | none |
-| `POST /api/trips/:id/recommendations` | Recommend destinations | T6 to T8 |
+| `POST /api/trips/:id/recommendations` | Recommend destinations | T4, T6 to T8 |
+| `GET /api/trips/:id/recommendations/latest` | Read the newest run with the caller's own explanation | none |
 | `POST /api/trips/:id/destination` | Select a destination; entry generates packages | T9 |
 | `GET /api/trips/:id/transport` | Compare transport options | none |
 | `GET /api/trips/:id/packages` | View packages and cost breakdowns | none |
@@ -670,7 +671,7 @@ Internal transitions keep the state unchanged: preferenceSubmitted \[pending > 0
 | `/api/admin/destinations`, `POST /api/admin/catalogue/import` | Manage the destination catalogue and fallback data | none |
 | `GET /api/health` | Health check | none |
 
-`POST /api/trips/:id/recommendations` returns either `{kind: 'shortlist', items}` or `{kind: 'diagnostic', bindingConstraint, alternatives}`, matching the two operands of the sequence diagram's alt fragment.
+`POST /api/trips/:id/recommendations` returns the stored run and its items plus the transition it fired. The run's `kind` is `shortlist` (3 or more feasible, T6>T7) or `diagnostic` (fewer, T6>T8, or a date conflict, T4) with `bindingConstraint` and `diagnostic.alternatives`, matching the two operands of the sequence diagram's alt fragment.
 
 **Sources** (pages opened on 8 October 2026)
 

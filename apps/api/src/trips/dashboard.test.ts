@@ -159,6 +159,7 @@ describe('GET /api/trips/:id: progress and availableActions', () => {
     });
     expect(org.availableActions).toEqual([
       { action: 'invite', enabled: true },
+      { action: 'editDetails', enabled: true },
       { action: 'editPreferences', enabled: true },
       {
         action: 'closeSubmissions',

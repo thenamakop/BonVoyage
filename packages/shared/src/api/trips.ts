@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MemberRole, MemberStatus, TripStatus } from '../domain';
+import { LatestRecommendationSummary } from './recommendations';
 import type { TripStatus as TripStatusType } from '../domain';
 
 // Trip API contracts (S1-2). budgetTotalInr is the whole group's budget for
@@ -100,6 +101,9 @@ export const TripActionName = z.enum([
   'closeSubmissions',
   'cancelTrip',
   'leaveTrip',
+  'requestRecommendations',
+  'viewRecommendations',
+  'chooseDestination',
 ]);
 export type TripActionName = z.infer<typeof TripActionName>;
 
@@ -131,6 +135,8 @@ export const TripDetail = z.object({
   availableActions: z.array(TripAction),
   /** created_at of the newest trip_transition row; the activity list reloads when it moves. */
   lastActivityAt: z.string().nullable(),
+  /** The newest recommendation run (S2-6), or null before the first one. */
+  latestRecommendation: LatestRecommendationSummary.nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -226,10 +232,10 @@ export const EVENT_SUMMARIES: Record<TripEventName, (actor: string) => string> =
   inviteMembers: (a) => `${a} opened the trip for preferences`,
   preferenceSubmitted: (a) => `${a} submitted preferences`,
   closeSubmissions: (a) => `${a} closed submissions`,
-  conflictDetected: (a) => `${a} found conflicting preferences`,
+  conflictDetected: (a) => `${a} found the group's dates do not overlap enough`,
   preferenceRevised: (a) => `${a} updated preferences`,
   recommendationRequested: (a) => `${a} asked for recommendations`,
-  destinationSelected: (a) => `${a} chose a destination`,
+  destinationSelected: (a) => `${a} chose the destination`,
   packageRejected: (a) => `${a} turned down the packages`,
   packageAccepted: (a) => `${a} accepted a package`,
   generateItinerary: (a) => `${a} asked for an itinerary`,

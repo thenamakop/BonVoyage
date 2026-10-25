@@ -1,8 +1,12 @@
 import type { Db } from '@bonvoyage/db';
+import type { Weights } from '@bonvoyage/engine';
+import type { Routing } from '@bonvoyage/integrations/routing';
 import {
+  ChooseDestinationInput,
   CloseSubmissionsInput,
   CreateTripInput,
   PreferenceInput,
+  RequestRecommendationsInput,
   UpdateTripInput,
 } from '@bonvoyage/shared';
 import express from 'express';
@@ -16,6 +20,13 @@ import {
   revokeInvitations,
 } from '../invitations/service';
 import { getMyPreference, saveMyPreference } from '../preferences/service';
+import {
+  chooseDestination,
+  getGroupProfile,
+  getLatestRecommendation,
+  requestRecommendations,
+  type RecommendationHooks,
+} from '../recommendations/service';
 import { parseOrThrow } from '../http/errors';
 import { getSessionUser, requireSession } from '../http/session';
 import { parseTripId } from './access';
@@ -37,10 +48,16 @@ export function createRouter({
   db,
   auth,
   clock = () => new Date(),
+  routing,
+  scoringWeights,
+  recommendationHooks,
 }: {
   db: Db;
   auth: Auth;
   clock?: () => Date;
+  routing: Routing;
+  scoringWeights: Weights;
+  recommendationHooks?: RecommendationHooks;
 }) {
   const router = express.Router();
 
@@ -149,6 +166,47 @@ export function createRouter({
     const input = parseOrThrow(PreferenceInput, req.body);
     const { userId } = getSessionUser(res);
     res.json(await saveMyPreference({ db, logger: req.log, clock }, tripId, userId, input));
+  });
+
+  // S2-6: recommendation runs, the group profile and the destination choice.
+  // The logic lives in ../recommendations (AGENTS.md 4).
+  router.post('/trips/:id/recommendations', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    parseOrThrow(RequestRecommendationsInput, req.body ?? {});
+    const { userId } = getSessionUser(res);
+    res.json(
+      await requestRecommendations(
+        {
+          db,
+          logger: req.log,
+          clock,
+          routing,
+          weights: scoringWeights,
+          ...(recommendationHooks ? { hooks: recommendationHooks } : {}),
+        },
+        tripId,
+        userId,
+      ),
+    );
+  });
+
+  router.get('/trips/:id/recommendations/latest', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await getLatestRecommendation(db, tripId, userId));
+  });
+
+  router.get('/trips/:id/group-profile', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await getGroupProfile(db, tripId, userId));
+  });
+
+  router.post('/trips/:id/destination', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const input = parseOrThrow(ChooseDestinationInput, req.body);
+    const { userId } = getSessionUser(res);
+    res.json(await chooseDestination({ db, logger: req.log, clock }, tripId, userId, input));
   });
 
   return router;

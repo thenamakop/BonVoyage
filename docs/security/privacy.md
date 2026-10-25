@@ -14,6 +14,8 @@ This note covers the personal data BonVoyage keeps and who can see each part of 
 | Trip preferences (kinds of place, activities, climate, travel style, your budget per person, your dates) | `preference`, one row per trip you joined | Finding destinations that suit the group |
 | Trip membership (role, active or removed, when you submitted) | `trip_member` | The roster and the dashboard |
 | A log of what happened to each trip (the event, who did it, when) | `trip_transition` | The dashboard's "Recent activity" and the audit trail |
+| Recommendation runs: the weights, the group profile the run was computed from, and the diagnostic | `recommendation_run` | Each ranking can be checked and reproduced later |
+| Each recommended destination's scores and every member's own match explanation (what it meets and misses for them) | `recommendation_item` | Showing each member why a destination suits them |
 
 ## Who sees what
 
@@ -26,8 +28,19 @@ This note covers the personal data BonVoyage keeps and who can see each part of 
 | Whether you have submitted | Yes | Yes | Yes | Yes | No |
 | The trip's details and group budget | Yes | Yes | Yes | Yes | No |
 | The trip's activity (who did what, by name) | Yes | Yes | Yes | Yes | No |
+| Your own match score and explanation for each recommended destination | Yes | No | No | Yes | No |
+| The group profile and the recommendations (combined figures only, see below) | Yes | Yes | Yes | Yes | No |
 
-- **Your group never sees your answers.** Members see each other's names, roles, whether they are still in the trip, and whether they have submitted. Nobody else's budget, dates, kinds of place or activities are ever in a response. The recommendation steps from Sprint 2 combine everyone's answers; the group then sees the combined result, not who wanted what.
+- **Your group never sees your answers.** Members see each other's names, roles, whether they are still in the trip, and whether they have submitted. Nobody else's preference is ever in a response as they entered it, and no preference is ever shown next to a name. The recommendation steps combine everyone's answers; the group then sees the combined result, not who wanted what (decision 0004 i).
+- **What the group does see** (`GET /api/trips/:id/group-profile` and each recommendation run):
+  - the common window: the latest first day and the earliest last day across the group;
+  - the budget band and caps, rounded to ₹500 (the highest minimum rounded up, the lowest maximum and any cap set by members rounded down). A cap set by the trip budget stays exact, because every member already sees the trip budget;
+  - kinds of place, activities and climates by count, naming a value only when at least two members chose it. Values chosen by one member only appear as a single number (`otherInterestCount`);
+  - for each recommended destination: the group score, the estimated cost, and counts such as how many members' climate it suits. The lowest and highest member scores are shown only in groups of 3 or more;
+  - in the diagnostic, the F5 budget limit is the same rounded cap, so it never carries one member's exact maximum.
+- **What combined figures can still reveal in small groups.** This is accepted, and stated here so nobody relies on more privacy than there is:
+  - The common window is kept for groups of every size (decided on 26 October 2026: R4 needs it, 2 is the smallest group, and the trip's chosen dates are shared with everyone later anyway). In a 2-member group it shows the other member's first or last day wherever theirs is narrower than yours.
+  - In a 2-member group, the group score with your own score, or a count such as "suits 1 of 2" with your own answer, lets you work out the other member's score or that answer. Scores are not preference answers (R10); the raw preferences stay private.
 - **The organiser** has no extra view of anyone's preferences. What they get is control: they create and turn off the invitation link, remove members, close submissions and cancel the trip.
 - **"The administrator"** means whoever runs the database (the project's developer), who can read every table directly. The administrator page from S1-7 manages the destination catalogue only; it shows no user data.
 - **A removed member** can still read the trip and its activity but can no longer act. Their preferences are deleted when they are removed.
@@ -61,8 +74,9 @@ Every change to your data goes through a JSON request (`Content-Type: applicatio
 | Test | What it proves |
 | --- | --- |
 | `apps/api/src/security/routes.test.ts` | Every registered API route is in the endpoint inventory, so none skips the checks below |
-| `apps/api/src/security/access-matrix.test.ts` | Each of the 24 endpoints, called as anonymous, non-member, member, removed member and organiser, gives the expected status |
-| `apps/api/src/security/no-leak.test.ts` | No response to any caller contains another user's budget, past trips or email; your own email appears only on `/api/me`; the invitation preview holds no budgets, dates, emails or member names |
+| `apps/api/src/security/access-matrix.test.ts` | Each of the 30 endpoints, called as anonymous, non-member, member, removed member, organiser and administrator, gives the expected status |
+| `apps/api/src/security/no-leak.test.ts` | No response to any caller contains another user's budget, past trips or email; your own email appears only on `/api/me`; the invitation preview holds no budgets, dates, emails or member names; the group profile and recommendations hold none of another member's own choices or exact budget figures, including the F5 diagnostic when members' maxima set the cap, and name a value only when two or more members chose it |
+| `apps/api/src/recommendations/recommendations.test.ts` | Each member's explanation is their own; budgets are rounded inwards; a trip-set cap stays exact; groups of 2 get no score range |
 | `apps/api/src/security/logs.test.ts` | Logs from signing up, signing in and saving a preference hold no password, cookie, email or budget |
 | `apps/api/src/security/json-only.test.ts` | Non-JSON writes are refused with 415 |
 | `apps/api/src/preferences/preferences.test.ts` | A member only ever reads their own preference |

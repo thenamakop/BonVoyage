@@ -17,9 +17,7 @@ export const ErrorEnvelope = z.object({
 });
 export type ErrorEnvelope = z.infer<typeof ErrorEnvelope>;
 
-export const Provenance = z.enum(['live', 'cached', 'curated', 'estimated']);
-export type Provenance = z.infer<typeof Provenance>;
-
+export * from './provenance';
 export * from './vocab';
 export * from './domain';
 export * from './itinerary';
@@ -29,6 +27,7 @@ export * from './api/invitations';
 export * from './api/preferences';
 export * from './api/profile';
 export * from './api/admin';
+export * from './api/recommendations';
 export * from './time';
 
 export const ERROR_CODES = {
@@ -52,6 +51,8 @@ export const ERROR_CODES = {
   TRIP_LOCKED: 'TRIP_LOCKED',
   UNSUPPORTED_MEDIA_TYPE: 'UNSUPPORTED_MEDIA_TYPE',
   CATALOGUE_INVALID: 'CATALOGUE_INVALID',
+  RECOMMENDATION_STALE: 'RECOMMENDATION_STALE',
+  DESTINATION_NOT_IN_SHORTLIST: 'DESTINATION_NOT_IN_SHORTLIST',
   DB_UNAVAILABLE: 'DB_UNAVAILABLE',
   INTERNAL: 'INTERNAL',
 } as const;
