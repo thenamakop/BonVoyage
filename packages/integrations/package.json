@@ -14,8 +14,8 @@
     "@bonvoyage/db": "workspace:*",
     "@bonvoyage/engine": "workspace:*",
     "@bonvoyage/shared": "workspace:*",
-    "@google/genai": "2.28.0",
+    "@google/genai": "2.30.0",
     "drizzle-orm": "0.45.4",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   }
 }
