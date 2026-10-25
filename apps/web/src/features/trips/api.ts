@@ -78,7 +78,7 @@ export function useTripActivity(id: string, lastActivityAt: string | null | unde
 
 // On a 409 the trip moved under the viewer: show the server's message (the
 // caller does) and reload the trip so the buttons match the new state.
-function refetchOnConflict(queryClient: QueryClient, id: string) {
+export function refetchOnConflict(queryClient: QueryClient, id: string) {
   return (err: unknown) => {
     if (err instanceof ApiError && err.status === 409) {
       void queryClient.invalidateQueries({ queryKey: ['trip', id] });
