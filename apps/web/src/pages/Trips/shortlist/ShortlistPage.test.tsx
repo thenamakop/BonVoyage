@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
@@ -74,6 +74,7 @@ function renderPage() {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return queryClient;
 }
 
 const shortlisted = (over: Partial<TripDetail> = {}, r = run()) =>
@@ -110,6 +111,8 @@ describe('shortlist view', () => {
     await user.click(screen.getByRole('button', { name: 'Show all 7' }));
     expect(cards()).toHaveLength(7);
     expect(screen.queryByRole('button', { name: /Show all/ })).not.toBeInTheDocument();
+    // The button is gone, so focus lands on the first newly shown card.
+    expect(screen.getByRole('heading', { name: '6. Place 6' })).toHaveFocus();
   });
 
   it('words each card from the API: distance, cost, group, climate, shared and For you', async () => {
@@ -257,6 +260,47 @@ describe('diagnostic view', () => {
       await screen.findByText('Saved. Now mark the trip ready again and get recommendations.'),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Mark ready again' })).toBeInTheDocument();
+    // The same PATCH again would change nothing.
+    expect(screen.getByRole('button', { name: 'Widen the radius to 500 km' })).toBeDisabled();
+  });
+
+  it('a new run starts without the previous run’s "Saved" line', async () => {
+    const r = diagnosticRun();
+    stubFetch({ trip: collecting(r), response: latest(r, [item(1)]) });
+    const user = userEvent.setup();
+    const queryClient = renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Widen the radius to 500 km' }));
+    await screen.findByText('Saved. Now mark the trip ready again and get recommendations.');
+
+    const round2 = diagnosticRun({
+      id: 'run-2',
+      round: 2,
+      diagnostic: {
+        ...diagnosticRun().diagnostic!,
+        suggestions: [{ constraint: 'F1', newRadiusKm: 600, unlocks: ['alwar'] }],
+      },
+    });
+    // A new run arrives (as after Mark ready again and Get recommendations).
+    await act(async () => {
+      queryClient.setQueryData(['trip', TRIP_ID, 'recommendation'], latest(round2));
+      await Promise.resolve();
+    });
+    expect(await screen.findByText('Round 2')).toBeInTheDocument();
+    expect(
+      screen.queryByText('Saved. Now mark the trip ready again and get recommendations.'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Widen the radius to 600 km' })).toBeEnabled();
+  });
+
+  it('shows the weak-match alert above the destinations that fit', async () => {
+    const r = diagnosticRun({ weakMatch: true });
+    stubFetch({ trip: collecting(r), response: latest(r, [item(1)]) });
+    renderPage();
+    expect(
+      await screen.findByText(
+        'These are the closest options; none match the types the group asked for well.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('PATCHes nights and a trip budget with the exact fields', async () => {

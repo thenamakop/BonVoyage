@@ -251,14 +251,19 @@ describe('dashboard: recommendations', () => {
       trip: tripDetail({ members: ALL_SUBMITTED, latestRecommendation: summaryOf(r) }),
       latest: latest(r, [item(1)]),
     });
+    const user = userEvent.setup();
     renderPage();
     expect(await screen.findByText('The last round found only 1 destination.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'See why' })).toHaveAttribute(
       'href',
       `/trips/${TRIP_ID}/shortlist`,
     );
-    expect(screen.getByRole('button', { name: 'Mark ready again' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Close submissions' })).not.toBeInTheDocument();
+    // Nobody is pending, so the confirm offers "Not now" rather than "Keep waiting".
+    await user.click(screen.getByRole('button', { name: 'Mark ready again' }));
+    expect(screen.getByText('Everyone active has submitted.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Not now' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Keep waiting' })).not.toBeInTheDocument();
   });
 
   it('after a date clash (F3), the dashboard says so from the run’s binding constraint', async () => {
@@ -284,5 +289,8 @@ describe('dashboard: recommendations', () => {
       await screen.findByText('Rishikesh chosen. Packages arrive in the next release.'),
     ).toBeInTheDocument();
     expect(screen.getByText('Rishikesh, Uttarakhand')).toBeInTheDocument();
+    // The banner does not promise packages before Sprint 3 builds them.
+    expect(screen.getByText('The destination is chosen; packages come next.')).toBeInTheDocument();
+    expect(screen.queryByText(/Costed packages are ready/)).not.toBeInTheDocument();
   });
 });

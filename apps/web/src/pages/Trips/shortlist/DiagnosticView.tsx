@@ -33,11 +33,14 @@ function SuggestionButton({
   trip,
   suggestion,
   nearMisses,
+  saved,
   onSaved,
 }: {
   trip: TripDetail;
   suggestion: Suggestion;
   nearMisses: readonly DiagnosticEvaluation[];
+  /** Already applied: the same PATCH again would change nothing. */
+  saved: boolean;
   onSaved: () => void;
 }) {
   const update = useUpdateTrip(trip.id);
@@ -59,6 +62,7 @@ function SuggestionButton({
       <Button
         variant="secondary"
         loading={update.isPending}
+        disabled={saved}
         aria-describedby={unlocks ? unlocksId : undefined}
         onClick={() => update.mutate(patch, { onSuccess: onSaved })}
       >
@@ -99,7 +103,8 @@ export function DiagnosticView({
   run: RecommendationRun;
   items: RecommendationItem[];
 }) {
-  const [saved, setSaved] = useState(false);
+  // The caller keys this view on run.id, so a new run starts with nothing saved.
+  const [saved, setSaved] = useState<Suggestion['constraint'] | null>(null);
   const find = (name: string) => trip.availableActions.find((a) => a.action === name && a.enabled);
   const organiser = trip.myRole === 'organiser';
   const canEdit = organiser && Boolean(find('editDetails'));
@@ -142,7 +147,8 @@ export function DiagnosticView({
                   trip={trip}
                   suggestion={s}
                   nearMisses={nearMisses}
-                  onSaved={() => setSaved(true)}
+                  saved={saved === s.constraint}
+                  onSaved={() => setSaved(s.constraint)}
                 />
               ) : (
                 <SuggestionTextItem key={s.constraint} suggestion={s} nearMisses={nearMisses} />
@@ -151,7 +157,7 @@ export function DiagnosticView({
           </div>
         ) : null}
 
-        {saved && markReady ? (
+        {saved !== null && markReady ? (
           <Alert tone="success">
             Saved. Now mark the trip ready again and get recommendations.
           </Alert>
@@ -165,6 +171,11 @@ export function DiagnosticView({
         ) : null}
       </Card>
 
+      {items.length > 0 && run.weakMatch ? (
+        <Alert tone="info">
+          These are the closest options; none match the types the group asked for well.
+        </Alert>
+      ) : null}
       {items.length > 0 ? (
         <ol className="space-y-3" aria-label="Destinations that fit">
           {items.map((item) => (

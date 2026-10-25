@@ -93,7 +93,8 @@ export function ShortlistPage() {
           {run.kind === 'shortlist' ? (
             <ShortlistView trip={t} run={run} items={items} />
           ) : (
-            <DiagnosticView trip={t} run={run} items={items} />
+            // Keyed on the run: a saved suggestion belongs to the run it came from.
+            <DiagnosticView key={run.id} trip={t} run={run} items={items} />
           )}
           {run.incomplete.length > 0 ? <NotConsidered slugs={run.incomplete} /> : null}
         </div>

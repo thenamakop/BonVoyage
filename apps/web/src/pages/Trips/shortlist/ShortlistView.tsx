@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { RecommendationItem, RecommendationRun, TripDetail } from '@bonvoyage/shared';
 import { Alert } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
@@ -19,6 +19,12 @@ export function ShortlistView({
   items: RecommendationItem[];
 }) {
   const [all, setAll] = useState(false);
+  const listRef = useRef<HTMLOListElement>(null);
+  // The button disappears once pressed, so focus moves to the first newly
+  // shown card instead of falling back to the top of the page.
+  useEffect(() => {
+    if (all) listRef.current?.querySelectorAll<HTMLElement>('h2')[FIRST]?.focus();
+  }, [all]);
   const canChoose = trip.availableActions.some(
     (a) => a.action === 'chooseDestination' && a.enabled,
   );
@@ -31,7 +37,7 @@ export function ShortlistView({
           These are the closest options; none match the types the group asked for well.
         </Alert>
       ) : null}
-      <ol className="space-y-3" aria-label="Ranked destinations">
+      <ol ref={listRef} className="space-y-3" aria-label="Ranked destinations">
         {shown.map((item) => (
           <li key={item.destination.slug}>
             <DestinationCard item={item} tripId={trip.id} canChoose={canChoose} />

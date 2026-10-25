@@ -78,7 +78,8 @@ export function DestinationCard({
       aria-labelledby={headingId}
       className="space-y-1 rounded-lg border border-slate-300 bg-white p-4 text-sm"
     >
-      <h2 id={headingId} className="text-base font-semibold text-slate-900">
+      {/* tabIndex -1: "Show all" moves focus here; it is not a tab stop. */}
+      <h2 id={headingId} tabIndex={-1} className="text-base font-semibold text-slate-900">
         {item.rank}. {item.destination.name}
       </h2>
       <p className="text-slate-600">{item.destination.state}</p>

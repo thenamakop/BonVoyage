@@ -75,7 +75,7 @@ export function CloseSubmissions({ trip, action }: { trip: TripDetail; action: T
         <Confirm
           text={exclusionWarning(pending.map((m) => m.name))}
           confirmLabel={label}
-          keepLabel="Keep waiting"
+          keepLabel={pending.length > 0 ? 'Keep waiting' : 'Not now'}
           busy={close.isPending}
           onConfirm={() => close.mutate(undefined, { onSettled: () => setConfirming(false) })}
           onKeep={() => setConfirming(false)}

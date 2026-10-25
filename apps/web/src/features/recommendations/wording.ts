@@ -32,6 +32,10 @@ const lower = (label: string) => label.toLowerCase();
 const typeWord = (v: keyof typeof DESTINATION_TYPE_LABELS) => lower(DESTINATION_TYPE_LABELS[v]);
 const activityWord = (v: keyof typeof ACTIVITY_LABELS) => lower(ACTIVITY_LABELS[v]);
 const modeWord = (v: TransportMode) => lower(TRANSPORT_MODE_LABELS[v]);
+// In a comma list, "yoga and wellness" would read as two items; quote multi-word labels.
+const item = (word: string) => (word.includes(' ') ? `‘${word}’` : word);
+const typeItem = (v: keyof typeof DESTINATION_TYPE_LABELS) => item(typeWord(v));
+const activityItem = (v: keyof typeof ACTIVITY_LABELS) => item(activityWord(v));
 
 // ---------------------------------------------------------------------------
 // Group profile
@@ -136,8 +140,8 @@ export function climateText(group: RecommendationItem['group']): string {
 /** "Shared: rafting (2), temples (2)" from values 2 or more members want. */
 export function sharedText(group: RecommendationItem['group']): string {
   const values = [
-    ...group.sharedTypes.map((v) => `${typeWord(v.value)} (${v.count})`),
-    ...group.sharedActivities.map((v) => `${activityWord(v.value)} (${v.count})`),
+    ...group.sharedTypes.map((v) => `${typeItem(v.value)} (${v.count})`),
+    ...group.sharedActivities.map((v) => `${activityItem(v.value)} (${v.count})`),
   ];
   return values.length > 0
     ? `Shared: ${values.join(', ')}`
@@ -146,8 +150,8 @@ export function sharedText(group: RecommendationItem['group']): string {
 
 /** "For you: 7.5 out of 10. Matches mountain, trekking. Misses rafting." */
 export function forYouText(mine: MyMatch): string {
-  const met = [...mine.metTypes.map(typeWord), ...mine.metActivities.map(activityWord)];
-  const missed = [...mine.missedTypes.map(typeWord), ...mine.missedActivities.map(activityWord)];
+  const met = [...mine.metTypes.map(typeItem), ...mine.metActivities.map(activityItem)];
+  const missed = [...mine.missedTypes.map(typeItem), ...mine.missedActivities.map(activityItem)];
   const sentences = [`For you: ${scoreWord(mine.score10)} out of 10.`];
   sentences.push(met.length > 0 ? `Matches ${met.join(', ')}.` : 'Matches none of your picks.');
   if (missed.length > 0) sentences.push(`Misses ${missed.join(', ')}.`);

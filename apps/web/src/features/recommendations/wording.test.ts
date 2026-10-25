@@ -159,7 +159,7 @@ describe('shortlist cards', () => {
           ],
         }),
       ),
-    ).toBe('Shared: hill station (2), rafting (2), forts and palaces (3)');
+    ).toBe('Shared: ‘hill station’ (2), rafting (2), ‘forts and palaces’ (3)');
     expect(sharedText(group())).toBe('Shared: nothing that 2 or more members asked for');
   });
 
@@ -184,6 +184,19 @@ describe('shortlist cards', () => {
         climateMet: false,
       }),
     ).toBe('For you: 0 out of 10. Matches none of your picks. Misses beach.');
+    // A multi-word label is quoted so the list stays unambiguous (walk-through nit 6).
+    expect(
+      forYouText({
+        score10: 3.5,
+        metTypes: [],
+        missedTypes: ['spiritual', 'mountain'],
+        metActivities: ['temples'],
+        missedActivities: ['yoga_wellness'],
+        climateMet: false,
+      }),
+    ).toBe(
+      'For you: 3.5 out of 10. Matches temples. Misses spiritual, mountain, ‘yoga and wellness’.',
+    );
   });
 });
 
