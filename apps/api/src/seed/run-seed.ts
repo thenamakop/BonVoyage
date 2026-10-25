@@ -32,6 +32,7 @@ import { pino } from 'pino';
 import type { Auth } from '../auth/auth';
 import { saveMyPreference } from '../preferences/service';
 import { transitionTrip } from '../trips/transition-trip';
+import { DEMO_SCENARIOS, seedDemoTrip } from './demo-trips';
 
 // S0-5 step 6: demo seed. Every step is idempotent so the seed can run again
 // without duplicating anything. Prints row counts, never the password.
@@ -289,9 +290,19 @@ export async function runSeed({
     });
   }
 
+  // i) S2-8: the three Sprint 2 demo trips, through the services only.
+  for (const scenario of DEMO_SCENARIOS) await seedDemoTrip(deps, scenario, userIds);
+
   const rows = await tableCounts(db);
   log('\nRow counts:');
   for (const [table, n] of Object.entries(rows)) log(`  ${table}: ${n}`);
+  const trips = await db
+    .select({ title: trip.title, status: trip.status })
+    .from(trip)
+    .where(eq(trip.organiserId, asha))
+    .orderBy(trip.createdAt);
+  log('\nDemo trips:');
+  for (const t of trips) log(`  ${t.title}: ${t.status}`);
   log('\nDemo sign-ins (password is never printed):');
   for (const { name } of DEMO_USERS) log(`  ${demoEmail(name)}`);
 }

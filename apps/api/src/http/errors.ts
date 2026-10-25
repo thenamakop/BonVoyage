@@ -1,6 +1,9 @@
 import { ERROR_CODES } from '@bonvoyage/shared';
 import type { ErrorEnvelope } from '@bonvoyage/shared';
 import type { ErrorRequestHandler, RequestHandler } from 'express';
+// req.log comes from pino-http's Express augmentation; name it here so this
+// file type-checks on its own (scripts/perf imports the API by path).
+import type {} from 'pino-http';
 import type { z } from 'zod';
 
 export class AppError extends Error {
