@@ -62,6 +62,9 @@ function stubFetch(trips: (TripDetail | 'fail')[], meId = 'u1') {
     if (url === `${TRIP_URL}/invitations/active`) {
       return Promise.resolve(Response.json({ invitation: null }));
     }
+    if (url === `${TRIP_URL}/group-profile`) {
+      return Promise.resolve(Response.json({ ready: false, memberCount: 2 }));
+    }
     if (url === `${TRIP_URL}/close-submissions` && init?.method === 'POST') {
       return Promise.resolve(Response.json(tripDetail({ status: 'ready_for_recommendation' })));
     }

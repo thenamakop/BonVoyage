@@ -6,6 +6,7 @@ import { Card } from '../../../components/ui/Card';
 import { useCancelTrip, useCloseSubmissions } from '../../../features/trips/api';
 import { ApiError } from '../../../lib/api';
 import { InvitePanel } from '../InvitePanel';
+import { GetRecommendations } from './GetRecommendations';
 import { exclusionWarning } from './wording';
 
 // Organiser actions (wireframe 06), driven only by availableActions: nothing
@@ -44,17 +45,22 @@ function Confirm({
   );
 }
 
-function CloseSubmissions({ trip, action }: { trip: TripDetail; action: TripAction }) {
+/**
+ * T3b. After a diagnostic sends the trip back (T4, T6>T8) the same event marks
+ * it ready again (0004 j), so the button says so.
+ */
+export function CloseSubmissions({ trip, action }: { trip: TripDetail; action: TripAction }) {
   const close = useCloseSubmissions(trip.id);
   const [confirming, setConfirming] = useState(false);
   const reasonId = useId();
   const pending = trip.members.filter((m) => m.status === 'active' && !m.submitted);
+  const label = trip.latestRecommendation ? 'Mark ready again' : 'Close submissions';
 
   if (!action.enabled) {
     return (
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" disabled aria-describedby={reasonId}>
-          Close submissions
+          {label}
         </Button>
         <p id={reasonId} className="text-sm text-slate-600">
           {action.reason}
@@ -68,7 +74,7 @@ function CloseSubmissions({ trip, action }: { trip: TripDetail; action: TripActi
       {confirming ? (
         <Confirm
           text={exclusionWarning(pending.map((m) => m.name))}
-          confirmLabel="Close submissions"
+          confirmLabel={label}
           keepLabel="Keep waiting"
           busy={close.isPending}
           onConfirm={() => close.mutate(undefined, { onSettled: () => setConfirming(false) })}
@@ -76,7 +82,7 @@ function CloseSubmissions({ trip, action }: { trip: TripDetail; action: TripActi
         />
       ) : (
         <Button variant="secondary" onClick={() => setConfirming(true)}>
-          Close submissions
+          {label}
         </Button>
       )}
     </div>
@@ -113,14 +119,16 @@ export function OrganiserActions({ trip }: { trip: TripDetail }) {
   const editDetails = find('editDetails');
   const closeAction = find('closeSubmissions');
   const cancel = find('cancelTrip');
-  if (!invite && !editDetails && !closeAction && !cancel) return null;
+  const recommend = find('requestRecommendations');
+  if (!invite && !editDetails && !closeAction && !cancel && !recommend) return null;
 
   return (
     <div className="space-y-4">
       {invite ? <InvitePanel trip={trip} /> : null}
-      {editDetails || closeAction || cancel ? (
+      {editDetails || closeAction || cancel || recommend ? (
         <Card className="space-y-3">
           <h2 className="text-sm font-semibold text-slate-900">Organiser actions</h2>
+          {recommend?.enabled ? <GetRecommendations tripId={trip.id} /> : null}
           {editDetails?.enabled ? (
             <ButtonLink to={`/trips/${trip.id}/edit`} variant="secondary">
               Edit details

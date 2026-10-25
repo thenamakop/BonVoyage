@@ -22,7 +22,11 @@ export function member(
 }
 
 function actionsFor(t: Omit<TripDetail, 'availableActions'>): TripAction[] {
-  if (t.myStatus === 'excluded') return [];
+  const hasRecommendation = t.latestRecommendation !== null;
+  // Removed members may still read the recommendations (S2-6).
+  if (t.myStatus === 'excluded') {
+    return hasRecommendation ? [{ action: 'viewRecommendations', enabled: true }] : [];
+  }
   const organiser = t.myRole === 'organiser';
   const out: TripAction[] = [];
   const open = t.status === 'draft' || t.status === 'collecting_preferences';
@@ -52,6 +56,13 @@ function actionsFor(t: Omit<TripDetail, 'availableActions'>): TripAction[] {
             reason: 'At least 2 members need to submit first.',
           },
     );
+  }
+  if (organiser && t.status === 'ready_for_recommendation') {
+    out.push({ action: 'requestRecommendations', enabled: true });
+  }
+  if (hasRecommendation) out.push({ action: 'viewRecommendations', enabled: true });
+  if (organiser && t.status === 'shortlisted') {
+    out.push({ action: 'chooseDestination', enabled: true });
   }
   const planning = !['finalised', 'in_progress', 'completed', 'cancelled'].includes(t.status);
   if (organiser && planning) out.push({ action: 'cancelTrip', enabled: true });
