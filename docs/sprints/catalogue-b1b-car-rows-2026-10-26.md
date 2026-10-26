@@ -6,7 +6,7 @@ Stage B1b covers the 88 car rows in `fares.csv`: `gurugram` and `delhi` to each 
 - With stage B1a (PR #83, merged), `pnpm catalogue:check` shows Stage B1 at 136/137 with 0 errors. The one row left is sariska's destination costs, set back to draft by the B1a spot check.
 - Every distance is at least the straight-line distance, and none is more than twice it.
 
-**Who checked:** Claude, the same session as B1a's second pass, read every route in Maulik's own browser (Brave, through the Claude browser extension) on 26 October 2026, between 00:05 and 00:20 UTC. Under decision 0002 (amended 24 October), Maulik's review and a recorded spot check are still needed before merge.
+**Who checked:** Claude, the same session as B1a's second pass, read every route in Maulik's own browser (Brave, through the Claude browser extension) on 26 October 2026, between 00:05 and 00:20 UTC. Under decision 0002 (amended 24 October), Maulik reviewed this report and recorded a 2-row spot check (see Spot check) before merge.
 
 ## Method
 
@@ -136,15 +136,16 @@ Stage B1b covers the 88 car rows in `fares.csv`: `gurugram` and `delhi` to each 
 
 ## Spot check
 
-To be recorded before merge (decision 0002). Open the row's `directions` link; Google shows a "typically" range for 07:00 Saturday 21 November.
+Recorded before merge (decision 0002). Maulik opened two rows' `directions` links in his own browser; Google shows a "typically" range for 07:00 Saturday 21 November. Both matched. The other suggested rows were not opened.
 
 | Row | Expect | Result | Checked by, date |
 | --- | --- | --- | --- |
-| gurugram > agra | 195 km, typically 3 to 5 hr | pending | |
-| delhi > lucknow | 496 km via Ganga Expy, typically 5 h 30 to 8 h 40 | pending | |
-| gurugram > kasol | 522 km, typically 8 h 40 to 12 h 50 | pending | |
-| delhi > neemrana | 118 km, typically 2 h 10 to 3 h 20 | pending | |
-| gurugram > ranthambore | 327 km via NE 4, typically 3 h 30 to 5 h 40 | pending | |
+| gurugram > agra | 195 km, typically 3 to 5 hr | matches | Maulik, 2026-10-26 |
+| gurugram > ajmer | 419 km via NE 4, typically 4 h 50 to 8 h 10 | matches | Maulik, 2026-10-26 |
+| delhi > lucknow | 496 km via Ganga Expy, typically 5 h 30 to 8 h 40 | not checked | |
+| gurugram > kasol | 522 km, typically 8 h 40 to 12 h 50 | not checked | |
+| delhi > neemrana | 118 km, typically 2 h 10 to 3 h 20 | not checked | |
+| gurugram > ranthambore | 327 km via NE 4, typically 3 h 30 to 5 h 40 | not checked | |
 
 ## Checks
 
