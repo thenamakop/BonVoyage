@@ -193,17 +193,26 @@ Removed rows:
 17. **Draft share above 25%:** 15 of 57 rows (26%) are draft, just over the stage C prompt's 25% line. Most of it is the four Jaipur state monuments, whose fees wait on the official Rajasthan booking site. Re-run those four when the site is reachable, or accept the drafts for now.
 18. **The hours convention:** first opening to last closing, midday breaks not stored. The itinerary check (rule d) can then place a visit inside a temple's lunch break.
 
+## Review decisions (Maulik, 27 October 2026)
+
+- **Items 1 to 15:** accepted as draft. The four Jaipur state-monument fees are to be retried during batch C3.
+- **Item 16:** deferred to Sprint 3. `catalogue:import` gets a `--prune` option that deletes database POIs absent from `pois.csv`; until then the two stale draft rows stay.
+- **Item 17:** accepted. The draft share is 26% because the official Rajasthan booking site was unreachable.
+- **Item 18:** accepted as a known limitation for the demo; noted for the Sprint 4 itinerary work.
+
 ## Spot check
 
 To be recorded before merge (decision 0002). Open the row's Google listing and compare hours and coordinates; for fee rows, open the named fee page. Five verified rows, from five destinations and five categories; Maulik opens each link himself and fills in the last two columns.
 
 | Row | Field | Value in file | What the source says | Holds |
 | --- | --- | --- | --- | --- |
-| jaipur/city-palace (fort_palace): [fee and hours page](https://citypalace.org/visit) | fee, hours | ₹400 (Indian adult); 09:30 to 18:30, no closed days | pending (Maulik) | pending (Maulik) |
-| dehradun/forest-research-institute (museum): [listing](https://maps.google.com/?cid=3592344337992258317), fee on trawell.in's FRI page | fee | ₹25 | pending (Maulik) | pending (Maulik) |
-| almora/jageshwar-dham (temple): [hours page](https://www.trawell.in/uttarakhand/almora/jageshwar-dham), [listing](https://maps.google.com/?cid=15164700073469314578) | hours | 04:00 to 18:00, no closed days | pending (Maulik) | pending (Maulik) |
-| mussoorie/gun-hill (viewpoint): [listing](https://maps.google.com/?cid=2638080859765499824) | hours, location | 10:00 to 18:00, no closed days; 30.4593, 78.0743 | pending (Maulik) | pending (Maulik) |
-| rishikesh/laxman-jhula (sight): [listing](https://maps.google.com/?cid=11760206936042890982) | name, location | Bajrang Setu (Laxman Jhula glass bridge); 30.1264, 78.3295 | pending (Maulik) | pending (Maulik) |
+| jaipur/city-palace (fort_palace): [fee and hours page](https://citypalace.org/visit) | fee, hours | ₹400 (Indian adult); 09:30 to 18:30, no closed days | ₹400 (Indian adult); 09:30 to 18:30, no closed days | yes |
+| dehradun/forest-research-institute (museum): [listing](https://maps.google.com/?cid=3592344337992258317), fee on trawell.in's FRI page | fee | ₹25 | ₹25 | yes |
+| almora/jageshwar-dham (temple): [hours page](https://www.trawell.in/uttarakhand/almora/jageshwar-dham), [listing](https://maps.google.com/?cid=15164700073469314578) | hours | 04:00 to 18:00, no closed days | 04:00 to 18:00, no closed days | yes |
+| mussoorie/gun-hill (viewpoint): [listing](https://maps.google.com/?cid=2638080859765499824) | hours, location | 10:00 to 18:00, no closed days; 30.4593, 78.0743 | 10:00 to 18:00, no closed days; 30.4593, 78.0743 | yes |
+| rishikesh/laxman-jhula (sight): [listing](https://maps.google.com/?cid=11760206936042890982) | name, location | Bajrang Setu (Laxman Jhula glass bridge); 30.1264, 78.3295 | Bajrang Setu (Laxman Jhula glass bridge); 30.1264, 78.3295 | yes |
+
+Checked by Maulik on 27 October 2026 in his own browser: 5 of 5 hold.
 
 ## Checks
 
