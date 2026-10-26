@@ -44,7 +44,7 @@ Each demo trip works once per reset, because asking for recommendations moves th
 1. **Asha:** go back to **Trips**, open **Tight budget demo** and click **Get recommendations**.
 2. The page reads **"No destination fits"** and **"Most places cost more than the group can spend."**, followed by the closest misses ("…: about ₹… over the group budget").
    > "Nothing fits, and the app says exactly why. This isn't an error: it's a diagnostic."
-3. Under **Try one of these changes:**, click **Raise the group budget to ₹…**. The amount is the smallest budget that unlocks a place; it was ₹10,500 on 26 October. The line under the button names the places it adds.
+3. Under **Try one of these changes:**, click **Raise the group budget to ₹…**. The amount is the smallest budget that unlocks a place: ₹14,000 with stage B1a's verified costs. The line under the button names the places it adds (Mathura and Vrindavan).
 4. The page says **"Saved. Now mark the trip ready again and get recommendations."**. Click **Mark ready again**, then **Mark ready again** in the confirm.
 5. Click **Get recommendations**. The new run shows **"Round 2"**.
    > "The organiser fixed the one limit that was binding and asked again. Rounds are kept, so each step can be audited."
