@@ -93,17 +93,26 @@ Same conventions as batch C1 (`docs/sprints/catalogue-c1-pois-2026-10-26.md`, "M
 11. **Kanatal's four shared places** repeat Dhanaulti's rows (see Method). Accept, or keep them under Dhanaulti only and let Kanatal stand at 2 POIs with a checker warning.
 12. **Distance:** `jim-corbett/kosi-barrage` is 25.4 km from the catalogue point, which sits inside the park; it is in Ramnagar, where visitors stay. Accept, or drop it (Jim Corbett would then have 5 POIs).
 
+## Review decisions (Maulik, 27 October 2026)
+
+- **Items 1 to 9:** accepted as draft.
+- **Item 10:** the three safari rows stay draft; a per-person share of a jeep fee misleads small groups. Safari cost is to be handled as an activity cost in the Sprint 4 cost work.
+- **Item 11:** accepted; Kanatal keeps its four places shared with Dhanaulti.
+- **Item 12:** accepted; Kosi Barrage stays (Ramnagar is where visitors stay).
+
 ## Spot check
 
-Maulik opens each link and fills in the last two columns before merge (decision 0002).
+Recorded before merge (decision 0002): Maulik opened each link and compared it with the file.
 
 | Row | Field | Value in file | What the source says | Holds |
 | --- | --- | --- | --- | --- |
-| haridwar/chandi-devi-temple: [listing](https://maps.google.com/?cid=88916476708927833) | hours | 07:00 to 19:00 | pending (Maulik) | pending |
-| kanatal/tehri-lake: [listing](https://maps.google.com/?cid=13457316643456454899) | location | 30.3929, 78.4780 | pending (Maulik) | pending |
-| lansdowne/darwan-singh-museum: [listing](https://maps.google.com/?cid=5528750966287511688), [fee page](https://www.trawell.in/uttarakhand/lansdowne/garhwal-regimental-museum-darwan-singh-museum) | fee, closed day | ₹50; 08:00 to 18:00, closed Tue | pending (Maulik) | pending |
-| nainital/eco-cave-gardens: [listing](https://maps.google.com/?cid=13674096759103459353), [fee page](https://www.trawell.in/uttarakhand/nainital/eco-cave-garden) | fee, hours | ₹50; 09:30 to 17:30 | pending (Maulik) | pending |
-| ranikhet/krc-museum: [listing](https://maps.google.com/?cid=11671092346694945818), [fee page](https://www.trawell.in/uttarakhand/ranikhet/kumaon-regimental-centre-museum-memorial) | fee | ₹20 | pending (Maulik) | pending |
+| haridwar/chandi-devi-temple: [listing](https://maps.google.com/?cid=88916476708927833) | hours | 07:00 to 19:00 | 07:00 to 19:00 | yes |
+| kanatal/tehri-lake: [listing](https://maps.google.com/?cid=13457316643456454899) | location | 30.3929, 78.4780 | 30.3929, 78.4780 | yes |
+| lansdowne/darwan-singh-museum: [listing](https://maps.google.com/?cid=5528750966287511688), [fee page](https://www.trawell.in/uttarakhand/lansdowne/garhwal-regimental-museum-darwan-singh-museum) | fee, closed day | ₹50; 08:00 to 18:00, closed Tue | ₹50; 08:00 to 18:00, closed Tue | yes |
+| nainital/eco-cave-gardens: [listing](https://maps.google.com/?cid=13674096759103459353), [fee page](https://www.trawell.in/uttarakhand/nainital/eco-cave-garden) | fee, hours | ₹50; 09:30 to 17:30 | ₹50; 09:30 to 17:30 | yes |
+| ranikhet/krc-museum: [listing](https://maps.google.com/?cid=11671092346694945818), [fee page](https://www.trawell.in/uttarakhand/ranikhet/kumaon-regimental-centre-museum-memorial) | fee | ₹20 | ₹20 | yes |
+
+Checked by Maulik on 27 October 2026 in his own browser: 5 of 5 hold.
 
 For the location row, right-click the pin on the listing; it holds if the coordinates match to about 3 decimals.
 
