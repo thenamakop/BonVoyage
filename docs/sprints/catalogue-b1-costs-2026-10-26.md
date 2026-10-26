@@ -225,3 +225,39 @@ To be recorded before merge (decision 0002). Booking prices move daily, so a row
 - `pnpm catalogue:check`: 0 errors. Stage B1 is at 49/137, and the remaining warnings are POI counts (stage C).
 - `pnpm vitest run --project unit packages/db`: 50 passed.
 - `pnpm vitest run --project integration apps/api/src/seed apps/api/src/recommendations`: 18 passed. Hills is at 32 feasible, and the tight-budget cheapest estimate is ₹13,600.
+
+## Spot check before merging
+
+- **Date:** 26 October 2026.
+- **Checked by:** a second Claude Code session, not the one that read the second pass's prices. It is not fully independent of B1a: it verified the first pass's four cost rules and committed the second pass.
+- **Sample:** 5 of 49 rows, the larger of 5 and 10% of the batch:
+  - Sariska, the biggest change;
+  - the fuel price, which the report calls unchanged;
+  - Agra, Dehradun and Manali, spread across the batch and three states.
+
+  No row was skipped for Maulik's own checks, because none is recorded yet.
+- **How:** plain page fetches, without a browser. Booking.com and Google Maps were tried with Agra's links first. Both refused automated reads, so the other rows' links on those two sites were not sent. No block was worked around.
+
+| Row | Field | Value in the file | What the source says | Holds |
+| --- | --- | --- | --- | --- |
+| fuel_price_inr_per_litre | value | 102.12 | [Goodreturns](https://www.goodreturns.in/petrol-price-in-delhi-s10.html), page dated "26th Oct, 2026": "Today's petrol price in Delhi (New Delhi) stands at ₹102.12 per litre." | yes |
+| agra | stay_budget_inr, stay_mid_inr, stay_premium_inr | 900, 3,200, 6,800 | Booking.com sorted list: HTTP 202 with an empty body (a bot check). Default list not sent. | not checked |
+| agra | food_per_day_inr | 750 | Google Maps: the page returns only the words "Google Maps", with no listings unless scripts run. | not checked |
+| agra | local_per_day_inr | 350 | CabBazar `agra-local-sightseeing`: HTTP 403. | not checked |
+| dehradun | stay_budget_inr, stay_mid_inr, stay_premium_inr | 900, 2,300, 4,200 | Booking.com: not sent (see agra). | not checked |
+| dehradun | food_per_day_inr | 1,000 | Google Maps: not sent (see agra). | not checked |
+| dehradun | local_per_day_inr | 400 | CabBazar `dehradun-local-sightseeing`: HTTP 403. | not checked |
+| manali | stay_budget_inr, stay_mid_inr, stay_premium_inr | 400, 3,100, 5,600 | Booking.com: not sent (see agra). | not checked |
+| manali | food_per_day_inr | 750 | Google Maps: not sent (see agra). | not checked |
+| manali | local_per_day_inr | 350 | CabBazar `manali-local-sightseeing`: HTTP 403. | not checked |
+| sariska | stay_budget_inr, stay_mid_inr, stay_premium_inr | 4,200, 13,600, 17,600 | Booking.com: not sent (see agra). | not checked |
+| sariska | food_per_day_inr | 750 | Google Maps: not sent (see agra). | not checked |
+| sariska | local_per_day_inr | 350 | CabBazar `city/Alwar`: HTTP 403. | not checked |
+
+**Result: not passed.**
+- **Holds:** 1 of 5 rows, the fuel price. This session also verified it in the first pass, so it is not an independent check.
+- **Not checked:** the other 4 rows. Every source the second pass cites for them (Booking.com, Google Maps and CabBazar) refuses a plain fetch or shows nothing without scripts. None of the four was shown to be wrong.
+
+**Changes made:** none. No value or `review_status` was changed. A value is corrected or set back to `draft` only when it does not hold, and no value was shown not to hold.
+
+**Still needed before merge:** a spot check in a browser, either by Maulik (the [Spot check](#spot-check) table above) or by an agent session with browser access.
