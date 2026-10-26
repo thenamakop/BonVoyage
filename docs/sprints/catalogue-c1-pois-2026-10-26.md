@@ -202,7 +202,7 @@ Removed rows:
 
 ## Spot check
 
-To be recorded before merge (decision 0002). Open the row's Google listing and compare hours and coordinates; for fee rows, open the named fee page. Five verified rows, from five destinations and five categories; Maulik opens each link himself and fills in the last two columns.
+Recorded before merge (decision 0002). Five verified rows, from five destinations and five categories: Maulik opened each row's Google listing, or for fee rows the named fee page, and compared it with the file.
 
 | Row | Field | Value in file | What the source says | Holds |
 | --- | --- | --- | --- | --- |
