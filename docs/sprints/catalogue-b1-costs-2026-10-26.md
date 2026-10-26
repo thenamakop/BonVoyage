@@ -2,7 +2,7 @@
 
 Stage B1a covers the 5 cost rules in `cost-rules.json` and the 5 cost columns (`stay_budget_inr`, `stay_mid_inr`, `stay_premium_inr`, `food_per_day_inr`, `local_per_day_inr`) of the 44 destinations in `destinations.csv`: 49 rows. The 88 car rows in `fares.csv` (the rest of B1) are batch B1b.
 
-**Result:** 49 of 49 rows verified. `pnpm catalogue:check` shows Stage B1 at 49/137 with 0 errors.
+**Result:** 48 of 49 rows verified; sariska's costs are draft after the spot check (see [Maulik to check](#maulik-to-check), item 5). `pnpm catalogue:check` shows Stage B1 at 48/137 with 0 errors.
 - Cost rules: car mileage 15 to 19 km/litre (first pass) and car rental ₹2,500 to ₹2,400 (this pass). Fuel, toll and persons per car are unchanged.
 - Destinations: all 220 cost values now come from prices that were live when read. The old values were never sourced. See [Values](#values) for was and now.
 
@@ -223,7 +223,15 @@ To be recorded before merge (decision 0002). Booking prices move daily, so a row
 
 ## Checks
 
-- `pnpm catalogue:check`: 0 errors. Stage B1 is at 49/137, and the remaining warnings are POI counts (stage C).
+- `pnpm catalogue:check` (26 October 2026, after the spot check):
+
+  ```text
+  Stage A (hubs, destination identity)                   50/50 verified   due 2026-10-26
+  Stage B1 (cost rules, destination costs, car rows)     48/137 verified  due 2026-11-01
+  Stage B2 (bus and train fares, best effort)            0/116 verified   due 2026-11-05
+  Stage C (POIs)                                         0/21 verified    due 2026-11-01
+  0 error(s), 42 warning(s), 1 info
+  ```
 - `pnpm vitest run --project unit packages/db`: 50 passed.
 - `pnpm vitest run --project integration apps/api/src/seed apps/api/src/recommendations`: 18 passed. Hills is at 32 feasible, and the tight-budget cheapest estimate is ₹13,600.
 
