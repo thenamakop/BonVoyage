@@ -28,10 +28,10 @@
     "review_status": "verified"
   },
   "car_rental_inr_per_day": {
-    "value": 2500,
+    "value": 2400,
     "unit": "INR/day",
-    "source_url": "",
-    "collected_on": "2026-10-10",
-    "review_status": "draft"
+    "source_url": "https://www.zoomcar.com/in/delhi",
+    "collected_on": "2026-10-25",
+    "review_status": "verified"
   }
 }

@@ -86,8 +86,8 @@ export const HILLS_MIN_FEASIBLE = 8;
  * estimate. Members' lowest maximum (₹16,000 x 3) stays above it, so the trip
  * budget sets the cap and the F5 suggestion is the organiser's to apply.
  */
-// Margin: the cheapest estimate was ₹10,010 on 26 Oct 2026, so ₹7,000 is 30% below it
-// (the S2-8 file's ₹9,000 was only 10% below).
+// Margin: with stage B1a's verified costs the cheapest estimate is ₹13,600 (Mathura),
+// so ₹7,000 is about half of it.
 export const TIGHT_BUDGET_INR = 7000;
 /** Every F5 near miss must cost at least this multiple of the tight budget. */
 export const TIGHT_BUDGET_MARGIN = 1.25;
