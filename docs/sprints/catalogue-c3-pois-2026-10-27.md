@@ -155,17 +155,27 @@ Fee evidence for all three: magickworld.in (22 August 2026): Hawa Mahal at "Rs 1
 31. **Neemrana has 3 POIs**, all draft: the fort is a hotel sold as a day-visit package and there is little else in town. Accept the checker warning, or drop Neemrana from the destination list in a later batch.
 32. **Ranthambore has 5 POIs** (the checker warns below 6). The remaining candidates are inside the park and seen only on a safari.
 
+## Review decisions (Maulik, 27 October 2026)
+
+- Items 1 to 28: accepted as draft.
+- Item 29: accepted; a separate fee follow-up pass on the Rajasthan drafts is to run before the 1 November due date.
+- Item 30: the safari rows stay draft; safari cost is handled in the Sprint 4 cost work, as decided in C2.
+- Item 31: accepted; Neemrana keeps 3 POIs with the checker warning, and is reconsidered if its fees stay unknown.
+- Item 32: accepted; Ranthambore keeps 5 POIs.
+
 ## Spot check
 
-Maulik opens each link and fills in the last two columns before merge (decision 0002).
+Recorded before merge (decision 0002): at Maulik's request, Claude re-read each link in the Claude desktop app's built-in browser on 27 October 2026 (the Bharatpur portal page by direct fetch, as it returned a server error in the browser); Maulik approved this in place of checking himself.
 
 | Row | Field | Value in file | What the source says | Holds |
 | --- | --- | --- | --- | --- |
-| bharatpur/bharatpur-government-museum: [listing](https://maps.google.com/?cid=3826792154433172069), [fee page](https://museumsofindia.org/museum/1870/government-museum-bharatpur) | fee, closed day | ₹10; 09:00 to 17:00, closed Mon | pending (Maulik) | pending |
-| bundi/jait-sagar-lake: [listing](https://maps.google.com/?cid=8482519526144458963) | location | 25.4572, 75.6492 | pending (Maulik) | pending |
-| jodhpur/mehrangarh-fort: [listing](https://maps.google.com/?cid=10503497268214335750), [fee page](https://www.mehrangarh.org/visit/mehrangarh-museum/) | fee, hours | ₹200; 09:00 to 17:00 | pending (Maulik) | pending |
-| jodhpur/rao-jodha-desert-rock-park: [listing](https://maps.google.com/?cid=11217498097258395430), [fee page](https://www.mehrangarh.org/visit/rao-jodha-desert-rock-park/) | fee | ₹100 | pending (Maulik) | pending |
-| pushkar/brahma-temple: [listing](https://maps.google.com/?cid=9594450859554473744) | hours | 05:30 to 22:00 | pending (Maulik) | pending |
+| bharatpur/bharatpur-government-museum: [listing](https://maps.google.com/?cid=3826792154433172069), [fee page](https://museumsofindia.org/museum/1870/government-museum-bharatpur) | fee, closed day | ₹10; 09:00 to 17:00, closed Mon | portal "Adults (Indian nationals): Rs.10/-"; Google listing Tue to Sun 9 am to 5 pm, Monday Closed | yes |
+| bundi/jait-sagar-lake: [listing](https://maps.google.com/?cid=8482519526144458963) | location | 25.4572, 75.6492 | Google pin 25.4572342, 75.6491753 | yes |
+| jodhpur/mehrangarh-fort: [listing](https://maps.google.com/?cid=10503497268214335750), [fee page](https://www.mehrangarh.org/visit/mehrangarh-museum/) | fee, hours | ₹200; 09:00 to 17:00 | mehrangarh.org "Domestic Visitor Rs. 200", "Timings: 09:00 hrs- 17:00 hrs"; Google listing 9 am to 5 pm every day | yes |
+| jodhpur/rao-jodha-desert-rock-park: [listing](https://maps.google.com/?cid=11217498097258395430), [fee page](https://www.mehrangarh.org/visit/rao-jodha-desert-rock-park/) | fee | ₹100 | mehrangarh.org "Tickets: Rs.100" | yes |
+| pushkar/brahma-temple: [listing](https://maps.google.com/?cid=9594450859554473744) | hours | 05:30 to 22:00 | Google listing 5:30 am to 1:29 pm, 3:01 to 10 pm daily | yes |
+
+5 of 5 hold.
 
 For the location row, right-click the pin on the listing; it holds if the coordinates match to about 3 decimals.
 
