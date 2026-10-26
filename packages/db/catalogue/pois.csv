@@ -38,7 +38,7 @@ auli,auli-artificial-lake,Auli artificial lake,sight,30,06:00,18:00,,0,30.5284,7
 auli,auli-chairlift,Auli chair lift,adventure,45,,,,500,30.5369,79.5653,https://maps.google.com/?cid=1839336499259601377,2026-10-26,draft
 auli,narsingh-temple,"Narsingh Temple, Joshimath",temple,45,05:00,21:00,,0,30.5564,79.5659,https://maps.google.com/?cid=14085058807828902025,2026-10-26,verified
 auli,shankaracharya-math,"Jyotirmath (Shankaracharya Math), Joshimath",temple,45,,,,0,30.5553,79.5610,https://maps.google.com/?cid=11707304052662848246,2026-10-26,draft
-bharatpur,keoladeo-national-park,Keoladeo National Park,nature,240,06:00,17:00,,0,27.1596,77.5218,https://maps.google.com/?cid=16231870558536559483,2026-10-26,draft
+bharatpur,keoladeo-national-park,Keoladeo National Park,nature,240,06:00,17:00,,75,27.1596,77.5218,https://maps.google.com/?cid=16231870558536559483,2026-10-26,verified
 bharatpur,lohagarh-fort,Lohagarh Fort,fort_palace,90,10:00,18:00,,0,27.2220,77.4943,https://maps.google.com/?cid=12844900377320930162,2026-10-26,verified
 bharatpur,bharatpur-government-museum,"Government Museum, Bharatpur",museum,60,09:00,17:00,1,10,27.2219,77.4942,https://maps.google.com/?cid=3826792154433172069,2026-10-26,verified
 bharatpur,ganga-mandir,Ganga Mandir,temple,30,06:00,20:00,,0,27.2160,77.4955,https://maps.google.com/?cid=11569667314378195223,2026-10-26,verified
@@ -51,7 +51,7 @@ bhimtal,naukuchiatal,Naukuchiatal lake,nature,90,,,,0,29.3220,79.5835,https://ma
 bhimtal,sattal,Sattal lakes,nature,120,,,,0,29.3484,79.5319,https://maps.google.com/?cid=6659300001641477232,2026-10-26,verified
 bhimtal,bhimeshwar-temple,Bhimeshwar Mahadev Temple,temple,30,06:00,19:00,,0,29.3428,79.5633,https://maps.google.com/?cid=17225957474037331272,2026-10-26,verified
 bhimtal,butterfly-research-centre,Butterfly Research Centre (Jones Estate),museum,60,10:00,17:00,,0,29.3551,79.5430,https://maps.google.com/?cid=13998100013609517401,2026-10-26,draft
-bikaner,junagarh-fort,Junagarh Fort,fort_palace,150,10:00,16:30,,50,28.0220,73.3180,https://maps.google.com/?cid=10616697631371999702,2026-10-26,draft
+bikaner,junagarh-fort,Junagarh Fort,fort_palace,150,10:00,16:30,,50,28.0220,73.3180,https://maps.google.com/?cid=10616697631371999702,2026-10-26,verified
 bikaner,karni-mata-temple,"Karni Mata Temple, Deshnok",temple,60,04:00,22:00,,0,27.7910,73.3408,https://maps.google.com/?cid=3735440795203135148,2026-10-26,verified
 bikaner,camel-research-centre,ICAR National Research Centre on Camel,sight,90,11:00,18:30,,20,27.9790,73.3613,https://maps.google.com/?cid=6667715842809397281,2026-10-26,draft
 bikaner,rampuria-haveli,Rampuria Havelis,sight,45,06:00,18:00,,0,28.0123,73.3047,https://maps.google.com/?cid=11626912899660466930,2026-10-26,verified
@@ -106,13 +106,13 @@ dharamshala,bhagsu-waterfall,Bhagsu waterfall,nature,60,07:00,18:00,,0,32.2475,7
 dharamshala,naddi-view-point,Naddi viewpoint,viewpoint,45,,,,0,32.2531,76.3029,https://maps.google.com/?cid=13952971422357192544,2026-10-26,verified
 dharamshala,norbulingka-institute,Norbulingka Institute,sight,90,09:00,17:00,0,50,32.1972,76.3585,https://maps.google.com/?cid=12011561571307396052,2026-10-26,draft
 dharamshala,st-john-in-the-wilderness,St John in the Wilderness church,sight,30,09:00,17:00,,0,32.2425,76.3183,https://maps.google.com/?cid=2029794885724304407,2026-10-26,verified
-dharamshala,kangra-fort,Kangra Fort,fort_palace,120,09:00,17:00,,0,32.0875,76.2542,https://maps.google.com/?cid=16851190628607852354,2026-10-26,draft
-gwalior,gwalior-fort,Gwalior Fort,fort_palace,180,06:00,17:30,,0,26.2313,78.1695,https://maps.google.com/?cid=17005383382359182388,2026-10-26,draft
+dharamshala,kangra-fort,Kangra Fort,fort_palace,120,09:00,17:00,,25,32.0875,76.2542,https://maps.google.com/?cid=16851190628607852354,2026-10-26,draft
+gwalior,gwalior-fort,Gwalior Fort,fort_palace,180,06:00,17:30,,75,26.2313,78.1695,https://maps.google.com/?cid=17005383382359182388,2026-10-26,draft
 gwalior,jai-vilas-palace,Jai Vilas Palace Museum,museum,120,10:00,18:00,,300,26.2042,78.1685,https://maps.google.com/?cid=12278093318906565567,2026-10-26,verified
 gwalior,teli-ka-mandir,Teli Ka Mandir,temple,45,06:00,17:30,,0,26.2204,78.1657,https://maps.google.com/?cid=17005383382359182388,2026-10-26,draft
 gwalior,sas-bahu-temple,Sas-Bahu (Sahastrabahu) temples,temple,45,06:00,17:30,,0,26.2237,78.1703,https://maps.google.com/?cid=17005383382359182388,2026-10-26,draft
 gwalior,tansen-tomb,Tomb of Tansen,sight,45,09:00,18:00,,0,26.2315,78.1791,https://maps.google.com/?cid=16442441222037774508,2026-10-26,verified
-gwalior,gujari-mahal-museum,Gujari Mahal Archaeological Museum,museum,75,10:00,17:00,1,0,26.2340,78.1706,https://maps.google.com/?cid=17677470921172992599,2026-10-26,draft
+gwalior,gujari-mahal-museum,Gujari Mahal Archaeological Museum,museum,75,10:00,17:00,1,10,26.2340,78.1706,https://maps.google.com/?cid=17677470921172992599,2026-10-26,draft
 gwalior,sun-temple,"Sun Temple, Gwalior",temple,45,06:30,18:00,,0,26.2363,78.2186,https://maps.google.com/?cid=11764661072419603067,2026-10-26,verified
 haridwar,har-ki-pauri,Har Ki Pauri,temple,90,,,,0,29.9574,78.1750,https://maps.google.com/?cid=9746789011900184291,2026-10-26,verified
 haridwar,mansa-devi-temple,Mansa Devi Temple,temple,90,05:00,21:00,,0,29.9579,78.1654,https://maps.google.com/?cid=8815929307996062555,2026-10-26,verified
@@ -120,7 +120,7 @@ haridwar,chandi-devi-temple,Chandi Devi Temple,temple,120,07:00,19:00,,0,29.9338
 haridwar,maya-devi-temple,Maya Devi Temple,temple,30,06:00,20:00,,0,29.9496,78.1621,https://maps.google.com/?cid=12642279941287641467,2026-10-26,verified
 haridwar,daksh-mahadev-temple,"Daksheshwar Mahadev Temple, Kankhal",temple,45,06:00,20:00,,0,29.9215,78.1459,https://maps.google.com/?cid=8789056545875166931,2026-10-26,verified
 haridwar,bharat-mata-mandir,Bharat Mata Mandir,temple,60,06:00,20:00,,0,29.9849,78.1920,https://maps.google.com/?cid=2685623246485855946,2026-10-26,verified
-jaipur,amber-fort,Amber Fort,fort_palace,150,07:00,21:00,,100,26.9855,75.8513,https://maps.google.com/?cid=7071178524615540267,2026-10-26,draft
+jaipur,amber-fort,Amber Fort,fort_palace,150,07:00,21:00,,150,26.9855,75.8513,https://maps.google.com/?cid=7071178524615540267,2026-10-26,draft
 jaipur,hawa-mahal,Hawa Mahal,sight,45,09:00,18:30,,100,26.9241,75.8267,https://maps.google.com/?cid=9659760862336692748,2026-10-26,verified
 jaipur,city-palace,City Palace,fort_palace,120,09:30,18:30,,400,26.9258,75.8237,https://citypalace.org/visit,2026-10-26,verified
 jaipur,jantar-mantar,Jantar Mantar,sight,60,09:00,18:30,,100,26.9248,75.8246,https://maps.google.com/?cid=16810253135964384190,2026-10-26,verified
@@ -135,7 +135,7 @@ jim-corbett,kosi-barrage,"Kosi Barrage, Ramnagar",sight,30,,,,0,29.3988,79.1328,
 jim-corbett,dhikala-safari-zone,Dhikala zone canter safari,adventure,180,05:30,17:30,,1333,29.5853,78.8625,https://www.trawell.in/uttarakhand/jim-corbett-national-park/dhikala-jeep-safari-canter-safari,2026-10-26,draft
 jodhpur,mehrangarh-fort,Mehrangarh Fort and museum,fort_palace,180,09:00,17:00,,200,26.2982,73.0186,https://maps.google.com/?cid=10503497268214335750,2026-10-26,verified
 jodhpur,jaswant-thada,Jaswant Thada,sight,45,09:00,17:00,,50,26.3041,73.0254,https://maps.google.com/?cid=17264411899084545981,2026-10-26,verified
-jodhpur,umaid-bhawan-museum,Umaid Bhawan Palace Museum,museum,60,09:00,17:00,,15,26.2807,73.0478,https://maps.google.com/?cid=12950050134140978050,2026-10-26,draft
+jodhpur,umaid-bhawan-museum,Umaid Bhawan Palace Museum,museum,60,09:00,17:00,,30,26.2807,73.0478,https://maps.google.com/?cid=12950050134140978050,2026-10-26,verified
 jodhpur,mandore-garden,Mandore Garden,nature,90,08:00,20:00,,0,26.3525,73.0353,https://maps.google.com/?cid=10210877688403915432,2026-10-26,verified
 jodhpur,toorji-ka-jhalra,Toorji Ka Jhalra stepwell,sight,30,,,,0,26.2971,73.0229,https://maps.google.com/?cid=1910422510656221228,2026-10-26,verified
 jodhpur,rao-jodha-desert-rock-park,Rao Jodha Desert Rock Park,nature,90,07:00,17:00,,100,26.3041,73.0175,https://maps.google.com/?cid=11217498097258395430,2026-10-26,verified
@@ -170,10 +170,10 @@ lansdowne,darwan-singh-museum,Darwan Singh Sangrahalaya (Garhwal Regimental Muse
 lansdowne,tip-n-top,Tip-in-Top viewpoint,viewpoint,45,,,,0,29.8497,78.6791,https://maps.google.com/?cid=15965901569670009792,2026-10-26,verified
 lansdowne,tarkeshwar-mahadev,Tarkeshwar Mahadev Temple,temple,90,05:00,18:00,,0,29.8391,78.7921,https://maps.google.com/?cid=10960314049759230513,2026-10-26,verified
 lansdowne,bhim-pakora,Bheem Pakora,sight,30,,,,0,29.8390,78.6703,https://maps.google.com/?cid=15909875325988380955,2026-10-26,verified
-lucknow,bara-imambara,Bara Imambara and Bhool Bhulaiya,sight,150,06:00,18:00,,0,26.8685,80.9127,https://maps.google.com/?cid=3832067487070426943,2026-10-26,draft
-lucknow,chota-imambara,Chota Imambara,sight,60,07:00,18:00,,0,26.8734,80.9042,https://maps.google.com/?cid=2606937481108120312,2026-10-26,draft
+lucknow,bara-imambara,Bara Imambara and Bhool Bhulaiya,sight,150,06:00,18:00,,50,26.8685,80.9127,https://maps.google.com/?cid=3832067487070426943,2026-10-26,verified
+lucknow,chota-imambara,Chota Imambara,sight,60,07:00,18:00,,20,26.8734,80.9042,https://maps.google.com/?cid=2606937481108120312,2026-10-26,verified
 lucknow,rumi-darwaza,Rumi Darwaza,sight,20,,,,0,26.8712,80.9121,https://maps.google.com/?cid=12841745038091676899,2026-10-26,verified
-lucknow,residency,The Residency,sight,90,10:00,17:00,,0,26.8606,80.9268,https://maps.google.com/?cid=6391775294808710346,2026-10-26,draft
+lucknow,residency,The Residency,sight,90,10:00,17:00,,25,26.8606,80.9268,https://maps.google.com/?cid=6391775294808710346,2026-10-26,draft
 lucknow,ambedkar-park,Ambedkar Memorial Park,nature,90,11:00,21:00,,0,26.8494,80.9768,https://maps.google.com/?cid=7109179806645517341,2026-10-26,draft
 lucknow,hazratganj,Hazratganj,market,120,,,,0,26.8478,80.9454,https://maps.google.com/?cid=16243472739184013086,2026-10-26,verified
 manali,hadimba-temple,Hadimba Devi Temple,temple,45,08:00,18:00,,0,32.2484,77.1816,https://maps.google.com/?cid=3290482383344535452,2026-10-26,verified
@@ -206,7 +206,7 @@ nainital,naini-lake,Naini Lake,nature,90,,,,0,29.3869,79.4598,https://maps.googl
 nainital,naina-devi-temple,Naina Devi Temple,temple,45,05:00,19:00,,0,29.3891,79.4543,https://maps.google.com/?cid=4228915127692063862,2026-10-26,verified
 nainital,snow-view-point,Snow View Point,viewpoint,60,,,,0,29.3949,79.4615,https://maps.google.com/?cid=14454730172334923885,2026-10-26,verified
 nainital,tiffin-top,Tiffin Top (Dorothy's Seat),viewpoint,120,08:00,17:30,,0,29.3836,79.4506,https://maps.google.com/?cid=10263303254297403841,2026-10-26,verified
-nainital,nainital-zoo,G B Pant High Altitude Zoo,nature,120,10:00,16:30,4,50,29.3808,79.4686,https://maps.google.com/?cid=11412862296460809269,2026-10-26,draft
+nainital,nainital-zoo,G B Pant High Altitude Zoo,nature,120,10:00,16:30,4,150,29.3808,79.4686,https://maps.google.com/?cid=11412862296460809269,2026-10-26,draft
 nainital,eco-cave-gardens,Eco Cave Gardens,sight,60,09:30,17:30,,50,29.3921,79.4452,https://maps.google.com/?cid=13674096759103459353,2026-10-26,verified
 nainital,mall-road,The Mall,market,90,,,,0,29.3879,79.4609,https://maps.google.com/?cid=9623455115120736127,2026-10-26,verified
 narkanda,hatu-peak,Hatu Peak,viewpoint,120,06:00,18:00,,0,31.2438,77.5015,https://www.trawell.in/himachal/narkanda/hatu-peak,2026-10-26,verified
@@ -253,7 +253,7 @@ sariska,kankwari-fort,Kankwari Fort,fort_palace,60,08:00,18:00,,0,27.3325,76.365
 sariska,neelkanth-temples,Neelkanth Mahadev temples,temple,60,05:00,22:00,,0,27.2474,76.3519,https://maps.google.com/?cid=1090487255375044748,2026-10-26,verified
 sariska,bhartrihari-temple,Bhartrihari Temple,temple,45,,,,0,27.3957,76.4121,https://maps.google.com/?cid=7760547351694823344,2026-10-26,verified
 sariska,natni-ka-bara,Natni Ka Bara,sight,45,,,,0,27.4207,76.5077,https://maps.google.com/?cid=15451588326334557091,2026-10-26,verified
-sariska,bhangarh-fort,Bhangarh Fort,fort_palace,120,06:00,18:00,,25,27.0946,76.2913,https://maps.google.com/?cid=6431153257809278248,2026-10-26,draft
+sariska,bhangarh-fort,Bhangarh Fort,fort_palace,120,06:00,18:00,,25,27.0946,76.2913,https://maps.google.com/?cid=6431153257809278248,2026-10-26,verified
 shimla,the-ridge,The Ridge,sight,60,,,,0,31.1048,77.1747,https://maps.google.com/?cid=4783176836327679748,2026-10-26,verified
 shimla,christ-church,"Christ Church, Shimla",sight,30,10:30,17:30,0,0,31.1043,77.1759,https://maps.google.com/?cid=1181787408617286800,2026-10-26,verified
 shimla,jakhoo-temple,Jakhoo Temple,temple,90,05:00,19:45,,0,31.1012,77.1840,https://maps.google.com/?cid=105442272317023633,2026-10-26,verified
@@ -261,7 +261,7 @@ shimla,viceregal-lodge,Viceregal Lodge (Rashtrapati Niwas),museum,90,10:30,17:00
 shimla,himachal-state-museum,Himachal State Museum,museum,60,10:00,17:00,1,0,31.1034,77.1508,https://maps.google.com/?cid=7992777178700503769,2026-10-26,draft
 shimla,kufri,"Himalayan Nature Park, Kufri",nature,120,09:00,18:30,2,35,31.0958,77.2631,https://maps.google.com/?cid=13463553072852973050,2026-10-26,draft
 shimla,mall-road,"The Mall, Shimla",market,90,,,,0,31.1040,77.1755,https://maps.google.com/?cid=16727563686937037517,2026-10-26,verified
-udaipur,city-palace-udaipur,"City Palace, Udaipur",fort_palace,180,09:00,21:00,,0,24.5764,73.6835,https://citypalacemuseum.org/planyourvisit,2026-10-26,draft
+udaipur,city-palace-udaipur,"City Palace, Udaipur",fort_palace,180,09:00,21:00,,300,24.5764,73.6835,https://citypalacemuseum.org/planyourvisit,2026-10-26,draft
 udaipur,jagdish-temple,Jagdish Temple,temple,30,05:00,20:00,,0,24.5797,73.6836,https://www.trawell.in/rajasthan/udaipur/jagdish-temple,2026-10-26,verified
 udaipur,saheliyon-ki-bari,Saheliyon Ki Bari,nature,60,09:00,19:00,,5,24.6030,73.6855,https://maps.google.com/?cid=11340521396609279041,2026-10-26,draft
 udaipur,fateh-sagar-lake,Fateh Sagar Lake,nature,60,,,,0,24.6014,73.6742,https://maps.google.com/?cid=8754412202283979704,2026-10-26,verified
