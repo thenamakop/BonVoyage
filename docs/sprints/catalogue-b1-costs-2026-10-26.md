@@ -207,6 +207,7 @@ Budget / mid / premium stay per room-night, food per person per day and local pe
 2. **Almora local (₹600):** uses Nainital's CabBazar rate, because the Almora page's ₹4,800 looks wrong.
 3. **Sariska (₹4,200 / ₹13,600 / ₹17,600):** these are Booking's real Sariska prices, but they are safari-lodge prices. If the catalogue should price Sariska from Alwar, the row needs a decision.
 4. **Pushkar's dates (5 to 6 December)** and **Neemrana's budget without the review filter.**
+5. **sariska costs:** draft after the spot check; decide whether to price Sariska from its lodges or from Alwar, then re-verify.
 
 ## Spot check
 
@@ -261,3 +262,34 @@ To be recorded before merge (decision 0002). Booking prices move daily, so a row
 **Changes made:** none. No value or `review_status` was changed. A value is corrected or set back to `draft` only when it does not hold, and no value was shown not to hold.
 
 **Still needed before merge:** a spot check in a browser, either by Maulik (the [Spot check](#spot-check) table above) or by an agent session with browser access.
+
+### Browser re-read (a): Brave, 26 October 2026, 06:30 to 06:50 UTC
+
+Done by the session that collected B1a (not independent), with the report's own method. Hold rule: stays within 25% of the file (Booking prices change daily); food and local exact.
+
+| Row | Field | In file | Re-read | Holds |
+| --- | --- | --- | --- | --- |
+| agra | budget / mid / premium | 900 / 3,200 / 6,800 | 700 / 3,400 / 7,700 | yes |
+| agra | food / local | 750 / 350 | 750 (meal 300) / CabBazar Rs. 1400 ÷ 4 | yes |
+| dehradun | budget / mid / premium | 900 / 2,300 / 4,200 | 800 / 2,800 / 4,400 | yes |
+| dehradun | food / local | 1,000 / 400 | 1,000 (meal 400, with the 400 cap) / Rs. 1600 ÷ 4 | yes |
+| manali | budget / mid / premium | 400 / 3,100 / 5,600 | 400 / 2,700 / 5,500 | yes |
+| manali | food / local | 750 / 350 | 750 / Rs. 1400 ÷ 4 | yes |
+| sariska | budget / mid / premium | 4,200 / 13,600 / 17,600 | 4,000 / 13,600 / 17,600 | yes |
+| sariska | food / local | 750 / 350 | 750 / Alwar Rs. 1400 ÷ 4 | yes |
+| alwar | budget / mid / premium | 2,500 / 2,600 / 6,100 | 2,400 / 2,600 / 6,600 | yes |
+| neemrana | budget / mid / premium | 1,500 / 1,900 / 3,600 | 1,300 / 1,900 / 3,600 | yes |
+
+Manali's ₹400 and Alwar's budget being close to mid are real Booking inventory, not errors.
+
+### Browser re-read (b): Claude app built-in browser, 26 October 2026, about 17:30 UTC
+
+Done at Maulik's request by the same session, in a separate browser profile (not independent).
+
+| Check | Expected | Read | Holds |
+| --- | --- | --- | --- |
+| Manali, sorted by price, rated 7+ | 3rd ₹400–450, 5th under ₹800 | ₹349, ₹405, ₹439, ₹449, ₹699; median 439, so ₹400 | yes |
+| Sariska, default order | 29 properties; mid 13,600, premium 17,600 | 29 found, 25 priced; median ₹9,945, 80th percentile about ₹14,700 | mid no (−27%), premium yes (−16%) |
+| CabBazar Dehradun local sightseeing | Hatchback Rs. 1600 | Hatchback Rs. 1600 | yes |
+
+**Result:** 9 of 10 sampled rows hold. Sariska's mid tier does not hold in read (b): read (a) gave exactly ₹13,594 the same morning, and no third source settles it. Sariska's cost row goes back to draft (cost values unchanged) and onto "Maulik to check". It is a 29-lodge market, where a few rate changes move the median, and its pricing is already open in item 3 of that list.
