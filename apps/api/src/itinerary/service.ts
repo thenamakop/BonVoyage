@@ -1,6 +1,12 @@
 import type { Db } from '@bonvoyage/db';
 import { itinerary, itineraryItem, tripPackage } from '@bonvoyage/db/schema';
-import { buildFactSheet, durationMinutes, planDays, validateItinerary } from '@bonvoyage/engine';
+import {
+  buildFactSheet,
+  durationMinutes,
+  farePerPerson,
+  planDays,
+  validateItinerary,
+} from '@bonvoyage/engine';
 import { composeItineraryWording } from '@bonvoyage/integrations';
 import type { LlmClient } from '@bonvoyage/integrations';
 import { and, eq } from 'drizzle-orm';
@@ -45,6 +51,28 @@ const TEMPLATE = {
   model: 'catalogue-planner',
   reasons: ['Built from catalogue places and the chosen package.'],
 };
+
+const NUMBER_TOKEN = /(?:₹|Rs\.?)\s?\d[\d,]*(?:\.\d+)?|\d[\d,]*(?:\.\d+)?/g;
+
+/**
+ * 0005 f: the validator checks item notes; summary and reasons get the same
+ * treatment here — any number the fact sheet does not carry makes the model
+ * wording unsafe, so the template text takes over.
+ */
+function summaryNumbersOk(summary: string, reasons: readonly string[], facts: object): boolean {
+  const factNumbers = new Set<number>();
+  for (const m of JSON.stringify(facts).matchAll(NUMBER_TOKEN)) {
+    const n = Number(m[0].replace(/^(?:₹|Rs\.?)\s?/, '').replaceAll(',', ''));
+    if (Number.isFinite(n)) factNumbers.add(n);
+  }
+  for (const text of [summary, ...reasons]) {
+    for (const m of text.matchAll(NUMBER_TOKEN)) {
+      const n = Number(m[0].replace(/^(?:₹|Rs\.?)\s?/, '').replaceAll(',', ''));
+      if (Number.isFinite(n) && !factNumbers.has(n)) return false;
+    }
+  }
+  return true;
+}
 
 /** Items planned by the engine become the validator's ItineraryOutput. */
 function toOutput(
@@ -103,7 +131,8 @@ export async function planItinerary(
   const input = await packageInput(db, tripRow, members, dest);
 
   const legMinutes = durationMinutes(input, pkg.transportMode);
-  if (legMinutes === null) {
+  // A destination with no real fare row yields a fabricated zero car leg.
+  if (legMinutes === null || legMinutes === 0) {
     throw new AppError(409, ERROR_CODES.ILLEGAL_TRANSITION, 'This package cannot be planned.');
   }
   const plan = planDays({
@@ -120,7 +149,10 @@ export async function planItinerary(
     where: (c, { eq }) => eq(c.packageId, pkg.id),
   });
   const stayLine = lines.find((l) => l.category === 'stay');
-  const onwardLine = lines.find((l) => l.category === 'onward');
+  const fare = farePerPerson(input, pkg.transportMode);
+  if (fare === null || fare === 0) {
+    throw new AppError(409, ERROR_CODES.ILLEGAL_TRANSITION, 'This package cannot be planned.');
+  }
   const facts = buildFactSheet({
     plan,
     input: {
@@ -139,7 +171,7 @@ export async function planItinerary(
     perRoomPerNightInr: Math.ceil(
       (stayLine?.amountInr ?? 0) / Math.max(1, pkg.rooms * tripRow.durationNights),
     ),
-    farePerPersonInr: { onward: onwardLine?.amountInr ?? 0, return: onwardLine?.amountInr ?? 0 },
+    farePerPersonInr: { onward: fare, return: fare },
     costs: {
       totalInr: pkg.totalInr,
       perPersonInr: pkg.perPersonInr,
@@ -182,6 +214,28 @@ export async function planItinerary(
       }
     }
     result = validateItinerary(output, facts);
+    // A failing summary/reason (for example an invented number) falls back to
+    // the template wording; notes that passed keep the model's words (0005 f).
+    if (result.errors.length > 0 || !summaryNumbersOk(output.summary, output.reasons, facts)) {
+      output.summary = summary;
+      output.reasons = TEMPLATE.reasons;
+      result = validateItinerary(output, facts);
+      if (!result.ok) {
+        output = toOutput(plan.days, summary, TEMPLATE.reasons);
+        model = TEMPLATE.model;
+        source = 'catalogue';
+        result = validateItinerary(output, facts);
+      }
+    }
+  }
+
+  // The catalogue-planner path stores only a plan the validator fully accepts.
+  if (!result.ok) {
+    logger.error(
+      { tripId, codes: result.errors.map((e) => e.code) },
+      'itinerary failed validation',
+    );
+    throw new AppError(500, ERROR_CODES.INTERNAL, 'We could not plan these days. Try again.');
   }
 
   const pois = await listActivePois(db, pkg.destinationId);
@@ -278,6 +332,8 @@ export async function planItinerary(
       durationMs: Math.round(performance.now() - started),
       itemCount: result.items.length,
       verifiedRatio: result.verifiedRatio,
+      ok: result.ok,
+      errorCodes: result.errors.map((e) => e.code),
     },
     'itinerary planned',
   );

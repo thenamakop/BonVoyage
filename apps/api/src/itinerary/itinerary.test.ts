@@ -1,10 +1,27 @@
 import { createDb, importCatalogue } from '@bonvoyage/db';
-import { fareFallback, itinerary, itineraryItem, poi, tripPackage } from '@bonvoyage/db/schema';
+import {
+  destination,
+  fareFallback,
+  itinerary,
+  itineraryItem,
+  poi,
+  tripPackage,
+} from '@bonvoyage/db/schema';
 import { eq } from 'drizzle-orm';
 import { resolve } from 'node:path';
 import { pino } from 'pino';
 import type { LlmClient } from '@bonvoyage/integrations';
 import { FixtureLlmClient } from '@bonvoyage/integrations';
+import {
+  buildFactSheet,
+  durationMinutes,
+  generatePackages,
+  planDays,
+  validateItinerary,
+  type TripPlan,
+} from '@bonvoyage/engine';
+import { packageInput } from '../packages/service';
+import type { ZodType } from 'zod';
 import {
   InvitationResponse,
   ItineraryResponse,
@@ -353,6 +370,173 @@ describe('staleness', () => {
     // Planning again in itinerary_proposed is not a legal event.
     const again = await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
     expect(again.status).toBe(409);
+  });
+});
+
+describe('fare facts on the fact sheet', () => {
+  it('the legs carry the per-person fare row / car share, never the group line', async () => {
+    const prompts: string[] = [];
+    const spy: LlmClient = {
+      generateStructured<T>(request: {
+        system: string;
+        prompt: string;
+        schema: ZodType<T>;
+        schemaName: string;
+      }) {
+        prompts.push(request.prompt);
+        return Promise.resolve({
+          data: { summary: 's', reasons: ['r'], notes: [] } as T,
+          usage: { inputTokens: 0, outputTokens: 0 },
+          latencyMs: 1,
+          model: 'spy',
+        });
+      },
+    };
+    // Train package: Saver picks the 300 train fare in this fixture.
+    const { tripId, organiser } = await selectedTrip(makeApp(spy), 'itin-dest');
+    await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
+    expect(prompts.length).toBe(1);
+    const facts = JSON.parse(
+      prompts[0]!.slice(prompts[0]!.indexOf('{'), prompts[0]!.indexOf('Planned skeleton')),
+    ) as { legs: { id: string; farePerPersonInr: number }[] };
+    for (const leg of facts.legs) expect(leg.farePerPersonInr).toBe(300);
+  });
+});
+
+describe('model wording plan-level fallback', () => {
+  it('an invented number in the summary restores the template summary and reasons', async () => {
+    const app2 = makeApp(
+      new FixtureLlmClient({
+        ItineraryWording: {
+          summary: 'Only Rs 9,999 for everything, guaranteed.',
+          reasons: ['Because Rs 9,999 is a great price.'],
+          notes: [{ day: 2, index: 0, note: 'A slow morning among the peaks.' }],
+        },
+      }),
+    );
+    const { tripId, organiser } = await selectedTrip(app2);
+    const res = await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
+    const view = ItineraryResponse.parse(res.body).itinerary!;
+    expect(view.summary).not.toContain('9,999');
+    expect(view.reasons.join(' ')).not.toContain('9,999');
+    expect(view.days[1]!.items[0]!.note).toBe('A slow morning among the peaks.');
+  });
+});
+
+describe('whole-plan validity on the real catalogue', () => {
+  it('every costable package from gurugram produces a plan the validator accepts', async () => {
+    const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
+    await importCatalogue(db, dir, { today: '2026-11-01' });
+    const hub = await db.query.hub.findFirst({ where: (h, { eq }) => eq(h.slug, 'gurugram') });
+    const dests = await db.select().from(destination).where(eq(destination.active, true));
+    const failures: string[] = [];
+    let planned = 0;
+    const members = [
+      {
+        memberId: 'm1',
+        types: [],
+        activities: ['trekking'],
+        climate: 'mild',
+        likedPastTypes: [],
+        budgetMinInr: 5000,
+        budgetMaxInr: 40000,
+        dateStart: '2026-11-13',
+        dateEnd: '2026-11-16',
+      },
+      {
+        memberId: 'm2',
+        types: [],
+        activities: ['museums'],
+        climate: 'mild',
+        likedPastTypes: [],
+        budgetMinInr: 5000,
+        budgetMaxInr: 40000,
+        dateStart: '2026-11-13',
+        dateEnd: '2026-11-16',
+      },
+      {
+        memberId: 'm3',
+        types: [],
+        activities: ['trekking'],
+        climate: 'mild',
+        likedPastTypes: [],
+        budgetMinInr: 5000,
+        budgetMaxInr: 40000,
+        dateStart: '2026-11-13',
+        dateEnd: '2026-11-16',
+      },
+    ] as const;
+    const fakeTrip = {
+      id: 'x',
+      durationNights: 2,
+      budgetTotalInr: 60000,
+      originHubId: hub!.id,
+      startDate: null,
+    };
+    for (const dest of dests) {
+      const input = await packageInput(db, fakeTrip as never, members as never, dest);
+      const { packages: drafts } = generatePackages(input);
+      const draft = drafts.find((d) => d.label === 'Saver') ?? drafts[0];
+      if (!draft) continue;
+      const legMinutes = durationMinutes(input, draft.transportMode);
+      // A destination with no real fare row yields a fabricated zero car leg.
+      if (legMinutes === null || legMinutes === 0) continue;
+      const plan: TripPlan = planDays({
+        startDate: '2026-11-13',
+        nights: 2,
+        onward: { mode: draft.transportMode, durationMinutes: legMinutes },
+        ret: { mode: draft.transportMode, durationMinutes: legMinutes },
+        stayTier: draft.stayTier,
+        places: input.places,
+        groupInterests: input.groupInterests,
+      });
+      const facts = buildFactSheet({
+        plan,
+        input: {
+          startDate: '2026-11-13',
+          nights: 2,
+          onward: { mode: draft.transportMode, durationMinutes: legMinutes },
+          ret: { mode: draft.transportMode, durationMinutes: legMinutes },
+          stayTier: draft.stayTier,
+          places: input.places,
+          groupInterests: input.groupInterests,
+        },
+        originName: hub!.name,
+        destination: { slug: dest.slug, name: dest.name, state: dest.state },
+        groupSize: 3,
+        rooms: draft.rooms,
+        perRoomPerNightInr: 1000,
+        farePerPersonInr: { onward: 1, return: 1 },
+        costs: {
+          totalInr: draft.totalInr,
+          perPersonInr: draft.perPersonInr,
+          items: draft.lines.map((l) => ({ category: l.category, amountInr: l.amountInr })),
+        },
+      });
+      const output = {
+        days: plan.days.map((d) => ({
+          day: d.day,
+          date: d.date,
+          items: d.items.map((i) => ({
+            start: i.start,
+            end: i.end,
+            kind: i.kind,
+            ...(i.placeKey ? { poiId: i.placeKey } : {}),
+            ...(i.legId ? { legId: i.legId } : {}),
+            note: i.note,
+          })),
+        })),
+        summary: 'Template summary.',
+        reasons: ['Template reason.'],
+      };
+      const result = validateItinerary(output, facts);
+      planned += 1;
+      for (const e of result.errors) failures.push(`${dest.slug}: ${e.code} day ${e.day ?? '-'}`);
+    }
+    process.stdout.write(`
+catalogue loop: ${planned} destinations planned, ${failures.length} failures
+`);
+    expect(failures).toEqual([]);
   });
 });
 

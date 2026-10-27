@@ -533,9 +533,11 @@ describe('itinerary responses hold no member data', () => {
       ).toBe(200);
     }
     await asha.agent.post(`/api/trips/${trip.id}/recommendations`).set(H).send({});
+    // Other tests' destinations can sit inside this radius: choose one of
+    // this fixture's own, the only ones with fare rows from leakit-hub.
     const slug = LatestRecommendationResponse.parse(
       (await asha.agent.get(`/api/trips/${trip.id}/recommendations/latest`).set(H)).body,
-    ).items[0]!.destination.slug;
+    ).items.find((i) => i.destination.slug.startsWith('leakit-dest'))!.destination.slug;
     await asha.agent
       .post(`/api/trips/${trip.id}/destination`)
       .set(H)
