@@ -304,11 +304,13 @@ function DeleteAccount() {
   const [confirmEmail, setConfirmEmail] = useState('');
   const [blocking, setBlocking] = useState<ActiveTrip[]>([]);
   const [message, setMessage] = useState('');
+  const [fields, setFields] = useState<Record<string, string>>({});
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     setBlocking([]);
     setMessage('');
+    setFields({});
     remove.mutate(
       { password, confirmEmail },
       {
@@ -320,6 +322,7 @@ function DeleteAccount() {
             const details = err.details as { trips?: ActiveTrip[] } | undefined;
             setBlocking(details?.trips ?? []);
           }
+          if (err instanceof ApiError && err.fields) setFields(err.fields);
           setMessage(errorText(err));
         },
       },
@@ -359,6 +362,7 @@ function DeleteAccount() {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
           required
+          error={fields.password}
         />
         <TextField
           label={`Type ${me.data?.email ?? 'your email'} to confirm`}
@@ -367,6 +371,7 @@ function DeleteAccount() {
           value={confirmEmail}
           onChange={(e) => setConfirmEmail(e.target.value)}
           required
+          error={fields.confirmEmail}
         />
         <Button
           type="submit"
