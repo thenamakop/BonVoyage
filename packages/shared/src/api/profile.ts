@@ -70,3 +70,18 @@ export type DestinationSummary = z.infer<typeof DestinationSummary>;
 
 export const DestinationsResponse = z.object({ destinations: z.array(DestinationSummary) });
 export type DestinationsResponse = z.infer<typeof DestinationsResponse>;
+
+// #54 / 0005 j: password plus the account email typed back (the email, not
+// DELETE, because #54 wins over 0005 j on the confirmation text).
+export const DeleteAccountInput = z.object({
+  password: z.string().min(1, 'Enter your password.'),
+  confirmEmail: z.string().min(1, 'Type your email to confirm.'),
+});
+export type DeleteAccountInput = z.infer<typeof DeleteAccountInput>;
+
+export const ActiveTrip = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: z.string(),
+});
+export type ActiveTrip = z.infer<typeof ActiveTrip>;

@@ -1,6 +1,6 @@
 import { createDb } from '@bonvoyage/db';
 import { destination, pastTrip } from '@bonvoyage/db/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import {
   DestinationsResponse,
@@ -12,7 +12,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
-import { createTestUser, ensureHub } from '../test/helpers';
+import { createTestUser, createTripAs, ensureHub } from '../test/helpers';
 
 // S1-4: the caller's profile (home city, past trips) and GET /api/destinations.
 // The clock is fixed at 1 Nov 2026 (India) for the visited-date rule.
@@ -190,5 +190,79 @@ describe('GET /api/destinations', () => {
     const names = destinations.map((d) => d.name);
     expect([...names].sort((x, y) => x.localeCompare(y))).toEqual(names);
     expect((await request(app).get('/api/destinations').set(H)).status).toBe(401);
+  });
+});
+
+// #54 / 0005 j: DELETE /api/me/profile removes the account and every row that
+// references it, and refuses while the user organises an active trip.
+describe('DELETE /api/me/profile', () => {
+  const PW = 'test-password-12+';
+
+  it('deletes a member with a trip; every user_id/userId column is empty; cookie dies', async () => {
+    const u = await createTestUser(app);
+    const tripRes = await createTripAs(u.agent);
+    // A second member gives the delete something to cascade through.
+    const m = await createTestUser(app);
+    await m.agent.post(`/api/me/past-trips`).set(H).send({ placeName: 'Home', rating: 5 });
+    const res = await m.agent
+      .delete('/api/me/profile')
+      .set(H)
+      .send({ password: PW, confirmEmail: m.email });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ deleted: true });
+    const cookies = res.headers['set-cookie'];
+    expect(Array.isArray(cookies) ? cookies.join(';') : cookies).toContain(
+      'bonvoyage.session_token=',
+    );
+    expect((await m.agent.get('/api/me').set(H)).status).toBe(401);
+    // Every public column named user_id or userId must hold no reference left.
+    const cols = await db.execute<{ table_name: string; column_name: string }>(
+      sql`select table_name, column_name from information_schema.columns
+          where table_schema = 'public' and column_name in ('user_id', 'userId')`,
+    );
+    expect(cols.rows.length).toBeGreaterThan(0);
+    for (const { table_name: t, column_name: c } of cols.rows) {
+      const rows = await db.execute<{ n: number }>(
+        sql`select count(*)::int as n from ${sql.identifier(t)} where ${sql.identifier(c)} = ${m.userId}`,
+      );
+      expect(rows.rows[0]?.n, `${t}.${c}`).toBe(0);
+    }
+    const gone = await db.execute<{ n: number }>(
+      sql`select count(*)::int as n from "user" where id = ${m.userId}`,
+    );
+    expect(gone.rows[0]?.n).toBe(0);
+    expect(tripRes.id).toBeTruthy();
+  });
+
+  it('422 ACCOUNT_HAS_ACTIVE_TRIPS for an organiser of a planning trip', async () => {
+    const u = await createTestUser(app);
+    const created = await createTripAs(u.agent); // status collecting_preferences
+    const res = await u.agent
+      .delete('/api/me/profile')
+      .set(H)
+      .send({ password: PW, confirmEmail: u.email });
+    expect(res.status).toBe(422);
+    const env = res.body as ErrorEnvelope & { error: { details: { trips: { id: string }[] } } };
+    expect(env.error.code).toBe('ACCOUNT_HAS_ACTIVE_TRIPS');
+    expect(env.error.details.trips.map((t) => t.id)).toEqual([created.id]);
+    expect((await u.agent.get('/api/me').set(H)).status).toBe(200);
+  });
+
+  it('400 field errors for a wrong password and a wrong email', async () => {
+    const u = await createTestUser(app);
+    const badPw = await u.agent
+      .delete('/api/me/profile')
+      .set(H)
+      .send({ password: 'wrong-password-12+', confirmEmail: u.email });
+    expect(badPw.status).toBe(400);
+    expect(fieldsOf(badPw).password).toBe('Password is incorrect.');
+    const badEmail = await u.agent
+      .delete('/api/me/profile')
+      .set(H)
+      .send({ password: PW, confirmEmail: 'not-the-email@test.bv' });
+    expect(badEmail.status).toBe(400);
+    expect(fieldsOf(badEmail).confirmEmail).toBe('Type your email to confirm.');
+    expect((await u.agent.get('/api/me').set(H)).status).toBe(200);
+    expect((await request(app).delete('/api/me/profile').set(H)).status).toBe(401);
   });
 });

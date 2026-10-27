@@ -17,8 +17,9 @@ const me = (isAdmin: boolean) => ({
   isAdmin,
 });
 const STAGES = [
-  { stage: 'a', verified: 6, total: 50, dueDate: '2026-10-18' },
-  { stage: 'b', verified: 0, total: 253, dueDate: '2026-10-25' },
+  { stage: 'a', verified: 6, total: 50, dueDate: '2026-10-26' },
+  { stage: 'b1', verified: 0, total: 137, dueDate: '2026-11-01' },
+  { stage: 'b2', verified: 0, total: 116, dueDate: '2026-11-05' },
   { stage: 'c', verified: 0, total: 21, dueDate: '2026-11-01' },
 ];
 const STATUS = {
@@ -118,9 +119,11 @@ describe('CataloguePage', () => {
     stubFetch();
     renderPage();
     expect(
-      await screen.findByText('Stage A: 6 of 50 verified, due 18 Oct 2026'),
+      await screen.findByText('Stage A: 6 of 50 verified, due 26 Oct 2026'),
     ).toBeInTheDocument();
-    expect(screen.getByText('Stage B: 0 of 253 verified, due 25 Oct 2026')).toBeInTheDocument();
+    expect(screen.getByText('Stage B1: 0 of 137 verified, due 1 Nov 2026')).toBeInTheDocument();
+    expect(screen.getByText('Stage B2: 0 of 116 verified, due 5 Nov 2026')).toBeInTheDocument();
+    expect(screen.getByText('Stage C: 0 of 21 verified, due 1 Nov 2026')).toBeInTheDocument();
     expect(screen.getByText('204')).toBeInTheDocument();
   });
 

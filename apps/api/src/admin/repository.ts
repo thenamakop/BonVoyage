@@ -38,10 +38,17 @@ export async function stageCounts(db: Reader) {
       })
       .from(destination),
     db.select({ n: count, v: verified(poi.reviewStatus) }).from(poi),
-    db.select({ n: count, v: verified(fareFallback.reviewStatus) }).from(fareFallback),
+    db
+      .select({
+        carN: sql<number>`(count(*) filter (where ${fareFallback.mode} = 'car'))::int`,
+        carV: sql<number>`(count(*) filter (where ${fareFallback.mode} = 'car' and ${fareFallback.reviewStatus} = 'verified'))::int`,
+        ptN: sql<number>`(count(*) filter (where ${fareFallback.mode} <> 'car'))::int`,
+        ptV: sql<number>`(count(*) filter (where ${fareFallback.mode} <> 'car' and ${fareFallback.reviewStatus} = 'verified'))::int`,
+      })
+      .from(fareFallback),
     db.select({ n: count, v: verified(costRule.reviewStatus) }).from(costRule),
   ]);
-  const zero = { n: 0, v: 0, costV: 0 };
+  const zero = { n: 0, v: 0, costV: 0, carN: 0, carV: 0, ptN: 0, ptV: 0 };
   const [hr, dr, pr, fr, cr] = [
     h[0] ?? zero,
     d[0] ?? zero,
@@ -52,8 +59,10 @@ export async function stageCounts(db: Reader) {
   return {
     // A: hubs plus destination identity.
     a: { verified: hr.v + dr.v, total: hr.n + dr.n },
-    // B: destination costs, fares and cost rules.
-    b: { verified: dr.costV + fr.v + cr.v, total: dr.n + fr.n + cr.n },
+    // B1: destination costs, car rows and cost rules.
+    b1: { verified: dr.costV + fr.carV + cr.v, total: dr.n + fr.carN + cr.n },
+    // B2: bus and train fares.
+    b2: { verified: fr.ptV, total: fr.ptN },
     // C: POIs.
     c: { verified: pr.v, total: pr.n },
   };

@@ -129,6 +129,20 @@ const CASES: Case[] = [
     body: { homeHubSlug: 'test-hub' },
     expected: ['401', '200', '200', '200', '200', '200'],
   },
+  // Only the caller's own account; an empty body fails validation first.
+  {
+    method: 'DELETE',
+    path: '/api/me/profile',
+    url: () => '/api/me/profile',
+    expected: [
+      '401',
+      '400 VALIDATION_ERROR',
+      '400 VALIDATION_ERROR',
+      '400 VALIDATION_ERROR',
+      '400 VALIDATION_ERROR',
+      '400 VALIDATION_ERROR',
+    ],
+  },
   {
     method: 'POST',
     path: '/api/me/past-trips',

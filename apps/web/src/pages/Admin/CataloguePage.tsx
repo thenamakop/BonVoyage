@@ -28,7 +28,12 @@ const FILES: { key: keyof CatalogueFiles; name: string; accept: string }[] = [
   { key: 'costRules', name: 'cost-rules.json', accept: '.json,application/json' },
 ];
 
-const STAGE_NAMES: Record<StageProgress['stage'], string> = { a: 'A', b: 'B', c: 'C' };
+const STAGE_NAMES: Record<StageProgress['stage'], string> = {
+  a: 'A',
+  b1: 'B1',
+  b2: 'B2',
+  c: 'C',
+};
 const SEVERITY_WORD = { error: 'Error', warning: 'Warning', info: 'Info' } as const;
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 } as const;
 const TABLE_LABELS: Record<(typeof CATALOGUE_TABLE_NAMES)[number], string> = {

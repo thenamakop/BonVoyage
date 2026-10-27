@@ -131,7 +131,7 @@ describe('POST /api/admin/catalogue/import', () => {
     const body = CatalogueImportResponse.parse(res.body);
     for (const c of Object.values(body.counts)) expect(c).toEqual({ inserted: 0, updated: 0 });
     expect(body.issues.every((i) => i.severity !== 'error')).toBe(true);
-    expect(body.stages.map((s) => s.stage)).toEqual(['a', 'b', 'c']);
+    expect(body.stages.map((s) => s.stage)).toEqual(['a', 'b1', 'b2', 'c']);
   });
 
   it('a dry run with one renamed destination reports updated 1 and writes nothing', async () => {
@@ -222,8 +222,9 @@ describe('GET /api/admin/catalogue/status', () => {
     expect(status.tables.hub).toBeGreaterThanOrEqual(6);
     expect(status.tables.destination).toBeGreaterThanOrEqual(44);
     expect(status.stages).toEqual([
-      expect.objectContaining({ stage: 'a', dueDate: '2026-10-18' }),
-      expect.objectContaining({ stage: 'b', dueDate: '2026-10-25' }),
+      expect.objectContaining({ stage: 'a', dueDate: '2026-10-26' }),
+      expect.objectContaining({ stage: 'b1', dueDate: '2026-11-01' }),
+      expect.objectContaining({ stage: 'b2', dueDate: '2026-11-05' }),
       expect.objectContaining({ stage: 'c', dueDate: '2026-11-01' }),
     ]);
     for (const s of status.stages) expect(s.verified).toBeLessThanOrEqual(s.total);
