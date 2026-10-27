@@ -193,6 +193,7 @@ describe('PackagesPage', () => {
       calls.find((c) => c.url === `${PACKAGES_URL}/pk-saver/opinion` && c.method === 'PUT'),
     ).toMatchObject({ body: { decision: 'accept' } });
     expect(works.getAttribute('aria-pressed')).toBe('true');
+    expect(works.getAttribute('data-state')).toBe('on');
     expect(within(card).getByText('You said it works.')).toBeTruthy();
   });
 

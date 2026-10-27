@@ -215,17 +215,31 @@ export function PackageCard({
             <Button
               variant="secondary"
               aria-pressed={pkg.mine === 'accept'}
+              data-state={pkg.mine === 'accept' ? 'on' : 'off'}
+              className="data-[state=on]:border-2 data-[state=on]:border-brand-700 data-[state=on]:bg-mint/40"
               loading={opinion.isPending && opinion.variables?.decision === 'accept'}
               onClick={() => opinion.mutate({ packageId: pkg.id, decision: 'accept' })}
             >
+              {pkg.mine === 'accept' ? (
+                <span aria-hidden="true" className="mr-1">
+                  ✓
+                </span>
+              ) : null}
               Works for me
             </Button>
             <Button
               variant="secondary"
               aria-pressed={pkg.mine === 'reject'}
+              data-state={pkg.mine === 'reject' ? 'on' : 'off'}
+              className="data-[state=on]:border-2 data-[state=on]:border-brand-700 data-[state=on]:bg-mint/40"
               loading={opinion.isPending && opinion.variables?.decision === 'reject'}
               onClick={() => opinion.mutate({ packageId: pkg.id, decision: 'reject' })}
             >
+              {pkg.mine === 'reject' ? (
+                <span aria-hidden="true" className="mr-1">
+                  ✓
+                </span>
+              ) : null}
               Not for me
             </Button>
           </div>
