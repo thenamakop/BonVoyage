@@ -113,6 +113,7 @@ export const TripActionName = z.enum([
   'viewItinerary',
   'acceptItinerary',
   'rejectItinerary',
+  'modifyItinerary',
 ]);
 export type TripActionName = z.infer<typeof TripActionName>;
 
@@ -264,7 +265,7 @@ export const EVENT_SUMMARIES: Record<TripEventName, (actor: string, detail?: str
   itineraryRejected: (a) => `${a} asked for a new day plan`,
   itineraryAccepted: (a) => `${a} accepted the day plan; the trip is finalised`,
   packageModified: (a) => `${a} changed the package`,
-  itineraryModified: (a) => `${a} changed the itinerary`,
+  itineraryModified: (a) => `${a} adjusted the day plan`,
   cancelTrip: (a) => `${a} cancelled the trip`,
   tripStarted: (a) => `${a} marked the trip as started`,
   tripEnded: (a) => `${a} marked the trip as finished`,

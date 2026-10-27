@@ -198,6 +198,83 @@ async function selectedTrip(
   return { tripId, organiser, members, packageLabel: pkgs[0]!.label };
 }
 
+describe('I5 adjustments', () => {
+  it('removes a visit to free time, preserves version and emits I5', async () => {
+    const { tripId, organiser } = await selectedTrip();
+    const initial = await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
+    const plan = ItineraryResponse.parse(initial.body).itinerary;
+    const visit = plan?.days.flatMap((d) => d.items).find((i) => i.kind === 'activity');
+    expect(visit).toBeDefined();
+    const url = `/api/trips/${tripId}/itinerary/items/${visit?.id}`;
+    const changed = await organiser.agent.patch(url).set(H).send({ action: 'remove' });
+    expect(changed.status, JSON.stringify(changed.body)).toBe(200);
+    const next = ItineraryResponse.parse(changed.body).itinerary;
+    expect(next?.version).toBe(plan?.version);
+    expect(next?.days.flatMap((d) => d.items).find((i) => i.id === visit?.id)).toMatchObject({
+      kind: 'free',
+      place: null,
+      note: 'Free time to explore.',
+      verified: true,
+    });
+    const events = await organiser.agent.get(`/api/trips/${tripId}/activity`).set(H);
+    expect(JSON.stringify(events.body)).toContain('adjusted the day plan');
+    expect(JSON.stringify(events.body)).toContain('I5');
+  });
+
+  it('replaces only with an unused fitting place and recomputes verification', async () => {
+    const { tripId, organiser, members } = await selectedTrip();
+    const initial = await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
+    const plan = ItineraryResponse.parse(initial.body).itinerary;
+    const visits = plan?.days.flatMap((d) => d.items).filter((i) => i.kind === 'activity') ?? [];
+    const [target, spare] = visits;
+    expect(target).toBeDefined();
+    expect(spare).toBeDefined();
+    await organiser.agent
+      .patch(`/api/trips/${tripId}/itinerary/items/${spare?.id}`)
+      .set(H)
+      .send({ action: 'remove' });
+    const url = `/api/trips/${tripId}/itinerary/items/${target?.id}`;
+    const choices = await organiser.agent.get(`${url}/alternatives`).set(H);
+    expect(choices.status).toBe(200);
+    expect(choices.body).toMatchObject({
+      places: [expect.objectContaining({ key: spare?.place?.key })],
+    });
+    const bad = await organiser.agent
+      .patch(url)
+      .set(H)
+      .send({ action: 'replace', placeKey: 'not-a-place' });
+    expect(bad.status).toBe(422);
+    expect(bad.body).toMatchObject({ error: { code: 'PLACE_DOES_NOT_FIT' } });
+    const used = await organiser.agent
+      .patch(url)
+      .set(H)
+      .send({ action: 'replace', placeKey: target?.place?.key });
+    expect(used.status).toBe(422);
+    const replaced = await organiser.agent
+      .patch(url)
+      .set(H)
+      .send({ action: 'replace', placeKey: spare?.place?.key });
+    expect(replaced.status, JSON.stringify(replaced.body)).toBe(200);
+    const next = ItineraryResponse.parse(replaced.body).itinerary;
+    const item = next?.days.flatMap((d) => d.items).find((i) => i.id === target?.id);
+    expect(item).toMatchObject({
+      place: { key: spare?.place?.key },
+      start: target?.start,
+      end: target?.end,
+      verified: true,
+    });
+    expect(item?.note).toBe(`Visit ${spare?.place?.name} (sight). Entry ₹100 per person.`);
+    expect(next?.version).toBe(plan?.version);
+    for (const member of members.slice(1)) {
+      expect((await member.agent.get(`${url}/alternatives`).set(H)).status).toBe(403);
+      expect((await member.agent.patch(url).set(H).send({ action: 'remove' })).status).toBe(403);
+    }
+    await organiser.agent.post(`/api/trips/${tripId}/itinerary/accept`).set(H).send({});
+    expect((await organiser.agent.get(`${url}/alternatives`).set(H)).status).toBe(409);
+    expect((await organiser.agent.patch(url).set(H).send({ action: 'remove' })).status).toBe(409);
+  });
+});
+
 describe('POST /api/trips/:id/itinerary (templates path)', () => {
   it('T12 stores version 1: nights+1 days, legs present, items verified for a verified destination', async () => {
     const { tripId, organiser } = await selectedTrip();

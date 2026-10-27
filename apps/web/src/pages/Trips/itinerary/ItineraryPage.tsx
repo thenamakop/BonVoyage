@@ -8,6 +8,7 @@ import { useDecideItinerary, useItinerary } from '../../../features/itinerary/ap
 import { useTrip } from '../../../features/trips/api';
 import { formatDate, formatInr } from '../../../lib/format';
 import { useDocumentTitle } from '../../../lib/use-document-title';
+import { AdjustVisit } from './AdjustVisit';
 
 const KIND = {
   travel: 'Travel',
@@ -41,6 +42,7 @@ export function ItineraryPage() {
       </p>
     );
   const actions = trip.data.availableActions;
+  const modify = actions.find((a) => a.action === 'modifyItinerary');
   const decisions = [
     {
       name: 'accept' as const,
@@ -114,6 +116,9 @@ export function ItineraryPage() {
                     ? 'Verified'
                     : `Not verified: ${item.unverifiedReason ?? 'Details have not been verified.'}`}
                 </Badge>
+                {item.kind === 'activity' && modify ? (
+                  <AdjustVisit tripId={id} itemId={item.id} action={modify} />
+                ) : null}
               </li>
             ))}
           </ol>

@@ -35,8 +35,19 @@ export function TripsPage() {
         >
           Your trips could not be loaded.
         </Alert>
-      ) : trips.data && trips.data.trips.length > 0 ? (
+      ) : trips.data ? (
         <div className="space-y-6">
+          {!trips.data.trips.length ? (
+            <EmptyState
+              title="No trips yet"
+              text="Create a trip to invite your group."
+              action={
+                <ButtonLink to="/trips/new" variant="secondary">
+                  Create a trip
+                </ButtonLink>
+              }
+            />
+          ) : null}
           {['Planning', 'Past and finalised trips'].map((section, index) => {
             const items = trips.data.trips.filter(
               (t) =>

@@ -93,6 +93,33 @@ interface Case {
 const CASES: Case[] = [
   {
     method: 'GET',
+    path: '/api/trips/:id/itinerary/items/:itemId/alternatives',
+    url: (f) => `/api/trips/${f.tripId}/itinerary/items/missing/alternatives`,
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '403 FORBIDDEN',
+      '403 FORBIDDEN',
+      '409 ILLEGAL_TRANSITION',
+      '404 NOT_FOUND',
+    ],
+  },
+  {
+    method: 'PATCH',
+    path: '/api/trips/:id/itinerary/items/:itemId',
+    url: (f) => `/api/trips/${f.tripId}/itinerary/items/missing`,
+    body: { action: 'remove' },
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '403 FORBIDDEN',
+      '403 FORBIDDEN',
+      '409 ILLEGAL_TRANSITION',
+      '404 NOT_FOUND',
+    ],
+  },
+  {
+    method: 'GET',
     path: '/api/health',
     url: () => '/api/health',
     expected: ['200', '200', '200', '200', '200', '200'],

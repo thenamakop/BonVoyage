@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ItineraryResponse, TripDetail } from '@bonvoyage/shared';
+import {
+  ItineraryResponse,
+  ItineraryAlternativesResponse,
+  TripDetail,
+  type ModifyItineraryInput,
+} from '@bonvoyage/shared';
 import { fetchJson } from '../../lib/api';
 import { refetchOnConflict } from '../trips/api';
 
@@ -22,6 +27,35 @@ export function usePlanDays(id: string) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ['trip', id] });
       void client.invalidateQueries({ queryKey: ['trips'] });
+    },
+    onError: refetchOnConflict(client, id),
+  });
+}
+
+export function useAlternatives(id: string, itemId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['trip', id, 'alternatives', itemId],
+    enabled,
+    retry: false,
+    queryFn: () =>
+      fetchJson(
+        `/api/trips/${id}/itinerary/items/${itemId}/alternatives`,
+        ItineraryAlternativesResponse,
+      ),
+  });
+}
+
+export function useModifyItinerary(id: string, itemId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (change: ModifyItineraryInput) =>
+      fetchJson(`/api/trips/${id}/itinerary/items/${itemId}`, ItineraryResponse, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(change),
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['trip', id] });
     },
     onError: refetchOnConflict(client, id),
   });

@@ -68,6 +68,12 @@ export const ENDPOINTS: readonly Endpoint[] = [
   { method: 'POST', path: '/api/trips/:id/itinerary', access: 'organiser' },
   { method: 'POST', path: '/api/trips/:id/itinerary/accept', access: 'organiser' },
   { method: 'POST', path: '/api/trips/:id/itinerary/reject', access: 'organiser' },
+  {
+    method: 'GET',
+    path: '/api/trips/:id/itinerary/items/:itemId/alternatives',
+    access: 'organiser',
+  },
+  { method: 'PATCH', path: '/api/trips/:id/itinerary/items/:itemId', access: 'organiser' },
 
   { method: 'GET', path: '/api/admin/catalogue/status', access: 'admin' },
   { method: 'POST', path: '/api/admin/catalogue/import', access: 'admin' },

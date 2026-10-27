@@ -5,7 +5,7 @@ import { useLatestRecommendation } from '../../../features/recommendations/api';
 import { lastRoundText } from '../../../features/recommendations/wording';
 import { packageChosenLine, PACKAGES_NEXT_STEP, waitingFor } from './wording';
 import { PlanDays } from '../itinerary/PlanDays';
-import { formatDate, formatInr } from '../../../lib/format';
+import { FinalisedTrip } from '../itinerary/FinalisedTrip';
 
 // The next-step callout, worded for this viewer (wireframe 06).
 
@@ -52,6 +52,9 @@ export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: strin
     return (
       <Callout text="You were removed from this trip, so you can only view it.">
         {view ? shortlistLink('See the recommendations') : null}
+        {trip.availableActions.find((a) => a.action === 'viewItinerary')?.enabled ? (
+          <ButtonLink to={`/trips/${trip.id}/itinerary`}>See the day plan</ButtonLink>
+        ) : null}
       </Callout>
     );
   }
@@ -130,13 +133,11 @@ export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: strin
   }
   const viewPlan = trip.availableActions.find((a) => a.action === 'viewItinerary');
   if ((trip.status === 'itinerary_proposed' || trip.status === 'finalised') && viewPlan) {
-    const pkg = trip.selectedPackage;
-    const text =
-      trip.status === 'finalised' && pkg
-        ? `Trip finalised: ${trip.selectedDestination?.name}, ${trip.startDate ? formatDate(trip.startDate) : ''} – ${trip.endDate ? formatDate(trip.endDate) : ''}, ${pkg.label} package, ${formatInr(pkg.totalInr)} for the group, about ${formatInr(pkg.perPersonInr)} each (estimate).`
-        : 'Review the day plan.';
     return (
-      <Callout text={text}>
+      <Callout
+        text={trip.status === 'finalised' ? 'Planning is complete.' : 'Review the day plan.'}
+      >
+        {trip.status === 'finalised' ? <FinalisedTrip trip={trip} /> : null}
         {viewPlan.enabled ? (
           <ButtonLink to={`/trips/${trip.id}/itinerary`}>See the day plan</ButtonLink>
         ) : (

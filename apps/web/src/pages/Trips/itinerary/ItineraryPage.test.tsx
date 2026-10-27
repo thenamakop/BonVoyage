@@ -131,6 +131,77 @@ it.each(['member', 'excluded'] as const)(
     expect(screen.getByText('Waiting for Asha to accept the plan.')).toBeInTheDocument();
   },
 );
+it('Remove and Swap use only the API alternatives and send JSON changes', async () => {
+  setup(
+    proposed({
+      availableActions: [
+        { action: 'viewItinerary', enabled: true },
+        { action: 'modifyItinerary', enabled: true },
+      ],
+    }),
+  );
+  fetchMock.mockImplementation((url, init) => {
+    if (url.endsWith('/alternatives'))
+      return Promise.resolve(
+        Response.json({
+          places: [{ key: 'chakrata/forest', name: 'Forest', category: 'nature', entryFeeInr: 10 }],
+        }),
+      );
+    if (init?.method === 'PATCH') return Promise.resolve(Response.json({ itinerary: view }));
+    return Promise.resolve(
+      Response.json(
+        url.endsWith('/itinerary')
+          ? { itinerary: view }
+          : proposed({
+              availableActions: [
+                { action: 'viewItinerary', enabled: true },
+                { action: 'modifyItinerary', enabled: true },
+              ],
+            }),
+      ),
+    );
+  });
+  await userEvent.click(await screen.findByRole('button', { name: 'Swap' }));
+  await userEvent.click(
+    await screen.findByRole('button', {
+      name: 'Forest · Nature · Entry ₹10 per person (estimate)',
+    }),
+  );
+  expect(fetchMock).toHaveBeenCalledWith(
+    `${URL}/itinerary/items/poi`,
+    expect.objectContaining({
+      method: 'PATCH',
+      body: JSON.stringify({ action: 'replace', placeKey: 'chakrata/forest' }),
+      headers: { 'content-type': 'application/json' },
+    }),
+  );
+  await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+  expect(fetchMock).toHaveBeenCalledWith(
+    `${URL}/itinerary/items/poi`,
+    expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ action: 'remove' }) }),
+  );
+});
+
+it('an adjustment error shows the API message and keeps the plan', async () => {
+  const trip = proposed({ availableActions: [{ action: 'modifyItinerary', enabled: true }] });
+  setup(trip);
+  fetchMock.mockImplementation((url, init) =>
+    Promise.resolve(
+      init?.method === 'PATCH'
+        ? Response.json(
+            {
+              error: { code: 'PLACE_DOES_NOT_FIT', message: 'That place does not fit this visit.' },
+            },
+            { status: 422 },
+          )
+        : Response.json(url.endsWith('/itinerary') ? { itinerary: view } : trip),
+    ),
+  );
+  await userEvent.click(await screen.findByRole('button', { name: 'Remove' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('That place does not fit this visit.');
+  expect(screen.getByText('Saver package · version 1')).toBeInTheDocument();
+});
+
 it('shows model provenance', async () => {
   setup(proposed(), { ...view, source: 'model', model: 'fixture' });
   expect(await screen.findByText('Written with fixture from catalogue facts')).toBeInTheDocument();
@@ -218,20 +289,20 @@ it.each([409, 500])('planning displays the API error at status %s', async (statu
   await userEvent.click(screen.getByRole('button', { name: 'Plan the days' }));
   expect(await screen.findByRole('alert')).toHaveTextContent(message);
 });
-it('finalised dashboard shows API figures, dates, step and plan link without plan action', () => {
+it('finalised dashboard shows API figures, dates, step and plan link without plan action', async () => {
   setup(
     proposed({
       status: 'finalised',
-      startDate: '2026-11-13',
-      endDate: '2026-11-15',
+      startDate: null,
+      endDate: null,
       selectedPackage: { id: 'p1', label: 'Saver', totalInr: 15600, perPersonInr: 5200 },
       availableActions: [{ action: 'viewItinerary', enabled: true }],
     }),
-    view,
+    { ...view, days: [...view.days, { day: 3, date: '2026-11-15', items: [] }] },
     true,
   );
   expect(
-    screen.getByText(
+    await screen.findByText(
       /Trip finalised: Chakrata, 13 Nov 2026 – 15 Nov 2026, Saver package, ₹15,600 for the group, about ₹5,200 each \(estimate\)/,
     ),
   ).toBeInTheDocument();

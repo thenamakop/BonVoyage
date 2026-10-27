@@ -6,6 +6,8 @@ import {
   farePerPerson,
   planDays,
   validateItinerary,
+  unusedPlacesFitting,
+  type TripPlan,
 } from '@bonvoyage/engine';
 import { composeItineraryWording } from '@bonvoyage/integrations';
 import type { LlmClient } from '@bonvoyage/integrations';
@@ -13,6 +15,8 @@ import { and, eq } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import {
   ERROR_CODES,
+  POI_CATEGORY_LABELS,
+  type ModifyItineraryInput,
   type ItineraryItem,
   type ItineraryOutput,
   type ItineraryResponse,
@@ -109,18 +113,11 @@ function toOutput(
   };
 }
 
-export async function planItinerary(
-  deps: Deps,
+async function planningContext(
+  db: Db,
   tripId: string,
-  userId: string,
-): Promise<ItineraryResponse> {
-  const { db, logger, clock } = deps;
-  const started = performance.now();
-  const { trip: tripRow, membership } = await loadTripForMember(db, tripId, userId);
-  requireActiveMember(membership);
-  requireOrganiser(membership);
-  assertEventLegal(tripRow.status, 'generateItinerary', indiaDate(clock()));
-
+  tripRow: Awaited<ReturnType<typeof loadTripForMember>>['trip'],
+) {
   const pkg = await findAcceptedPackage(db, tripId);
   if (!pkg) throw new AppError(409, ERROR_CODES.ILLEGAL_TRANSITION, 'Choose a package first.');
   const members = await loadMembers(db, tripId);
@@ -135,7 +132,7 @@ export async function planItinerary(
   if (legMinutes === null || legMinutes === 0) {
     throw new AppError(409, ERROR_CODES.ILLEGAL_TRANSITION, 'This package cannot be planned.');
   }
-  const plan = planDays({
+  const planInput = {
     startDate: pkg.startDate,
     nights: tripRow.durationNights,
     onward: { mode: pkg.transportMode, durationMinutes: legMinutes },
@@ -143,7 +140,8 @@ export async function planItinerary(
     stayTier: pkg.stayTier,
     places: input.places,
     groupInterests: input.groupInterests,
-  });
+  };
+  const plan = planDays(planInput);
 
   const lines = await db.query.costItem.findMany({
     where: (c, { eq }) => eq(c.packageId, pkg.id),
@@ -155,15 +153,7 @@ export async function planItinerary(
   }
   const facts = buildFactSheet({
     plan,
-    input: {
-      startDate: pkg.startDate,
-      nights: tripRow.durationNights,
-      onward: { mode: pkg.transportMode, durationMinutes: legMinutes },
-      ret: { mode: pkg.transportMode, durationMinutes: legMinutes },
-      stayTier: pkg.stayTier,
-      places: input.places,
-      groupInterests: input.groupInterests,
-    },
+    input: planInput,
     originName: input.originName,
     destination: { slug: dest.slug, name: dest.name, state: dest.state },
     groupSize: input.n,
@@ -179,6 +169,21 @@ export async function planItinerary(
     },
   });
 
+  return { pkg, dest, input, planInput, plan, facts };
+}
+
+export async function planItinerary(
+  deps: Deps,
+  tripId: string,
+  userId: string,
+): Promise<ItineraryResponse> {
+  const { db, logger, clock } = deps;
+  const started = performance.now();
+  const { trip: tripRow, membership } = await loadTripForMember(db, tripId, userId);
+  requireActiveMember(membership);
+  requireOrganiser(membership);
+  assertEventLegal(tripRow.status, 'generateItinerary', indiaDate(clock()));
+  const { pkg, dest, input, plan, facts } = await planningContext(db, tripId, tripRow);
   const summary = `${tripRow.durationNights}-night trip to ${dest.name} for ${input.n} people.`;
   let output = toOutput(plan.days, summary, TEMPLATE.reasons);
   let model = TEMPLATE.model;
@@ -456,5 +461,172 @@ export const acceptItinerary = (deps: Deps, tripId: string, userId: string) =>
 
 export const rejectItinerary = (deps: Deps, tripId: string, userId: string) =>
   decide(deps, tripId, userId, 'itineraryRejected');
+
+type PlanningContext = Awaited<ReturnType<typeof planningContext>>;
+
+function storedPlan(
+  context: PlanningContext,
+  rows: Awaited<ReturnType<typeof listItems>>,
+): TripPlan {
+  return {
+    legs: context.plan.legs,
+    scheduledPlaceKeys: rows.flatMap(({ poi }) =>
+      poi ? [`${context.dest.slug}/${poi.poiKey}`] : [],
+    ),
+    days: context.plan.days.map((day) => ({
+      day: day.day,
+      date: day.date,
+      items: rows
+        .filter(({ item }) => item.dayNumber === day.day)
+        .map(({ item, poi }) => ({
+          start: item.startTime?.slice(0, 5) ?? '',
+          end: item.endTime?.slice(0, 5) ?? '',
+          kind: item.kind,
+          ...(poi ? { placeKey: `${context.dest.slug}/${poi.poiKey}` } : {}),
+          ...(item.kind === 'travel'
+            ? { legId: item.dayNumber === 1 ? ('onward' as const) : ('return' as const) }
+            : {}),
+          note: item.note ?? '',
+        })),
+    })),
+  };
+}
+
+async function adjustmentContext(deps: Deps, tripId: string, userId: string) {
+  const { trip, membership } = await loadTripForMember(deps.db, tripId, userId);
+  requireActiveMember(membership);
+  requireOrganiser(membership);
+  assertEventLegal(trip.status, 'itineraryModified', indiaDate(deps.clock()));
+  return planningContext(deps.db, tripId, trip);
+}
+
+function slotFor(rows: Awaited<ReturnType<typeof listItems>>, itemId: string) {
+  const row = rows.find(({ item }) => item.id === itemId);
+  if (!row) throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Day-plan item not found.');
+  if (row.item.kind !== 'activity' || !row.item.startTime || !row.item.endTime) {
+    throw new AppError(422, ERROR_CODES.PLACE_DOES_NOT_FIT, 'Only a visit can be adjusted.');
+  }
+  return { row, start: row.item.startTime.slice(0, 5), end: row.item.endTime.slice(0, 5) };
+}
+
+export async function itineraryAlternatives(
+  deps: Deps,
+  tripId: string,
+  itemId: string,
+  userId: string,
+) {
+  const context = await adjustmentContext(deps, tripId, userId);
+  const latest = await latestItineraryForTrip(deps.db, tripId);
+  if (!latest) throw new AppError(409, ERROR_CODES.ILLEGAL_TRANSITION, 'There is no day plan yet.');
+  const rows = await listItems(deps.db, latest.itinerary.id);
+  const slot = slotFor(rows, itemId);
+  const places = unusedPlacesFitting(
+    storedPlan(context, rows),
+    context.planInput,
+    slot.row.item.dayNumber,
+    slot,
+  );
+  return {
+    places: places.map(({ key, name, category, entryFeeInr }) => ({
+      key,
+      name,
+      category,
+      entryFeeInr,
+    })),
+  };
+}
+
+export async function modifyItinerary(
+  deps: Deps,
+  tripId: string,
+  itemId: string,
+  userId: string,
+  change: ModifyItineraryInput,
+): Promise<ItineraryResponse> {
+  const context = await adjustmentContext(deps, tripId, userId);
+  await transitionTrip(deps, {
+    tripId,
+    event: 'itineraryModified',
+    actorUserId: userId,
+    beforeDecide: async (tx) => {
+      const latest = await latestItineraryForTrip(tx, tripId);
+      if (
+        !latest ||
+        latest.itinerary.status !== 'proposed' ||
+        latest.itinerary.packageId !== context.pkg.id
+      ) {
+        throw new AppError(409, ERROR_CODES.ITINERARY_STALE, 'The day plan changed. Try again.');
+      }
+      const rows = await listItems(tx, latest.itinerary.id);
+      const slot = slotFor(rows, itemId);
+      const plan = storedPlan(context, rows);
+      const replacement =
+        change.action === 'replace'
+          ? unusedPlacesFitting(plan, context.planInput, slot.row.item.dayNumber, slot).find(
+              (p) => p.key === change.placeKey,
+            )
+          : undefined;
+      if (change.action === 'replace' && !replacement) {
+        throw new AppError(
+          422,
+          ERROR_CODES.PLACE_DOES_NOT_FIT,
+          'That place does not fit this visit.',
+        );
+      }
+      const poiRow = replacement
+        ? (await listActivePois(tx, context.pkg.destinationId)).find(
+            (p) => `${context.dest.slug}/${p.poiKey}` === replacement.key,
+          )
+        : undefined;
+      if (replacement && !poiRow)
+        throw new AppError(
+          422,
+          ERROR_CODES.PLACE_DOES_NOT_FIT,
+          'That place does not fit this visit.',
+        );
+      await tx
+        .update(itineraryItem)
+        .set({
+          kind: replacement ? 'activity' : 'free',
+          poiId: poiRow?.id ?? null,
+          note: replacement
+            ? `Visit ${replacement.name} (${POI_CATEGORY_LABELS[replacement.category].toLowerCase()}). Entry ₹${replacement.entryFeeInr} per person.`
+            : 'Free time to explore.',
+        })
+        .where(eq(itineraryItem.id, itemId));
+      const updated = await listItems(tx, latest.itinerary.id);
+      const output = toOutput(
+        storedPlan(context, updated).days,
+        latest.itinerary.summary ?? '',
+        latest.itinerary.reasons as string[],
+      );
+      const result = validateItinerary(output, context.facts);
+      if (!result.ok)
+        throw new AppError(
+          422,
+          ERROR_CODES.PLACE_DOES_NOT_FIT,
+          'That change does not fit this plan.',
+        );
+      for (const day of output.days) {
+        const dayRows = updated.filter(({ item }) => item.dayNumber === day.day);
+        for (const [index, row] of dayRows.entries()) {
+          const verdict = result.items.find((v) => v.day === day.day && v.index === index);
+          const placeVerified = !row.poi || row.poi.reviewStatus === 'verified';
+          const verified = Boolean(verdict?.verified && placeVerified);
+          await tx
+            .update(itineraryItem)
+            .set({
+              verified,
+              unverifiedReason: verified
+                ? null
+                : (verdict?.reasons[0] ?? "This place's details are not verified yet."),
+            })
+            .where(eq(itineraryItem.id, row.item.id));
+        }
+      }
+    },
+  });
+  return getItinerary(deps.db, tripId, userId);
+}
 
 export type { TripStatus };

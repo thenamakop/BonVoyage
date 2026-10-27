@@ -58,3 +58,20 @@ export type ItineraryView = z.infer<typeof ItineraryView>;
 
 export const ItineraryResponse = z.object({ itinerary: ItineraryView.nullable() });
 export type ItineraryResponse = z.infer<typeof ItineraryResponse>;
+
+export const ModifyItineraryInput = z.discriminatedUnion('action', [
+  z.strictObject({ action: z.literal('remove') }),
+  z.strictObject({ action: z.literal('replace'), placeKey: z.string().min(1) }),
+]);
+export type ModifyItineraryInput = z.infer<typeof ModifyItineraryInput>;
+export const ItineraryAlternativesResponse = z.object({
+  places: z.array(
+    z.object({
+      key: z.string(),
+      name: z.string(),
+      category: PoiCategory,
+      entryFeeInr: z.number().int(),
+    }),
+  ),
+});
+export type ItineraryAlternativesResponse = z.infer<typeof ItineraryAlternativesResponse>;
