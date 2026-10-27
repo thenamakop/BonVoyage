@@ -17,6 +17,8 @@ const EnvSchema = z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
     LIVE_APIS: z.enum(['on', 'off']).default('off'),
+    GEMINI_API_KEY: z.string().optional(),
+    GEMINI_MODEL: z.string().optional(),
     VERCEL: z.string().optional(),
     VERCEL_ENV: z.enum(['production', 'preview', 'development']).optional(),
     VERCEL_URL: z.string().min(1).optional(),

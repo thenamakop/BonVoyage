@@ -53,12 +53,12 @@ const prefs = (over: Partial<PreferenceInput> = {}): PreferenceInput => ({
 });
 
 beforeAll(async () => {
-  const hub = await ensureHubAt(db, 'pkg-hub', 12, 77);
+  const hub = await ensureHubAt(db, 'pkg-hub', 30, 85);
   await ensureCostRules(db);
-  const destId = await ensureDestination(db, { slug: 'pkg-dest', lat: 12.2, lng: 77 });
+  const destId = await ensureDestination(db, { slug: 'pkg-dest', lat: 30.2, lng: 85 });
   const extraIds = [
-    await ensureDestination(db, { slug: 'pkg-dest2', lat: 12.3, lng: 77 }),
-    await ensureDestination(db, { slug: 'pkg-dest3', lat: 12.4, lng: 77 }),
+    await ensureDestination(db, { slug: 'pkg-dest2', lat: 30.3, lng: 85 }),
+    await ensureDestination(db, { slug: 'pkg-dest3', lat: 30.4, lng: 85 }),
   ];
   for (const f of [
     { mode: 'bus' as const, fare: 400, durationMinutes: 300, km: 90 },
@@ -108,8 +108,8 @@ beforeAll(async () => {
         typicalMinutes: p.minutes,
         closedDays: [],
         entryFeeInr: 100,
-        lat: 12.2,
-        lng: 77,
+        lat: 30.2,
+        lng: 85,
         collectedOn: '2026-10-12',
         reviewStatus: 'verified',
       })

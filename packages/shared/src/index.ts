@@ -29,6 +29,7 @@ export * from './api/profile';
 export * from './api/admin';
 export * from './api/recommendations';
 export * from './api/packages';
+export * from './api/itinerary';
 export * from './time';
 
 export const ERROR_CODES = {
@@ -58,6 +59,7 @@ export const ERROR_CODES = {
   PACKAGE_NOT_FOUND: 'PACKAGE_NOT_FOUND',
   PACKAGE_NOT_PROPOSED: 'PACKAGE_NOT_PROPOSED',
   PACKAGE_CHOICE_UNAVAILABLE: 'PACKAGE_CHOICE_UNAVAILABLE',
+  ITINERARY_STALE: 'ITINERARY_STALE',
   DB_UNAVAILABLE: 'DB_UNAVAILABLE',
   INTERNAL: 'INTERNAL',
 } as const;

@@ -1,5 +1,6 @@
 import type { Db } from '@bonvoyage/db';
-import { tripTransition } from '@bonvoyage/db/schema';
+import { itinerary, tripPackage, tripTransition } from '@bonvoyage/db/schema';
+import { asc, eq } from 'drizzle-orm';
 import { legalEvents, nextState } from '@bonvoyage/engine';
 import {
   MAX_MEMBERS,
@@ -43,6 +44,7 @@ import {
   type Tx,
 } from './repository';
 import { findLatestRun } from '../recommendations/repository';
+import { latestItinerarySummary } from '../itinerary/repository';
 import { tripActions } from './actions';
 import { transitionTrip } from './transition-trip';
 
@@ -81,6 +83,7 @@ function toDetail(
   selectedDestination: TripDetail['selectedDestination'],
   latestRecommendation: TripDetail['latestRecommendation'],
   selectedPackage: TripDetail['selectedPackage'],
+  latestItinerary: TripDetail['latestItinerary'],
 ): TripDetail {
   const organiser = members.find((m) => m.member.role === 'organiser');
   const progress = progressOf(members);
@@ -118,25 +121,35 @@ function toDetail(
       mySubmitted: caller.submittedAt !== null,
       progress,
       hasRecommendation: latestRecommendation !== null,
+      hasItinerary: latestItinerary !== null,
     }),
     lastActivityAt: lastActivityAt ? iso(lastActivityAt) : null,
     latestRecommendation,
     selectedPackage,
+    latestItinerary,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
 }
 
 async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<TripDetail> {
-  const [hubRow, members, lastActivityAt, selectedDestination, latestRun, selectedPackage] =
-    await Promise.all([
-      db.query.hub.findFirst({ where: (h, { eq }) => eq(h.id, row.originHubId) }),
-      listMembersWithNames(db, row.id),
-      newestTransitionAt(db, row.id),
-      findSelectedDestination(db, row.selectedDestinationId),
-      findLatestRun(db, row.id),
-      findAcceptedPackage(db, row.id),
-    ]);
+  const [
+    hubRow,
+    members,
+    lastActivityAt,
+    selectedDestination,
+    latestRun,
+    selectedPackage,
+    latestItinerary,
+  ] = await Promise.all([
+    db.query.hub.findFirst({ where: (h, { eq }) => eq(h.id, row.originHubId) }),
+    listMembersWithNames(db, row.id),
+    newestTransitionAt(db, row.id),
+    findSelectedDestination(db, row.selectedDestinationId),
+    findLatestRun(db, row.id),
+    findAcceptedPackage(db, row.id),
+    latestItinerarySummary(db, row.id),
+  ]);
   if (!hubRow) throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
   const latestRecommendation = latestRun
     ? {
@@ -155,6 +168,7 @@ async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<T
     selectedDestination,
     latestRecommendation,
     selectedPackage,
+    latestItinerary,
   );
 }
 
@@ -328,6 +342,36 @@ export async function getActivity(
 ): Promise<ActivityResponse> {
   await loadTripForMember(db, tripId, userId);
   const rows = await listActivity(db, tripId, ACTIVITY_LIMIT);
+  // T11/T12 summaries name what was chosen: the k-th packageAccepted pairs
+  // with the k-th accepted package by time, and generateItinerary with the
+  // k-th itinerary version, so "Asha planned the days (version 2)".
+  const [acceptedPkgs, itineraries] = await Promise.all([
+    db.query.tripPackage.findMany({
+      where: (t, { eq, and: a }) => a(eq(t.tripId, tripId), eq(t.status, 'accepted')),
+      orderBy: (t, { asc }) => asc(t.createdAt),
+    }),
+    db
+      .select({ version: itinerary.version })
+      .from(itinerary)
+      .innerJoin(tripPackage, eq(tripPackage.id, itinerary.packageId))
+      .where(eq(tripPackage.tripId, tripId))
+      .orderBy(asc(itinerary.generatedAt)),
+  ]);
+  let acceptCount = 0;
+  let planCount = 0;
+  const chronological = [...rows].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const detailById = new Map<string, string>();
+  for (const r of chronological) {
+    if (r.event === 'packageAccepted') {
+      const label = acceptedPkgs[acceptCount]?.label;
+      acceptCount += 1;
+      if (label) detailById.set(r.id, label);
+    } else if (r.event === 'generateItinerary') {
+      const version = itineraries[planCount]?.version;
+      planCount += 1;
+      if (version !== undefined) detailById.set(r.id, `version ${version}`);
+    }
+  }
   return {
     items: rows.map((r) => ({
       id: r.id,
@@ -337,7 +381,7 @@ export async function getActivity(
       toStatus: r.toStatus,
       actorName: r.actorName,
       createdAt: iso(r.createdAt),
-      summary: summarizeEvent(r.event, r.actorName),
+      summary: summarizeEvent(r.event, r.actorName, detailById.get(r.id)),
     })),
   };
 }

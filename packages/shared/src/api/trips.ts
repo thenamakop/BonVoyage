@@ -109,6 +109,10 @@ export const TripActionName = z.enum([
   'choosePackage',
   'removePackage',
   'changePackage',
+  'planDays',
+  'viewItinerary',
+  'acceptItinerary',
+  'rejectItinerary',
 ]);
 export type TripActionName = z.infer<typeof TripActionName>;
 
@@ -151,6 +155,8 @@ export const TripDetail = z.object({
       perPersonInr: z.number().int(),
     })
     .nullable(),
+  /** The newest itinerary version (S3-6), or null before T12. */
+  latestItinerary: z.object({ version: z.number().int(), status: z.string() }).nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -243,7 +249,7 @@ export type ActivityResponse = z.infer<typeof ActivityResponse>;
 
 // One sentence per state-machine event for the activity list. Joining,
 // leaving and removal are not events, so they never appear here (S1-5).
-export const EVENT_SUMMARIES: Record<TripEventName, (actor: string) => string> = {
+export const EVENT_SUMMARIES: Record<TripEventName, (actor: string, detail?: string) => string> = {
   createTrip: (a) => `${a} created the trip`,
   inviteMembers: (a) => `${a} opened the trip for preferences`,
   preferenceSubmitted: (a) => `${a} submitted preferences`,
@@ -253,10 +259,10 @@ export const EVENT_SUMMARIES: Record<TripEventName, (actor: string) => string> =
   recommendationRequested: (a) => `${a} asked for recommendations`,
   destinationSelected: (a) => `${a} chose the destination`,
   packageRejected: (a) => `${a} turned down the packages`,
-  packageAccepted: (a) => `${a} accepted a package`,
-  generateItinerary: (a) => `${a} asked for an itinerary`,
-  itineraryRejected: (a) => `${a} turned down the itinerary`,
-  itineraryAccepted: (a) => `${a} accepted the itinerary`,
+  packageAccepted: (a, d) => `${a} accepted the ${d ?? ''} package`,
+  generateItinerary: (a, d) => `${a} planned the days${d ? ` (${d})` : ''}`,
+  itineraryRejected: (a) => `${a} asked for a new day plan`,
+  itineraryAccepted: (a) => `${a} accepted the day plan; the trip is finalised`,
   packageModified: (a) => `${a} changed the package`,
   itineraryModified: (a) => `${a} changed the itinerary`,
   cancelTrip: (a) => `${a} cancelled the trip`,
@@ -265,8 +271,8 @@ export const EVENT_SUMMARIES: Record<TripEventName, (actor: string) => string> =
 };
 
 /** The activity sentence for a stored event; a missing actor reads "Someone". */
-export function summarizeEvent(event: string, actorName: string | null): string {
+export function summarizeEvent(event: string, actorName: string | null, detail?: string): string {
   const parsed = TripEventName.safeParse(event);
   const actor = actorName ?? 'Someone';
-  return parsed.success ? EVENT_SUMMARIES[parsed.data](actor) : `${actor} changed the trip`;
+  return parsed.success ? EVENT_SUMMARIES[parsed.data](actor, detail) : `${actor} changed the trip`;
 }

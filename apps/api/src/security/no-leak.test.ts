@@ -4,11 +4,12 @@ import { pino } from 'pino';
 import {
   GroupProfileResponse,
   InvitationResponse,
+  ItineraryResponse,
   LatestRecommendationResponse,
+  PackagesResponse,
   TripDetail,
 } from '@bonvoyage/shared';
 import request from 'supertest';
-import { PackagesResponse } from '@bonvoyage/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
@@ -328,10 +329,10 @@ describe('recommendation responses hold no other member’s answers or exact bud
 describe('package responses hold opinion counts and only the caller’s own vote', () => {
   it('two members with different votes see the counts but not each other', async () => {
     // A small fixture destination that produces packages.
-    const hub = await ensureHubAt(db, 'leak-hub', 15, 78);
-    const destId = await ensureDestination(db, { slug: 'leak-dest', lat: 15.2, lng: 78 });
-    await ensureDestination(db, { slug: 'leak-dest2', lat: 15.3, lng: 78 });
-    await ensureDestination(db, { slug: 'leak-dest3', lat: 15.4, lng: 78 });
+    const hub = await ensureHubAt(db, 'leak-hub', 32, 85);
+    const destId = await ensureDestination(db, { slug: 'leak-dest', lat: 32.2, lng: 85 });
+    await ensureDestination(db, { slug: 'leak-dest2', lat: 32.3, lng: 85 });
+    await ensureDestination(db, { slug: 'leak-dest3', lat: 32.4, lng: 85 });
     for (const [id, fare] of [[destId, 400] as const, [destId, 400] as const]) {
       await db
         .insert(fareFallback)
@@ -378,8 +379,8 @@ describe('package responses hold opinion counts and only the caller’s own vote
         typicalMinutes: 60,
         closedDays: [],
         entryFeeInr: 0,
-        lat: 15.2,
-        lng: 78,
+        lat: 32.2,
+        lng: 85,
         collectedOn: '2026-10-12',
         reviewStatus: 'verified',
       })
@@ -457,5 +458,105 @@ describe('package responses hold opinion counts and only the caller’s own vote
       expect(res.text).not.toContain(asha.userId);
     }
     for (const res of [aGet, aPut, bGet, bPut]) expect(res.text).not.toContain('@');
+  });
+});
+
+// S3-6: the day plan holds no member data — no names, emails, ids or budgets.
+describe('itinerary responses hold no member data', () => {
+  it('the itinerary body and the fixture prompt carry nothing personal', async () => {
+    const asha = await createTestUser(app, 'LeakIt Asha');
+    const rohan = await createTestUser(app, 'LeakIt Rohan');
+    const hub = await ensureHubAt(db, 'leakit-hub', 33, 85);
+    const destId = await ensureDestination(db, { slug: 'leakit-dest', lat: 33.2, lng: 85 });
+    for (const [id, fare] of [[destId, 400]] as const) {
+      await db
+        .insert(fareFallback)
+        .values({
+          originHubId: hub.id,
+          destinationId: id,
+          mode: 'bus',
+          farePerPersonInr: fare,
+          durationMinutes: 300,
+          distanceKm: 90,
+          collectedOn: '2026-10-12',
+          reviewStatus: 'verified',
+        })
+        .onConflictDoNothing();
+    }
+    for (const slug of ['leakit-dest2', 'leakit-dest3']) {
+      const id = await ensureDestination(db, { slug, lat: 33.3, lng: 85 });
+      await db
+        .insert(fareFallback)
+        .values({
+          originHubId: hub.id,
+          destinationId: id,
+          mode: 'bus',
+          farePerPersonInr: 350,
+          durationMinutes: 300,
+          distanceKm: 100,
+          collectedOn: '2026-10-12',
+          reviewStatus: 'verified',
+        })
+        .onConflictDoNothing();
+    }
+    await db
+      .insert(poi)
+      .values({
+        destinationId: destId,
+        poiKey: 'fort',
+        name: 'Fort',
+        category: 'sight',
+        typicalMinutes: 60,
+        closedDays: [],
+        entryFeeInr: 0,
+        lat: 33.2,
+        lng: 85,
+        collectedOn: '2026-10-12',
+        reviewStatus: 'verified',
+      })
+      .onConflictDoNothing();
+
+    const trip = await createTripAs(asha.agent, {
+      originHubSlug: 'leakit-hub',
+      radiusKm: 200,
+      budgetTotalInr: 120000,
+      durationNights: 2,
+    });
+    const { token } = InvitationResponse.parse(
+      (await asha.agent.post(`/api/trips/${trip.id}/invitations`).set(H).send({})).body,
+    );
+    await rohan.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
+    for (const m of [asha, rohan]) {
+      expect(
+        (await m.agent.put(`/api/trips/${trip.id}/preferences/me`).set(H).send(prefs(10000, 40000)))
+          .status,
+      ).toBe(200);
+    }
+    await asha.agent.post(`/api/trips/${trip.id}/recommendations`).set(H).send({});
+    const slug = LatestRecommendationResponse.parse(
+      (await asha.agent.get(`/api/trips/${trip.id}/recommendations/latest`).set(H)).body,
+    ).items[0]!.destination.slug;
+    await asha.agent
+      .post(`/api/trips/${trip.id}/destination`)
+      .set(H)
+      .send({ destinationSlug: slug });
+    const pkgs = PackagesResponse.parse(
+      (await asha.agent.get(`/api/trips/${trip.id}/packages`).set(H)).body,
+    ).packages;
+    await asha.agent.post(`/api/trips/${trip.id}/packages/${pkgs[0]!.id}/select`).set(H).send({});
+    const plan = await asha.agent.post(`/api/trips/${trip.id}/itinerary`).set(H).send({});
+    expect(plan.status, JSON.stringify(plan.body)).toBe(200);
+    const get = await rohan.agent.get(`/api/trips/${trip.id}/itinerary`).set(H);
+    expect(get.status).toBe(200);
+    const view = ItineraryResponse.parse(get.body).itinerary!;
+    expect(view.days.length).toBeGreaterThan(0);
+    for (const res of [plan, get]) {
+      expect(res.text).not.toContain('LeakIt Asha');
+      expect(res.text).not.toContain('LeakIt Rohan');
+      expect(res.text).not.toContain(asha.userId);
+      expect(res.text).not.toContain(rohan.userId);
+      expect(res.text).not.toContain('@');
+      expect(res.text).not.toContain('40000');
+    }
   });
 });

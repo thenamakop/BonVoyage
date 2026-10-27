@@ -18,6 +18,7 @@ import { createRouter as profile } from '../profile/router';
 import { createRouter as trips } from '../trips/router';
 import { createRouter as usersGroups } from './users-groups/router';
 import type { RecommendationHooks } from '../recommendations/service';
+import type { LlmClient } from '@bonvoyage/integrations';
 
 export function createApiRouter(deps: {
   db: Db;
@@ -27,6 +28,8 @@ export function createApiRouter(deps: {
   routing: Routing;
   scoringWeights: Weights;
   recommendationHooks?: RecommendationHooks;
+  llm?: LlmClient;
+  wordingTimeoutMs?: number;
 }) {
   const apiRouter = express.Router();
 

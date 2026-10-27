@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { Activity, PoiCategory, TransportMode } from './vocab';
 import { ITINERARY_ITEM_KINDS, StayTier } from './domain';
 
-const HHMM = z.string().regex(/^\d{2}:\d{2}$/);
-const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export const HHMM = z.string().regex(/^\d{2}:\d{2}$/);
+export const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const LegId = z.enum(['onward', 'return']);
 
 export const FactSheet = z.object({

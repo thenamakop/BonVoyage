@@ -20,6 +20,8 @@ export interface ActionInput {
   progress: TripProgress;
   /** A recommendation run exists for this trip (S2-6). */
   hasRecommendation: boolean;
+  /** An itinerary version exists for this trip (S3-6). */
+  hasItinerary: boolean;
 }
 
 const PLANNING = PLANNING_STATUSES as readonly TripStatus[];
@@ -40,6 +42,7 @@ export function tripActions({
   myStatus,
   progress,
   hasRecommendation,
+  hasItinerary,
 }: ActionInput): TripAction[] {
   // Removed members can read the trip but not act (conventions rule 4); reading
   // the recommendations is not acting.
@@ -101,6 +104,17 @@ export function tripActions({
       actions.push({ action: 'removePackage', enabled: true });
       actions.push({ action: 'changePackage', enabled: true });
     }
+  }
+
+  // S3-6: the organiser plans the days from the accepted package (T12), and
+  // accepts or rejects the plan (T14, T13); members only read it.
+  if (organiser && status === 'package_selected' && legal.has('generateItinerary')) {
+    actions.push({ action: 'planDays', enabled: true });
+  }
+  if (hasItinerary) actions.push({ action: 'viewItinerary', enabled: true });
+  if (organiser && status === 'itinerary_proposed') {
+    actions.push({ action: 'acceptItinerary', enabled: true });
+    actions.push({ action: 'rejectItinerary', enabled: true });
   }
 
   if (organiser && PLANNING.includes(status) && legal.has('cancelTrip')) {
