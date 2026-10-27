@@ -4,6 +4,7 @@ import {
   PastTrip,
   ProfileResponse,
   type AddPastTripInput,
+  type DeleteAccountInput,
   type UpdateProfileInput,
 } from '@bonvoyage/shared';
 import { z } from 'zod';
@@ -50,6 +51,16 @@ export function useDeletePastTrip() {
     mutationFn: (id: string) =>
       fetchJson(`/api/me/past-trips/${encodeURIComponent(id)}`, NoContent, { method: 'DELETE' }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['me', 'profile'] }),
+  });
+}
+
+export function useDeleteAccount() {
+  return useMutation({
+    mutationFn: (input: DeleteAccountInput) =>
+      fetchJson('/api/me/profile', z.object({ deleted: z.boolean() }), {
+        method: 'DELETE',
+        ...json(input),
+      }),
   });
 }
 

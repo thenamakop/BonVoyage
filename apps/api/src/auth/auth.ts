@@ -1,7 +1,9 @@
 import type { Db } from '@bonvoyage/db';
 import * as authSchema from '@bonvoyage/db/schema/auth';
 import { drizzleAdapter } from '@better-auth/drizzle-adapter';
+import { APIError } from 'better-auth/api';
 import { betterAuth } from 'better-auth';
+import { findBlockingTrips } from '../profile/repository';
 
 export interface AuthOptions {
   db: Db;
@@ -21,6 +23,22 @@ export function createAuth({ db, secret, baseURL }: AuthOptions) {
       minPasswordLength: 12,
       maxPasswordLength: 128,
       autoSignIn: true,
+    },
+    // #54: deleteUser stays enabled so Better Auth's own route also refuses
+    // while the user organises an active trip. The app endpoint is
+    // DELETE /api/profile, which returns the trips in its 422 details.
+    user: {
+      deleteUser: {
+        enabled: true,
+        beforeDelete: async (u) => {
+          const blocking = await findBlockingTrips(db, u.id);
+          if (blocking.length > 0) {
+            throw new APIError('UNPROCESSABLE_ENTITY', {
+              message: 'Cancel the trips you organise before deleting your account.',
+            });
+          }
+        },
+      },
     },
     session: {
       expiresIn: 7 * 24 * 60 * 60,

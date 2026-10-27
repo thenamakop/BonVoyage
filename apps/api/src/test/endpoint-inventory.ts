@@ -33,6 +33,7 @@ export const ENDPOINTS: readonly Endpoint[] = [
   { method: 'GET', path: '/api/me/trips', access: 'session' },
   { method: 'GET', path: '/api/me/profile', access: 'session' },
   { method: 'PATCH', path: '/api/me/profile', access: 'session' },
+  { method: 'DELETE', path: '/api/me/profile', access: 'session' },
   { method: 'POST', path: '/api/me/past-trips', access: 'session' },
   { method: 'DELETE', path: '/api/me/past-trips/:id', access: 'owner' },
   { method: 'GET', path: '/api/hubs', access: 'session' },

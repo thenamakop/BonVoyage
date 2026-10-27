@@ -3,6 +3,7 @@ import {
   ERROR_CODES,
   indiaDate,
   type AddPastTripInput,
+  type DeleteAccountInput,
   type PastTrip,
   type ProfileResponse,
   type UpdateProfileInput,
@@ -11,7 +12,9 @@ import { z } from 'zod';
 import { AppError } from '../http/errors';
 import {
   deleteOwnPastTrip,
+  deleteUserRow,
   findActiveDestination,
+  findBlockingTrips,
   findHomeHubSlug,
   findHubId,
   insertPastTrip,
@@ -19,6 +22,7 @@ import {
   upsertHomeHub,
   type PastTripRow,
 } from './repository';
+import type { Auth } from '../auth/auth';
 
 // The caller's own profile (S1-4): home city and past trips, which Sprint 2's
 // scoring reads. Every query is keyed by the session user, never by input.
@@ -102,4 +106,37 @@ export async function removePastTrip(db: Db, userId: string, id: string): Promis
   // A malformed id and someone else's row get the same 404 as a missing one.
   const deleted = uuid.safeParse(id).success && (await deleteOwnPastTrip(db, userId, id));
   if (!deleted) throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Past trip not found.');
+}
+
+// #54 / 0005 j: delete the caller's account. The password is verified through
+// Better Auth, never by hand; planning and in-progress trips the user
+// organises block the deletion; every other row cascades from user.
+export async function deleteAccount(
+  { db, auth }: { db: Db; auth: Auth },
+  session: { userId: string; email: string },
+  input: DeleteAccountInput,
+  headers: Headers,
+): Promise<void> {
+  if (input.confirmEmail !== session.email) {
+    throw invalid('confirmEmail', 'Type your email to confirm.');
+  }
+  try {
+    await auth.api.signInEmail({
+      body: { email: session.email, password: input.password },
+      headers,
+    });
+  } catch {
+    throw invalid('password', 'Password is incorrect.');
+  }
+  const blocking = await findBlockingTrips(db, session.userId);
+  if (blocking.length > 0) {
+    throw new AppError(
+      422,
+      ERROR_CODES.ACCOUNT_HAS_ACTIVE_TRIPS,
+      'Cancel or finish these trips first.',
+      undefined,
+      { trips: blocking },
+    );
+  }
+  await deleteUserRow(db, session.userId);
 }

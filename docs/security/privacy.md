@@ -67,16 +67,17 @@ Every change to your data goes through a JSON request (`Content-Type: applicatio
 
 - **Leave a trip** (a member, while preferences are open): your membership and your preferences for that trip are deleted.
 - **Removed by the organiser:** your preferences for that trip are deleted; you keep read-only access.
-- **Delete your account:** not built yet; tracked in issue #54 for Sprint 3. Until then, ask the administrator, who can delete the account. Deleting a user removes their memberships, preferences, past trips and profile, because each table cascades from the user. A trip the user organises is deleted with it, which is why the planned feature will refuse while you organise an open trip.
+- **Delete your account** (S3-5, #54): sign in, open your profile, enter your password and type your email. Your sign-in, sessions, profile, preferences, package opinions, itinerary decisions, notifications, past trips and memberships are deleted; trips you organised that are finalised, completed or cancelled are deleted with it. The request is refused while you organise a trip that is still being planned or is in progress: cancel or finish it first.
 
 ## How this is tested
 
 | Test | What it proves |
 | --- | --- |
 | `apps/api/src/security/routes.test.ts` | Every registered API route is in the endpoint inventory, so none skips the checks below |
-| `apps/api/src/security/access-matrix.test.ts` | Each of the 30 endpoints, called as anonymous, non-member, member, removed member, organiser and administrator, gives the expected status |
+| `apps/api/src/security/access-matrix.test.ts` | Each of the 31 endpoints, called as anonymous, non-member, member, removed member, organiser and administrator, gives the expected status |
 | `apps/api/src/security/no-leak.test.ts` | No response to any caller contains another user's budget, past trips or email; your own email appears only on `/api/me`; the invitation preview holds no budgets, dates, emails or member names; the group profile and recommendations hold none of another member's own choices or exact budget figures, including the F5 diagnostic when members' maxima set the cap, and name a value only when two or more members chose it |
 | `apps/api/src/recommendations/recommendations.test.ts` | Each member's explanation is their own; budgets are rounded inwards; a trip-set cap stays exact; groups of 2 get no score range |
 | `apps/api/src/security/logs.test.ts` | Logs from signing up, signing in and saving a preference hold no password, cookie, email or budget |
 | `apps/api/src/security/json-only.test.ts` | Non-JSON writes are refused with 415 |
 | `apps/api/src/preferences/preferences.test.ts` | A member only ever reads their own preference |
+| `apps/api/src/profile/profile.test.ts` (DELETE /api/me/profile) | Deleting an account removes every `user_id`/`userId` row, clears the session cookie and leaves the old cookie a 401; an organiser of an active trip gets 422 with the trip list |

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter } from 'react-router';
+import { createMemoryRouter, useLocation } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ProfilePage } from './ProfilePage';
@@ -11,9 +11,12 @@ import { ProfilePage } from './ProfilePage';
 const ME = { id: 'u4', name: 'Kabir', email: 'kabir@test.bv', homeHubSlug: null, isAdmin: false };
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
 
-function stubFetch(profile: Record<string, unknown>) {
+function stubFetch(profile: Record<string, unknown>, deleteReply?: () => Response) {
   fetchMock.mockImplementation((url, init) => {
     if (url === '/api/me') return Promise.resolve(Response.json(ME));
+    if (url === '/api/me/profile' && init?.method === 'DELETE') {
+      return Promise.resolve(deleteReply ? deleteReply() : Response.json({ deleted: true }));
+    }
     if (url === '/api/me/profile') return Promise.resolve(Response.json(profile));
     if (url === '/api/hubs') {
       return Promise.resolve(
@@ -41,17 +44,30 @@ function stubFetch(profile: Record<string, unknown>) {
   });
 }
 
+function HomeNotice() {
+  const location = useLocation() as { state: { notice?: string } | null };
+  return <p>{location.state?.notice ?? 'home'}</p>;
+}
+
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  const router = createMemoryRouter([{ path: '/me', element: <ProfilePage /> }], {
-    initialEntries: ['/me'],
-  });
+  const router = createMemoryRouter(
+    [
+      { path: '/me', element: <ProfilePage /> },
+      { path: '/', element: <HomeNotice /> },
+    ],
+    { initialEntries: ['/me'] },
+  );
   render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
 }
+
+const PROFILE = { homeHubSlug: null, pastTrips: [] };
+const PW_LABEL = 'Password';
+const EMAIL_LABEL = /Type .+ to confirm/;
 
 describe('ProfilePage', () => {
   beforeEach(() => {
@@ -106,5 +122,116 @@ describe('ProfilePage', () => {
     expect(
       await screen.findByText('Choose a destination, or pick "Somewhere else" and name the place.'),
     ).toBeInTheDocument();
+  });
+});
+
+// #54 / S3-5: the Delete account section.
+describe('ProfilePage delete account', () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('keeps Delete my account disabled until both fields are filled', async () => {
+    stubFetch(PROFILE);
+    const user = userEvent.setup();
+    renderPage();
+    const button = await screen.findByRole('button', { name: 'Delete my account' });
+    expect(button).toBeDisabled();
+    await user.type(screen.getByLabelText(PW_LABEL), 'pw-123456789');
+    expect(button).toBeDisabled();
+    await user.type(screen.getByLabelText(EMAIL_LABEL), ME.email);
+    expect(button).toBeEnabled();
+  });
+
+  it('sends DELETE /api/me/profile and goes home with the goodbye line', async () => {
+    stubFetch(PROFILE);
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(await screen.findByLabelText(PW_LABEL), 'pw-123456789');
+    await user.type(screen.getByLabelText(EMAIL_LABEL), ME.email);
+    await user.click(screen.getByRole('button', { name: 'Delete my account' }));
+    expect(await screen.findByText('Your account has been deleted.')).toBeInTheDocument();
+    const call = fetchMock.mock.calls.find(
+      (c) => c[0] === '/api/me/profile' && c[1]?.method === 'DELETE',
+    );
+    expect(JSON.parse(call?.[1]?.body as string)).toEqual({
+      password: 'pw-123456789',
+      confirmEmail: ME.email,
+    });
+  });
+
+  it('422 ACCOUNT_HAS_ACTIVE_TRIPS lists each blocking trip as a link', async () => {
+    stubFetch(PROFILE, () =>
+      Response.json(
+        {
+          error: {
+            code: 'ACCOUNT_HAS_ACTIVE_TRIPS',
+            message: 'Cancel or finish these trips first.',
+            details: {
+              trips: [
+                { id: 't1', title: 'Hills', status: 'collecting_preferences' },
+                { id: 't2', title: 'Beach', status: 'in_progress' },
+              ],
+            },
+          },
+        },
+        { status: 422 },
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(await screen.findByLabelText(PW_LABEL), 'pw-123456789');
+    await user.type(screen.getByLabelText(EMAIL_LABEL), ME.email);
+    await user.click(screen.getByRole('button', { name: 'Delete my account' }));
+    expect(await screen.findByText('Cancel or finish these trips first.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Hills' })).toHaveAttribute('href', '/trips/t1');
+    expect(screen.getByRole('link', { name: 'Beach' })).toHaveAttribute('href', '/trips/t2');
+  });
+
+  it('400 field errors land next to the password and email fields', async () => {
+    stubFetch(PROFILE, () =>
+      Response.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Some fields are invalid.',
+            fields: {
+              password: 'Password is incorrect.',
+              confirmEmail: 'Type your email to confirm.',
+            },
+          },
+        },
+        { status: 400 },
+      ),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await user.type(await screen.findByLabelText(PW_LABEL), 'pw-123456789');
+    await user.type(screen.getByLabelText(EMAIL_LABEL), 'someone-else@test.bv');
+    await user.click(screen.getByRole('button', { name: 'Delete my account' }));
+    expect(await screen.findByText('Password is incorrect.')).toBeInTheDocument();
+    expect(await screen.findByText('Type your email to confirm.')).toBeInTheDocument();
+  });
+
+  it('is reachable by keyboard: tab order lands on the fields and the button', async () => {
+    stubFetch(PROFILE);
+    const user = userEvent.setup();
+    renderPage();
+    const password = await screen.findByLabelText(PW_LABEL);
+    const email = screen.getByLabelText(EMAIL_LABEL);
+    const button = screen.getByRole('button', { name: 'Delete my account' });
+    password.focus();
+    await user.keyboard('pw-123456789');
+    await user.tab();
+    expect(email).toHaveFocus();
+    await user.keyboard(ME.email);
+    await user.tab();
+    expect(button).toHaveFocus();
+    await user.keyboard('[Space]');
+    expect(
+      fetchMock.mock.calls.some((c) => c[0] === '/api/me/profile' && c[1]?.method === 'DELETE'),
+    ).toBe(true);
   });
 });

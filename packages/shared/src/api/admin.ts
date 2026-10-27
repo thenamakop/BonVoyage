@@ -53,7 +53,7 @@ export const CatalogueCounts = z.object({
 export type CatalogueCounts = z.infer<typeof CatalogueCounts>;
 
 export const StageProgress = z.object({
-  stage: z.enum(['a', 'b', 'c']),
+  stage: z.enum(['a', 'b1', 'b2', 'c']),
   verified: z.number().int(),
   total: z.number().int(),
   /** YYYY-MM-DD */

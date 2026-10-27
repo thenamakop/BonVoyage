@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { AddPastTripInput, type PastTrip, type ProfileResponse } from '@bonvoyage/shared';
+import { Link, useNavigate } from 'react-router';
+import {
+  AddPastTripInput,
+  type ActiveTrip,
+  type PastTrip,
+  type ProfileResponse,
+} from '@bonvoyage/shared';
 import { Alert } from '../../components/ui/Alert';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -12,6 +18,7 @@ import { TextField } from '../../components/ui/TextField';
 import { useMe } from '../../features/auth/api';
 import {
   useAddPastTrip,
+  useDeleteAccount,
   useDeletePastTrip,
   useDestinations,
   useProfile,
@@ -281,7 +288,99 @@ export function ProfilePage() {
           )}
           <AddPastTripForm />
         </Card>
+        <DeleteAccount />
       </div>
     </>
+  );
+}
+
+// #54: delete the caller's account after password and typed email. A 422
+// names the trips that block it; success goes home with a goodbye line.
+function DeleteAccount() {
+  const me = useMe();
+  const navigate = useNavigate();
+  const remove = useDeleteAccount();
+  const [password, setPassword] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [blocking, setBlocking] = useState<ActiveTrip[]>([]);
+  const [message, setMessage] = useState('');
+  const [fields, setFields] = useState<Record<string, string>>({});
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    setBlocking([]);
+    setMessage('');
+    setFields({});
+    remove.mutate(
+      { password, confirmEmail },
+      {
+        onSuccess: () => {
+          void navigate('/', { state: { notice: 'Your account has been deleted.' } });
+        },
+        onError: (err) => {
+          if (err instanceof ApiError && err.code === 'ACCOUNT_HAS_ACTIVE_TRIPS') {
+            const details = err.details as { trips?: ActiveTrip[] } | undefined;
+            setBlocking(details?.trips ?? []);
+          }
+          if (err instanceof ApiError && err.fields) setFields(err.fields);
+          setMessage(errorText(err));
+        },
+      },
+    );
+  }
+
+  return (
+    <Card>
+      <h2 className="text-lg font-semibold text-slate-900">Delete account</h2>
+      <ul className="list-disc pl-5 text-sm text-slate-600">
+        <li>Your sign-in, profile and past trips.</li>
+        <li>Your preference answers and package opinions.</li>
+        <li>Your memberships in other people's trips.</li>
+        <li>Trips you organised that are finalised, completed or cancelled.</li>
+      </ul>
+      {blocking.length > 0 && (
+        <Alert tone="error">
+          Cancel or finish these trips first:
+          <ul className="list-disc pl-5">
+            {blocking.map((t) => (
+              <li key={t.id}>
+                <Link className="underline" to={`/trips/${t.id}`}>
+                  {t.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Alert>
+      )}
+      {message !== '' && <Alert tone="error">{message}</Alert>}
+      <form className="flex flex-col gap-4" onSubmit={onSubmit}>
+        <TextField
+          label="Password"
+          name="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+          required
+          error={fields.password}
+        />
+        <TextField
+          label={`Type ${me.data?.email ?? 'your email'} to confirm`}
+          name="confirmEmail"
+          type="email"
+          value={confirmEmail}
+          onChange={(e) => setConfirmEmail(e.target.value)}
+          required
+          error={fields.confirmEmail}
+        />
+        <Button
+          type="submit"
+          variant="danger"
+          disabled={password === '' || confirmEmail === '' || remove.isPending}
+        >
+          {remove.isPending ? 'Deleting…' : 'Delete my account'}
+        </Button>
+      </form>
+    </Card>
   );
 }

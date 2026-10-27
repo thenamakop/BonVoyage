@@ -1,6 +1,7 @@
 import type { Db } from '@bonvoyage/db';
-import { destination, hub, pastTrip, userProfile } from '@bonvoyage/db/schema';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { destination, hub, pastTrip, trip, userProfile } from '@bonvoyage/db/schema';
+import { user } from '@bonvoyage/db/schema/auth';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 
 export async function findHomeHubSlug(db: Db, userId: string): Promise<string | null> {
   const rows = await db
@@ -84,4 +85,37 @@ export async function deleteOwnPastTrip(db: Db, userId: string, id: string): Pro
     .where(and(eq(pastTrip.id, id), eq(pastTrip.userId, userId)))
     .returning({ id: pastTrip.id });
   return rows.length > 0;
+}
+
+// #54 / 0005 j: trips the user organises that block or follow an account
+// deletion. Planning statuses and in_progress block; finalised, completed and
+// cancelled trips cascade with the user row.
+export const DELETION_BLOCKING_STATUSES = [
+  'draft',
+  'collecting_preferences',
+  'ready_for_recommendation',
+  'shortlisted',
+  'packages_proposed',
+  'package_selected',
+  'itinerary_proposed',
+  'in_progress',
+] as const;
+
+export async function findBlockingTrips(
+  db: Db,
+  userId: string,
+): Promise<{ id: string; title: string; status: string }[]> {
+  return db
+    .select({ id: trip.id, title: trip.title, status: trip.status })
+    .from(trip)
+    .where(
+      and(eq(trip.organiserId, userId), inArray(trip.status, [...DELETION_BLOCKING_STATUSES])),
+    );
+}
+
+// Sessions, accounts, user_profile, trip_member (+preferences), past_trip,
+// package_decision, itinerary_decision, notification and the non-blocking
+// organised trips all cascade from the user row.
+export async function deleteUserRow(db: Db, userId: string): Promise<void> {
+  await db.delete(user).where(eq(user.id, userId));
 }
