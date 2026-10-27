@@ -87,6 +87,22 @@ export function tripActions({
     actions.push({ action: 'chooseDestination', enabled: true });
   }
 
+  // S3-3: members view and vote on packages; the organiser chooses, removes
+  // or changes them while the packages are proposed.
+  const packagesLive =
+    status === 'packages_proposed' ||
+    status === 'package_selected' ||
+    status === 'itinerary_proposed';
+  if (packagesLive) actions.push({ action: 'viewPackages', enabled: true });
+  if (status === 'packages_proposed') {
+    actions.push({ action: 'givePackageOpinion', enabled: true });
+    if (organiser) {
+      actions.push({ action: 'choosePackage', enabled: true });
+      actions.push({ action: 'removePackage', enabled: true });
+      actions.push({ action: 'changePackage', enabled: true });
+    }
+  }
+
   if (organiser && PLANNING.includes(status) && legal.has('cancelTrip')) {
     actions.push({ action: 'cancelTrip', enabled: true });
   }

@@ -3,6 +3,7 @@ import {
   boolean,
   check,
   index,
+  jsonb,
   pgTable,
   smallint,
   text,
@@ -26,6 +27,10 @@ export const itinerary = pgTable(
     version: smallint('version').notNull(),
     status: itineraryStatusEnum('status').default('proposed').notNull(),
     model: text('model'),
+    summary: text('summary'),
+    reasons: jsonb('reasons')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [
@@ -49,6 +54,7 @@ export const itineraryItem = pgTable(
     kind: itineraryItemKindEnum('kind').notNull(),
     poiId: uuid('poi_id').references(() => poi.id, { onDelete: 'set null' }),
     note: text('note'),
+    unverifiedReason: text('unverified_reason'),
     verified: boolean('verified').default(false).notNull(),
   },
   (t) => [

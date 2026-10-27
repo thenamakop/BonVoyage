@@ -260,6 +260,76 @@ const CASES: Case[] = [
       '404 NOT_FOUND',
     ],
   },
+  // S3-3: the trip is still collecting preferences, so package reads hit the
+  // 409 state check and organiser writes never reach a real package row.
+  {
+    method: 'GET',
+    path: '/api/trips/:id/packages',
+    url: (f) => `/api/trips/${f.tripId}/packages`,
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '409 ILLEGAL_TRANSITION',
+      '409 ILLEGAL_TRANSITION',
+      '409 ILLEGAL_TRANSITION',
+      '404 NOT_FOUND',
+    ],
+  },
+  {
+    method: 'PUT',
+    path: '/api/trips/:id/packages/:packageId/opinion',
+    url: (f) => `/api/trips/${f.tripId}/packages/00000000-0000-4000-8000-0000000000a0/opinion`,
+    body: { decision: 'accept' },
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '409 ILLEGAL_TRANSITION',
+      '403 FORBIDDEN',
+      '409 ILLEGAL_TRANSITION',
+      '404 NOT_FOUND',
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/packages/:packageId/select',
+    url: (f) => `/api/trips/${f.tripId}/packages/00000000-0000-4000-8000-0000000000a0/select`,
+    expected: [
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/packages/:packageId/remove',
+    url: (f) => `/api/trips/${f.tripId}/packages/00000000-0000-4000-8000-0000000000a0/remove`,
+    expected: [
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+    ],
+  },
+  {
+    method: 'PATCH',
+    path: '/api/trips/:id/packages/:packageId',
+    url: (f) => `/api/trips/${f.tripId}/packages/00000000-0000-4000-8000-0000000000a0`,
+    body: { stayTier: 'premium' },
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '403 FORBIDDEN',
+      '403 FORBIDDEN',
+      '404 PACKAGE_NOT_FOUND',
+      '404 NOT_FOUND',
+    ],
+  },
+
   {
     method: 'POST',
     path: '/api/trips/:id/destination',

@@ -1,5 +1,13 @@
 import type { Db } from '@bonvoyage/db';
-import { destination, hub, trip, tripMember, tripTransition, user } from '@bonvoyage/db/schema';
+import {
+  destination,
+  hub,
+  trip,
+  tripMember,
+  tripPackage,
+  tripTransition,
+  user,
+} from '@bonvoyage/db/schema';
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import type { MembershipRow, TripRow } from './access';
 
@@ -57,6 +65,20 @@ export async function insertOrganiserMember(tx: Tx, tripId: string, userId: stri
 export interface MemberWithName {
   member: MembershipRow;
   name: string;
+}
+
+export async function findAcceptedPackage(db: Db, tripId: string) {
+  const rows = await db
+    .select({
+      id: tripPackage.id,
+      label: tripPackage.label,
+      totalInr: tripPackage.totalInr,
+      perPersonInr: tripPackage.perPersonInr,
+    })
+    .from(tripPackage)
+    .where(and(eq(tripPackage.tripId, tripId), eq(tripPackage.status, 'accepted')))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export async function listMembersWithNames(db: Db, tripId: string): Promise<MemberWithName[]> {

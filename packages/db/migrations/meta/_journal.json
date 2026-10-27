@@ -15,6 +15,13 @@
       "when": 1792814496298,
       "tag": "0001_selected_destination_and_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793083535271,
+      "tag": "0002_nifty_barracuda",
+      "breakpoints": true
     }
   ]
 }

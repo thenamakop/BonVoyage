@@ -28,6 +28,7 @@ export * from './api/preferences';
 export * from './api/profile';
 export * from './api/admin';
 export * from './api/recommendations';
+export * from './api/packages';
 export * from './time';
 
 export const ERROR_CODES = {
@@ -54,6 +55,9 @@ export const ERROR_CODES = {
   RECOMMENDATION_STALE: 'RECOMMENDATION_STALE',
   DESTINATION_NOT_IN_SHORTLIST: 'DESTINATION_NOT_IN_SHORTLIST',
   ACCOUNT_HAS_ACTIVE_TRIPS: 'ACCOUNT_HAS_ACTIVE_TRIPS',
+  PACKAGE_NOT_FOUND: 'PACKAGE_NOT_FOUND',
+  PACKAGE_NOT_PROPOSED: 'PACKAGE_NOT_PROPOSED',
+  PACKAGE_CHOICE_UNAVAILABLE: 'PACKAGE_CHOICE_UNAVAILABLE',
   DB_UNAVAILABLE: 'DB_UNAVAILABLE',
   INTERNAL: 'INTERNAL',
 } as const;

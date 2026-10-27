@@ -25,6 +25,7 @@ import {
 } from './access';
 import {
   countActiveMembers,
+  findAcceptedPackage,
   findHubBySlug,
   findSelectedDestination,
   insertOrganiserMember,
@@ -79,6 +80,7 @@ function toDetail(
   lastActivityAt: Date | null,
   selectedDestination: TripDetail['selectedDestination'],
   latestRecommendation: TripDetail['latestRecommendation'],
+  selectedPackage: TripDetail['selectedPackage'],
 ): TripDetail {
   const organiser = members.find((m) => m.member.role === 'organiser');
   const progress = progressOf(members);
@@ -119,19 +121,22 @@ function toDetail(
     }),
     lastActivityAt: lastActivityAt ? iso(lastActivityAt) : null,
     latestRecommendation,
+    selectedPackage,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
   };
 }
 
 async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<TripDetail> {
-  const [hubRow, members, lastActivityAt, selectedDestination, latestRun] = await Promise.all([
-    db.query.hub.findFirst({ where: (h, { eq }) => eq(h.id, row.originHubId) }),
-    listMembersWithNames(db, row.id),
-    newestTransitionAt(db, row.id),
-    findSelectedDestination(db, row.selectedDestinationId),
-    findLatestRun(db, row.id),
-  ]);
+  const [hubRow, members, lastActivityAt, selectedDestination, latestRun, selectedPackage] =
+    await Promise.all([
+      db.query.hub.findFirst({ where: (h, { eq }) => eq(h.id, row.originHubId) }),
+      listMembersWithNames(db, row.id),
+      newestTransitionAt(db, row.id),
+      findSelectedDestination(db, row.selectedDestinationId),
+      findLatestRun(db, row.id),
+      findAcceptedPackage(db, row.id),
+    ]);
   if (!hubRow) throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
   const latestRecommendation = latestRun
     ? {
@@ -149,6 +154,7 @@ async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<T
     lastActivityAt,
     selectedDestination,
     latestRecommendation,
+    selectedPackage,
   );
 }
 

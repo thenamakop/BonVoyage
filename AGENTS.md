@@ -166,6 +166,8 @@ These come from the SRS and the runbook. Breaking one is a bug, even if tests pa
 
 Migration 0001 (Sprint 2): trip.selected_destination_id, past_trip.place_name nullable with a one-of CHECK, provider_usage.
 
+Migration 0002 (Sprint 3): trip_package.label, itinerary.summary and reasons, itinerary_item.unverified_reason, package_decision unique (package_id, user_id).
+
 - PostgreSQL 18 reports SQLSTATE `23001` for an `ON DELETE RESTRICT` refusal; an invalid foreign-key reference reports `23503`.
 
 - Change the schema only in `packages/db`, then generate a migration with drizzle-kit and commit the SQL.

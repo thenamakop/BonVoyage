@@ -42,6 +42,7 @@ import { eq } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { AppError } from '../http/errors';
 import { loadTripForMember, requireActiveMember, requireOrganiser } from '../trips/access';
+import { draftPackages, storePackages } from '../packages/service';
 import { getTrip } from '../trips/service';
 import { assertEventLegal, transitionTrip } from '../trips/transition-trip';
 import {
@@ -189,7 +190,7 @@ function toCosted(d: DestinationRow): CostedDestination | null {
   };
 }
 
-async function loadMembers(db: Db, tripId: string) {
+export async function loadMembers(db: Db, tripId: string) {
   const participants = await listParticipants(db, tripId);
   const liked = await listLikedPastTypes(
     db,
@@ -684,11 +685,18 @@ export async function chooseDestination(
     );
   }
 
+  // 0005 a (T9): packages are computed with the real catalogue before the
+  // lock, then stored atomically with the transition in beforeDecide.
+  const members = await loadMembers(db, tripId);
+  const { drafts } = await draftPackages(db, tripRow, members, destinationId);
   await transitionTrip(deps, {
     tripId,
     event: 'destinationSelected',
     actorUserId: userId,
-    beforeDecide: (tx) => setSelectedDestination(tx, tripId, destinationId),
+    beforeDecide: async (tx) => {
+      await setSelectedDestination(tx, tripId, destinationId);
+      await storePackages(tx, tripId, destinationId, drafts);
+    },
   });
   return getTrip(db, tripId, userId);
 }
