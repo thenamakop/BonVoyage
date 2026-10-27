@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { ButtonLink } from '../../../components/ui/Button';
 import { useLatestRecommendation } from '../../../features/recommendations/api';
 import { lastRoundText } from '../../../features/recommendations/wording';
-import { waitingFor } from './wording';
+import { packageChosenLine, PACKAGES_NEXT_STEP, waitingFor } from './wording';
 
 // The next-step callout, worded for this viewer (wireframe 06).
 
@@ -107,10 +107,15 @@ export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: strin
   }
   if (trip.status === 'packages_proposed' && trip.selectedDestination) {
     return (
-      <Callout
-        text={`${trip.selectedDestination.name} chosen. Packages arrive in the next release.`}
-      />
+      <Callout text={PACKAGES_NEXT_STEP}>
+        <ButtonLink to={`/trips/${trip.id}/packages`} variant="secondary" fullWidth>
+          See the packages
+        </ButtonLink>
+      </Callout>
     );
+  }
+  if (trip.status === 'package_selected' && trip.selectedPackage) {
+    return <Callout text={packageChosenLine(trip.selectedPackage)} />;
   }
   if (trip.status === 'cancelled') return <Callout text="This trip was cancelled." />;
   return null;
