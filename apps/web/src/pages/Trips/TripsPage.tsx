@@ -36,30 +36,48 @@ export function TripsPage() {
           Your trips could not be loaded.
         </Alert>
       ) : trips.data && trips.data.trips.length > 0 ? (
-        <ul className="space-y-3">
-          {trips.data.trips.map((t) => (
-            <li key={t.id}>
-              <Link to={`/trips/${t.id}`} className="block">
-                <Card className="hover:bg-slate-50">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-semibold text-slate-900">{t.title}</p>
-                    <div className="flex items-center gap-2">
-                      {t.myRole === 'organiser' ? <Badge>Organiser</Badge> : null}
-                      <Badge tone={statusTone(t.status)}>
-                        {TRIP_STATUS_LABELS[t.status].label}
-                      </Badge>
-                    </div>
-                  </div>
-                  <p className="mt-1 text-sm text-slate-600">
-                    From {t.originHub.name} · {t.durationNights}{' '}
-                    {t.durationNights === 1 ? 'night' : 'nights'} · {formatInr(t.budgetTotalInr)}{' '}
-                    for the group · {t.memberCount} {t.memberCount === 1 ? 'member' : 'members'}
-                  </p>
-                </Card>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-6">
+          {['Planning', 'Past and finalised trips'].map((section, index) => {
+            const items = trips.data.trips.filter(
+              (t) =>
+                ['finalised', 'in_progress', 'completed', 'cancelled'].includes(t.status) ===
+                (index === 1),
+            );
+            return (
+              <section key={section} aria-label={section} className="space-y-3">
+                <h2 className="text-lg font-semibold">{section}</h2>
+                {!items.length ? (
+                  <p>{index === 0 ? 'No planning trips.' : 'No past or finalised trips yet.'}</p>
+                ) : null}
+                <ul className="space-y-3">
+                  {items.map((t) => (
+                    <li key={t.id}>
+                      <Link to={`/trips/${t.id}`} className="block">
+                        <Card className="hover:bg-slate-50">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="font-semibold text-slate-900">{t.title}</p>
+                            <div className="flex items-center gap-2">
+                              {t.myRole === 'organiser' ? <Badge>Organiser</Badge> : null}
+                              <Badge tone={statusTone(t.status)}>
+                                {TRIP_STATUS_LABELS[t.status].label}
+                              </Badge>
+                            </div>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-600">
+                            From {t.originHub.name} · {t.durationNights}{' '}
+                            {t.durationNights === 1 ? 'night' : 'nights'} ·{' '}
+                            {formatInr(t.budgetTotalInr)} for the group · {t.memberCount}{' '}
+                            {t.memberCount === 1 ? 'member' : 'members'}
+                          </p>
+                        </Card>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       ) : (
         <EmptyState
           title="No trips yet"

@@ -7,6 +7,7 @@ const PLANNING = PLANNING_STATUSES as readonly string[];
 
 /** "Step 2 of 7: Collecting preferences" while planning; own words otherwise. */
 export function stepLine(status: TripStatus): string {
+  if (status === 'finalised') return 'Step 7 of 7: Finalised';
   const index = PLANNING.indexOf(status);
   if (index >= 0) {
     return `Step ${index + 1} of ${PLANNING.length}: ${TRIP_STATUS_LABELS[status].label}`;

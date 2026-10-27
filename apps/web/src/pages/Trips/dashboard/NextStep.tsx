@@ -4,6 +4,8 @@ import { ButtonLink } from '../../../components/ui/Button';
 import { useLatestRecommendation } from '../../../features/recommendations/api';
 import { lastRoundText } from '../../../features/recommendations/wording';
 import { packageChosenLine, PACKAGES_NEXT_STEP, waitingFor } from './wording';
+import { PlanDays } from '../itinerary/PlanDays';
+import { formatDate, formatInr } from '../../../lib/format';
 
 // The next-step callout, worded for this viewer (wireframe 06).
 
@@ -115,7 +117,33 @@ export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: strin
     );
   }
   if (trip.status === 'package_selected' && trip.selectedPackage) {
-    return <Callout text={packageChosenLine(trip.selectedPackage)} />;
+    const action = trip.availableActions.find((a) => a.action === 'planDays');
+    return (
+      <Callout text={packageChosenLine(trip.selectedPackage)}>
+        {action ? (
+          <PlanDays id={trip.id} action={action} />
+        ) : (
+          <p>{organiserName} will plan the days next.</p>
+        )}
+      </Callout>
+    );
+  }
+  const viewPlan = trip.availableActions.find((a) => a.action === 'viewItinerary');
+  if ((trip.status === 'itinerary_proposed' || trip.status === 'finalised') && viewPlan) {
+    const pkg = trip.selectedPackage;
+    const text =
+      trip.status === 'finalised' && pkg
+        ? `Trip finalised: ${trip.selectedDestination?.name}, ${trip.startDate ? formatDate(trip.startDate) : ''} – ${trip.endDate ? formatDate(trip.endDate) : ''}, ${pkg.label} package, ${formatInr(pkg.totalInr)} for the group, about ${formatInr(pkg.perPersonInr)} each (estimate).`
+        : 'Review the day plan.';
+    return (
+      <Callout text={text}>
+        {viewPlan.enabled ? (
+          <ButtonLink to={`/trips/${trip.id}/itinerary`}>See the day plan</ButtonLink>
+        ) : (
+          <p>{viewPlan.reason}</p>
+        )}
+      </Callout>
+    );
   }
   if (trip.status === 'cancelled') return <Callout text="This trip was cancelled." />;
   return null;
