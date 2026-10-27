@@ -416,7 +416,7 @@ Sprint 1 starts on Oct 12, 2026 only if every box below is ticked at the gate re
 
 ## After pre-dev: the sprint map
 
-The [23 October re-plan](sprints/replan-2026-10-23.md) supersedes the original weekly calendar: Sprint 1 closed on 23 October, Sprint 2 runs 24–27 October, Sprint 3 runs 28 October–2 November and Sprint 4 runs 3–7 November 2026. The three-day buffer is unchanged: the group recommendation flow must work at gate G1, the MVP (R1 to R11) is accepted at G2, and G3 is submission on 10 November.
+The [27 October re-plan](sprints/replan-2026-10-27.md) supersedes the original weekly calendar (and the [23 October re-plan](sprints/replan-2026-10-23.md)): Sprint 1 closed on 23 October, Sprint 2 closed on 27 October, Sprint 3 runs 27 October–2 November and Sprint 4 runs 3–7 November 2026 as hardening. The three-day buffer is unchanged: the group recommendation flow must work at gate G1, the MVP (R1 to R11) is accepted at G2, and G3 is submission on 10 November.
 
 &#91;embedded content: sprint map · 3 phases, 14 sprints, 3 gates\]
 
@@ -427,11 +427,11 @@ The next phase starts only when its gate holds. Features freeze on 8 November; a
 | S0 | 8 to 11 Oct | Tools, accounts, scaffold, CI and deploy, schema, state machine, Gemini spike | R11 |
 | S1 | 12 to 23 Oct | Accounts, trips, link invitations, preference form, dashboard, access rules; stage A moved to S2 | R1, R2, R3, R9, R10 |
 | S2 | 24 to 27 Oct | Group profile and conflicts, feasibility filter with distance estimate, group-fit ranking, reasons, diagnostic; G1 group flow works | R4, R5, R6, R7, R16 |
-| S3 | 28 Oct to 2 Nov | Transport comparison, three or more costed packages, provenance labels, package decisions, account deletion (#54); G2 MVP accepted | R8, R10, R14 |
-| S4 | 3 to 7 Nov | Grounded itinerary and validator; accept, modify or reject; trip history | R12, R13 |
+| S3 | 27 Oct to 2 Nov | Three or more costed packages, provenance labels, package decisions, grounded day plan and its decisions, account deletion (#54); G2 MVP accepted; full-journey demo on 2 Nov | R8, R10, R12, R13, R14 |
+| S4 | 3 to 7 Nov | Hardening: demo fixes, production checks (#94), catalogue fee pass 2, anything cut under decision 0005 k | — |
 | Buffer | 8 to 10 Nov | Feature freeze; fixes, response-time check, demo data, report, submission | R15 |
 
-Out of scope for 10 November: R17 fairness rounds, R18 voting, reminders (C4), email and the user study. R16 is met by the integrations module with the straight-line distance estimate; live routing (Google or openrouteservice) is added only if a key is ready by S2. If S3 slips, cut R13's modify step first, then R12. A Must Have is never cut.
+Out of scope for 10 November: R17 fairness rounds, R18 voting, reminders (C4), email and the user study. R16 is met by the integrations module with the straight-line distance estimate; live routing (Google or openrouteservice) is added only if a key is ready by S2. If S3 slips, the cut order is decision 0005 k: itinerary Modify (I5), then package Change (I3), then live model wording. A Must Have is never cut.
 
 ## Appendix A: Agent prompts
 
@@ -605,8 +605,8 @@ These three tables are the contract between the documents and the code: every re
 | R9 | Organiser sets origin, duration, budget and radius | Must | User & Group Management | Table 5 | Manage Trip Group, 1.0 | S1 |
 | R10 | Preference privacy and salted credential hashes | Must | User & Group Management; Preference Management | 3.4, 3.5 | D1 and D3 | S1 |
 | R11 | Relational persistence with referential integrity | Must | all modules | 3.4 | D1 to D6 | from Sprint 0 |
-| R12 | Grounded day-wise itinerary | Should | AI Itinerary Generator | Table 9 | Generate Itinerary, 6.0 | S4 |
-| R13 | Accept, modify or reject generated output | Should | Trip & Feedback | 2.2, Table 9 | Review & Decide on Itinerary, 7.0 | S4 |
+| R12 | Grounded day-wise itinerary | Should | AI Itinerary Generator | Table 9 | Generate Itinerary, 6.0 | S3 |
+| R13 | Accept, modify or reject generated output | Should | Trip & Feedback | 2.2, Table 9 | Review & Decide on Itinerary, 7.0 | S3 |
 | R14 | Cached or curated fallback, labelled by provenance | Should | External Data Integration | 3.5, Table 8 | 5.0 and D4 | S3 |
 | R15 | Screens within 3 s, shortlist within 10 s | Should | all modules | 3.3 | none | Buffer |
 | R16 | One mediating module with caching and quota control | Should | External Data Integration | 3.1.3 | 4.0, 5.0 and 6.0 | S2 |
