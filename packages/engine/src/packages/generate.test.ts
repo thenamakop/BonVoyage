@@ -23,8 +23,29 @@ describe('generatePackages order', () => {
       'Saver/train/budget',
       'Balanced/train/mid',
       'Comfort/train/premium',
-      'Comfort/car/premium',
+      'Comfort by car/car/premium',
     ]);
+  });
+
+  it('keeps every package label unique across the fixtures', () => {
+    const fixtures = [
+      goldenInput(),
+      goldenInput({ stay: { budget: 900, mid: null, premium: 3000 } }),
+      goldenInput({ modes: { bus: null, train: null, car: goldenInput().modes.car } }),
+      goldenInput({
+        modes: { bus: null, train: null, car: goldenInput().modes.car },
+        stay: { budget: 900, mid: null, premium: null },
+      }),
+      (() => {
+        const input = goldenInput();
+        input.modes.car = { ...input.modes.car, durationMinutes: 500 };
+        return input;
+      })(),
+    ];
+    for (const fixture of fixtures) {
+      const labels = generatePackages(fixture).packages.map((pkg) => pkg.label);
+      expect(new Set(labels).size).toBe(labels.length);
+    }
   });
 
   it('drops packages whose stay rate is missing', () => {
@@ -54,6 +75,56 @@ describe('generatePackages order', () => {
     const { packages, note } = generatePackages(input);
     expect(packages).toHaveLength(1);
     expect(note).toBe('Only 1 packages could be costed for Rishikesh');
+  });
+});
+
+describe('mode tie rule (train, then bus, then car)', () => {
+  it('picks train when its fare equals the car share', () => {
+    const input = goldenInput();
+    input.modes.train = { farePerPersonInr: 2146, durationMinutes: 300, verified: true };
+    input.modes.bus = { farePerPersonInr: 9999, durationMinutes: 390, verified: true };
+    expect(generatePackages(input).packages[0]?.transportMode).toBe('train');
+  });
+
+  it('picks bus when its fare equals the car share and no train exists', () => {
+    const input = goldenInput({
+      modes: {
+        bus: { farePerPersonInr: 2146, durationMinutes: 390, verified: true },
+        train: null,
+        car: goldenInput().modes.car,
+      },
+    });
+    expect(generatePackages(input).packages[0]?.transportMode).toBe('bus');
+  });
+
+  it('picks train when train and bus fares are equal', () => {
+    const input = goldenInput();
+    input.modes.bus = { farePerPersonInr: 400, durationMinutes: 390, verified: true };
+    expect(generatePackages(input).packages[0]?.transportMode).toBe('train');
+  });
+
+  it('picks train when its duration equals the car duration', () => {
+    const input = goldenInput();
+    input.modes.train = { farePerPersonInr: 400, durationMinutes: 270, verified: true };
+    expect(generatePackages(input).packages[2]?.transportMode).toBe('train');
+  });
+
+  it('picks bus when its duration equals the car duration and no train exists', () => {
+    const input = goldenInput({
+      modes: {
+        bus: { farePerPersonInr: 500, durationMinutes: 270, verified: true },
+        train: null,
+        car: goldenInput().modes.car,
+      },
+    });
+    expect(generatePackages(input).packages[2]?.transportMode).toBe('bus');
+  });
+
+  it('picks train when train and bus durations are equal', () => {
+    const input = goldenInput();
+    input.modes.bus = { farePerPersonInr: 500, durationMinutes: 270, verified: true };
+    input.modes.train = { farePerPersonInr: 400, durationMinutes: 270, verified: true };
+    expect(generatePackages(input).packages[2]?.transportMode).toBe('train');
   });
 });
 

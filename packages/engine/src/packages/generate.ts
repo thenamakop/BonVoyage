@@ -19,31 +19,28 @@ function availableModes(input: PackageInput): TransportMode[] {
   return MODE_TIE_ORDER.filter((mode) => modeAvailable(input, mode));
 }
 
-function cheapestMode(input: PackageInput): TransportMode {
-  // Car is always available (0005 b), so there is a real starting value.
-  let best: TransportMode = 'car';
-  let bestFare = farePerPerson(input, 'car') as number;
-  for (const mode of availableModes(input)) {
-    const fare = farePerPerson(input, mode) as number;
-    if (fare < bestFare) {
+// 0005 b / 0004: the lowest value wins; a tie keeps the earlier mode in
+// MODE_TIE_ORDER (train, then bus, then car).
+function bestMode(input: PackageInput, value: (mode: TransportMode) => number): TransportMode {
+  const modes = availableModes(input);
+  let best = modes[0] as TransportMode;
+  let bestValue = value(best);
+  for (const mode of modes.slice(1)) {
+    const candidate = value(mode);
+    if (candidate < bestValue) {
       best = mode;
-      bestFare = fare;
+      bestValue = candidate;
     }
   }
   return best;
 }
 
+function cheapestMode(input: PackageInput): TransportMode {
+  return bestMode(input, (mode) => farePerPerson(input, mode) as number);
+}
+
 function quickestMode(input: PackageInput): TransportMode {
-  let best: TransportMode = 'car';
-  let bestMinutes = durationMinutes(input, 'car') as number;
-  for (const mode of availableModes(input)) {
-    const minutes = durationMinutes(input, mode) as number;
-    if (minutes < bestMinutes) {
-      best = mode;
-      bestMinutes = minutes;
-    }
-  }
-  return best;
+  return bestMode(input, (mode) => durationMinutes(input, mode) as number);
 }
 
 // The (mode, tier) pairs that can be costed: an available mode (0005 b) and a
@@ -83,7 +80,13 @@ export function generatePackages(input: PackageInput): {
         : spec;
     const effectivePair = `${effective.mode}/${effective.tier}`;
     if (built.has(effectivePair)) continue;
-    const draft = costPackage(input, effective);
+    // 0005 b: labels are unique; when Quickest became Comfort, row 4 is
+    // "Comfort by car".
+    const labelled: PackageSpec =
+      effective.label === 'Comfort' && packages.some((pkg) => pkg.label === 'Comfort')
+        ? { ...effective, label: 'Comfort by car' }
+        : effective;
+    const draft = costPackage(input, labelled);
     if (draft === null) continue;
     built.add(effectivePair);
     packages.push(draft);

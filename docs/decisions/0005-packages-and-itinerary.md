@@ -32,6 +32,8 @@ Packages, in this order, skipping a (mode, tier) pair already built and a tier w
 | 3 | Quickest | the mode with the shortest `duration_minutes` (ties: train, bus, car) | mid; if that pair is already built, premium and the label becomes Comfort |
 | 4 | Comfort | car | premium |
 
+Labels are unique. When Quickest has become Comfort, row 4 (car, premium) is labelled "Comfort by car".
+
 At least three packages exist whenever the destination has all three stay rates. If fewer than three can be built, build the ones that can and say "Only N packages could be costed for <destination>"; never invent a rate.
 
 ### c) Cost lines (R8)
