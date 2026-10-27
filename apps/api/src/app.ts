@@ -24,6 +24,7 @@ import { requireJson } from './http/json-only';
 import type { SessionUser } from './http/session';
 import { createApiRouter } from './modules';
 import type { RecommendationHooks } from './recommendations/service';
+import type { LlmClient } from '@bonvoyage/integrations';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
 
@@ -41,6 +42,10 @@ export interface AppDeps {
   scoringWeights?: Weights;
   /** Test-only seams around the recommendation request (S2-6 staleness test). */
   recommendationHooks?: RecommendationHooks;
+  /** Present when LIVE_APIS=on; tests inject a FixtureLlmClient (S3-6). */
+  llm?: LlmClient;
+  /** Shortens the wording timeout in tests (S3-6). */
+  wordingTimeoutMs?: number;
 }
 
 export function createApp({
@@ -53,6 +58,8 @@ export function createApp({
   routing,
   scoringWeights = SCORING_WEIGHTS,
   recommendationHooks,
+  llm,
+  wordingTimeoutMs,
 }: AppDeps): Express {
   const app = express();
   const appRouting =
@@ -136,6 +143,8 @@ export function createApp({
       routing: appRouting,
       scoringWeights,
       ...(recommendationHooks ? { recommendationHooks } : {}),
+      ...(llm ? { llm } : {}),
+      ...(wordingTimeoutMs !== undefined ? { wordingTimeoutMs } : {}),
       ...(clock ? { clock } : {}),
     }),
   );

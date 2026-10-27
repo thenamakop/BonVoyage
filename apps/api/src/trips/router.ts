@@ -1,6 +1,7 @@
 import type { Db } from '@bonvoyage/db';
 import type { Weights } from '@bonvoyage/engine';
 import type { Routing } from '@bonvoyage/integrations/routing';
+import type { LlmClient } from '@bonvoyage/integrations';
 import {
   ChangePackageInput,
   ChooseDestinationInput,
@@ -29,6 +30,12 @@ import {
   requestRecommendations,
   type RecommendationHooks,
 } from '../recommendations/service';
+import {
+  acceptItinerary,
+  getItinerary,
+  planItinerary,
+  rejectItinerary,
+} from '../itinerary/service';
 import {
   changePackage,
   giveOpinion,
@@ -60,6 +67,8 @@ export function createRouter({
   routing,
   scoringWeights,
   recommendationHooks,
+  llm,
+  wordingTimeoutMs,
 }: {
   db: Db;
   auth: Auth;
@@ -67,6 +76,8 @@ export function createRouter({
   routing: Routing;
   scoringWeights: Weights;
   recommendationHooks?: RecommendationHooks;
+  llm?: LlmClient;
+  wordingTimeoutMs?: number;
 }) {
   const router = express.Router();
 
@@ -253,6 +264,38 @@ export function createRouter({
     const input = parseOrThrow(ChangePackageInput, req.body);
     const { userId } = getSessionUser(res);
     res.json(await changePackage({ db, logger: req.log, clock }, tripId, packageId, userId, input));
+  });
+
+  // S3-6: the day plan built from the accepted package (T12 to T14).
+  router.post('/trips/:id/itinerary', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    parseOrThrow(z.strictObject({}), req.body ?? {});
+    const { userId } = getSessionUser(res);
+    res.json(
+      await planItinerary(
+        { db, logger: req.log, clock, ...(llm ? { llm } : {}), wordingTimeoutMs },
+        tripId,
+        userId,
+      ),
+    );
+  });
+
+  router.get('/trips/:id/itinerary', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await getItinerary(db, tripId, userId));
+  });
+
+  router.post('/trips/:id/itinerary/accept', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await acceptItinerary({ db, logger: req.log, clock }, tripId, userId));
+  });
+
+  router.post('/trips/:id/itinerary/reject', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await rejectItinerary({ db, logger: req.log, clock }, tripId, userId));
   });
 
   return router;

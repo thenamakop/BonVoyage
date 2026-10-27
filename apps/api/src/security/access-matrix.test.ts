@@ -329,6 +329,53 @@ const CASES: Case[] = [
       '404 NOT_FOUND',
     ],
   },
+  // S3-6: no itinerary exists yet in this fixture, so organiser writes hit
+  // the 409 state check and the read finds the trip in collecting_preferences.
+  {
+    method: 'GET',
+    path: '/api/trips/:id/itinerary',
+    url: (f) => `/api/trips/${f.tripId}/itinerary`,
+    expected: ['401', '404 NOT_FOUND', '200', '200', '200', '404 NOT_FOUND'],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/itinerary',
+    url: (f) => `/api/trips/${f.tripId}/itinerary`,
+    expected: [
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/itinerary/accept',
+    url: (f) => `/api/trips/${f.tripId}/itinerary/accept`,
+    expected: [
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+    ],
+  },
+  {
+    method: 'POST',
+    path: '/api/trips/:id/itinerary/reject',
+    url: (f) => `/api/trips/${f.tripId}/itinerary/reject`,
+    expected: [
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+      '415 UNSUPPORTED_MEDIA_TYPE',
+    ],
+  },
 
   {
     method: 'POST',

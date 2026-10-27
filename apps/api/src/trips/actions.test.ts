@@ -19,6 +19,7 @@ const organiser = (status: TripStatus, submitted = 0): ActionInput => ({
   mySubmitted: false,
   progress: progress(submitted),
   hasRecommendation: false,
+  hasItinerary: false,
 });
 const member = (status: TripStatus, submitted = 0): ActionInput => ({
   ...organiser(status, submitted),
@@ -110,6 +111,7 @@ describe('tripActions', () => {
     const actions = tripActions({
       ...member('collecting_preferences', 3),
       hasRecommendation: true,
+      hasItinerary: false,
     });
     expect(names(actions)).toEqual(['editPreferences', 'viewRecommendations', 'leaveTrip']);
   });

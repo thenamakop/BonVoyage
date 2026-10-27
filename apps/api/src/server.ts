@@ -1,4 +1,5 @@
 import { createDb } from '@bonvoyage/db';
+import { createLlmClient } from '@bonvoyage/integrations';
 import { pino } from 'pino';
 import { createApp } from './app';
 import { baseUrlOptions, createAuth } from './auth/auth';
@@ -14,7 +15,23 @@ const auth = createAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: baseUrlOptions(env.APP_URL),
 });
-const app = createApp({ db, pool, logger, auth, adminEmails: env.ADMIN_EMAILS });
+// S3-6: LIVE_APIS=on needs the Gemini key; off means the template path.
+const llm =
+  env.LIVE_APIS === 'on'
+    ? createLlmClient({
+        liveApis: env.LIVE_APIS,
+        apiKey: env.GEMINI_API_KEY,
+        model: env.GEMINI_MODEL,
+      })
+    : undefined;
+const app = createApp({
+  db,
+  pool,
+  logger,
+  auth,
+  adminEmails: env.ADMIN_EMAILS,
+  ...(llm ? { llm } : {}),
+});
 
 const server = app.listen(env.PORT, () => {
   logger.info(`api listening on http://localhost:${env.PORT}`);
