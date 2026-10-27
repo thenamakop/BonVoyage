@@ -40,6 +40,29 @@ export type {
 } from './scoring/types';
 export { validateItinerary } from './itinerary/validate';
 export type { ItemVerdict, ValidationError, ValidationResult } from './itinerary/validate';
+export { ACTIVITY_POI_CATEGORIES, groupInterestCategories } from './itinerary/interests';
+export { addDaysUtc, placeFits, planDays, unusedPlacesFitting, weekdayOf } from './itinerary/plan';
+export type {
+  PlanDay,
+  PlanInput,
+  PlanItem,
+  PlanLeg,
+  PlannerPlace,
+  TripPlan,
+} from './itinerary/plan';
+export { buildFactSheet } from './itinerary/fact-sheet';
+export type { FactSheetInput } from './itinerary/fact-sheet';
+export { costPackage, durationMinutes, farePerPerson, modeAvailable } from './packages/cost';
+export type {
+  CostLine,
+  ModeFare,
+  PackageDraft,
+  PackageInput,
+  PackageModes,
+  PackageSpec,
+  StayRates,
+} from './packages/cost';
+export { availableChoices, generatePackages } from './packages/generate';
 export type { LatLng } from './geo';
 export {
   ACTION_NAMES,
