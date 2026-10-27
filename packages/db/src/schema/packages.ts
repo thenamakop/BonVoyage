@@ -9,6 +9,7 @@ import {
   smallint,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { user } from './auth';
@@ -31,6 +32,7 @@ export const tripPackage = pgTable(
     tripId: uuid('trip_id')
       .notNull()
       .references(() => trip.id, { onDelete: 'cascade' }),
+    label: text('label').notNull().default(''),
     destinationId: uuid('destination_id')
       .notNull()
       .references(() => destination.id, { onDelete: 'restrict' }),
@@ -88,5 +90,6 @@ export const packageDecision = pgTable(
   (t) => [
     index('package_decision_package_idx').on(t.packageId),
     index('package_decision_user_idx').on(t.userId),
+    uniqueIndex('package_decision_one_per_member').on(t.packageId, t.userId),
   ],
 );

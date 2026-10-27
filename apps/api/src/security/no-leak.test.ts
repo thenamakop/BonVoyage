@@ -1,4 +1,5 @@
 import { createDb } from '@bonvoyage/db';
+import { fareFallback, poi } from '@bonvoyage/db/schema';
 import { pino } from 'pino';
 import {
   GroupProfileResponse,
@@ -7,6 +8,7 @@ import {
   TripDetail,
 } from '@bonvoyage/shared';
 import request from 'supertest';
+import { PackagesResponse } from '@bonvoyage/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
@@ -319,4 +321,141 @@ describe('recommendation responses hold no other member’s answers or exact bud
       }
     },
   );
+});
+
+// S3-3: members see aggregate opinion counts and only their own `mine`, never
+// another member's vote, name, email or id.
+describe('package responses hold opinion counts and only the caller’s own vote', () => {
+  it('two members with different votes see the counts but not each other', async () => {
+    // A small fixture destination that produces packages.
+    const hub = await ensureHubAt(db, 'leak-hub', 15, 78);
+    const destId = await ensureDestination(db, { slug: 'leak-dest', lat: 15.2, lng: 78 });
+    await ensureDestination(db, { slug: 'leak-dest2', lat: 15.3, lng: 78 });
+    await ensureDestination(db, { slug: 'leak-dest3', lat: 15.4, lng: 78 });
+    for (const [id, fare] of [[destId, 400] as const, [destId, 400] as const]) {
+      await db
+        .insert(fareFallback)
+        .values({
+          originHubId: hub.id,
+          destinationId: id,
+          mode: 'bus',
+          farePerPersonInr: fare,
+          durationMinutes: 300,
+          distanceKm: 90,
+          collectedOn: '2026-10-12',
+          reviewStatus: 'verified',
+        })
+        .onConflictDoNothing();
+    }
+    const destId2 = await db.query.destination.findFirst({
+      where: (d, { eq }) => eq(d.slug, 'leak-dest2'),
+    });
+    const destId3 = await db.query.destination.findFirst({
+      where: (d, { eq }) => eq(d.slug, 'leak-dest3'),
+    });
+    for (const id of [destId2!.id, destId3!.id]) {
+      await db
+        .insert(fareFallback)
+        .values({
+          originHubId: hub.id,
+          destinationId: id,
+          mode: 'bus',
+          farePerPersonInr: 350,
+          durationMinutes: 300,
+          distanceKm: 100,
+          collectedOn: '2026-10-12',
+          reviewStatus: 'verified',
+        })
+        .onConflictDoNothing();
+    }
+    await db
+      .insert(poi)
+      .values({
+        destinationId: destId,
+        poiKey: 'fort',
+        name: 'Fort',
+        category: 'sight',
+        typicalMinutes: 60,
+        closedDays: [],
+        entryFeeInr: 0,
+        lat: 15.2,
+        lng: 78,
+        collectedOn: '2026-10-12',
+        reviewStatus: 'verified',
+      })
+      .onConflictDoNothing();
+
+    const asha = await createTestUser(app, 'LeakPkg Asha');
+    const rohan = await createTestUser(app, 'LeakPkg Rohan');
+    const secrets = { rohan: { name: 'LeakPkg Rohan', email: 'rohan@' } };
+    void secrets;
+    const trip = await createTripAs(asha.agent, {
+      originHubSlug: 'leak-hub',
+      radiusKm: 200,
+      budgetTotalInr: 120000,
+      durationNights: 2,
+    });
+    const { token } = InvitationResponse.parse(
+      (await asha.agent.post(`/api/trips/${trip.id}/invitations`).set(H).send({})).body,
+    );
+    await rohan.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
+    for (const m of [asha, rohan]) {
+      const res = await m.agent
+        .put(`/api/trips/${trip.id}/preferences/me`)
+        .set(H)
+        .send(prefs(10000, 40000));
+      expect(res.status).toBe(200);
+    }
+    const run = await asha.agent.post(`/api/trips/${trip.id}/recommendations`).set(H).send({});
+    expect(run.status).toBe(200);
+    const slug = (run.body as { items: { destination: { slug: string } }[] }).items[0]!.destination
+      .slug;
+    const chosen = await asha.agent
+      .post(`/api/trips/${trip.id}/destination`)
+      .set(H)
+      .send({ destinationSlug: slug });
+    expect(chosen.status, JSON.stringify(chosen.body)).toBe(200);
+    const pkg = PackagesResponse.parse(
+      (await asha.agent.get(`/api/trips/${trip.id}/packages`).set(H)).body,
+    ).packages[0]!;
+    await rohan.agent
+      .put(`/api/trips/${trip.id}/packages/${pkg.id}/opinion`)
+      .set(H)
+      .send({ decision: 'reject' });
+
+    const [aGet, aPut, bGet, bPut] = [
+      await asha.agent.get(`/api/trips/${trip.id}/packages`).set(H),
+      await asha.agent
+        .put(`/api/trips/${trip.id}/packages/${pkg.id}/opinion`)
+        .set(H)
+        .send({ decision: 'accept' }),
+      await rohan.agent.get(`/api/trips/${trip.id}/packages`).set(H),
+      await rohan.agent
+        .put(`/api/trips/${trip.id}/packages/${pkg.id}/opinion`)
+        .set(H)
+        .send({ decision: 'reject' }),
+    ];
+    for (const res of [aGet, aPut, bGet, bPut]) expect(res.status).toBe(200);
+    const aView = PackagesResponse.parse(aPut.body).packages.find((x) => x.id === pkg.id)!;
+    const bView = PackagesResponse.parse(bPut.body).packages.find((x) => x.id === pkg.id)!;
+    // Counts are aggregate and shared; `mine` is the caller's only.
+    expect(aView.opinions).toMatchObject({ works: 1, notForMe: 1, members: 2 });
+    expect(bView.opinions).toMatchObject({ works: 1, notForMe: 1, members: 2 });
+    expect(aView.mine).toBe('accept');
+    expect(bView.mine).toBe('reject');
+    expect(
+      PackagesResponse.parse(aGet.body).packages.find((x) => x.id === pkg.id)!.mine,
+    ).toBeNull();
+    // Nothing in either body names or identifies the other member.
+    for (const res of [aGet, aPut]) {
+      expect(res.text).not.toContain('LeakPkg Rohan');
+      expect(res.text).not.toContain(rohan.userId);
+      expect(res.text).not.toContain('reject');
+    }
+    for (const res of [bGet, bPut]) {
+      expect(res.text).not.toContain('LeakPkg Asha');
+      expect(res.text).not.toContain(asha.userId);
+    }
+    for (const res of [aGet, aPut, bGet, bPut]) expect(res.text).not.toContain('@');
+  });
 });

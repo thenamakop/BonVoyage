@@ -95,6 +95,7 @@ export function tripDetail(overrides: Partial<TripDetail> = {}): TripDetail {
     legalEvents: [],
     lastActivityAt: '2026-10-13T09:00:00.000Z',
     latestRecommendation: null,
+    selectedPackage: null,
     createdAt: '2026-10-12T00:00:00.000Z',
     updatedAt: '2026-10-12T00:00:00.000Z',
     ...overrides,

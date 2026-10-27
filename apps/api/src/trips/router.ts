@@ -2,9 +2,11 @@ import type { Db } from '@bonvoyage/db';
 import type { Weights } from '@bonvoyage/engine';
 import type { Routing } from '@bonvoyage/integrations/routing';
 import {
+  ChangePackageInput,
   ChooseDestinationInput,
   CloseSubmissionsInput,
   CreateTripInput,
+  PackageOpinionInput,
   PreferenceInput,
   RequestRecommendationsInput,
   UpdateTripInput,
@@ -27,6 +29,13 @@ import {
   requestRecommendations,
   type RecommendationHooks,
 } from '../recommendations/service';
+import {
+  changePackage,
+  giveOpinion,
+  listTripPackages,
+  removePackage,
+  selectPackage,
+} from '../packages/service';
 import { parseOrThrow } from '../http/errors';
 import { getSessionUser, requireSession } from '../http/session';
 import { parseTripId } from './access';
@@ -207,6 +216,43 @@ export function createRouter({
     const input = parseOrThrow(ChooseDestinationInput, req.body);
     const { userId } = getSessionUser(res);
     res.json(await chooseDestination({ db, logger: req.log, clock }, tripId, userId, input));
+  });
+
+  // S3-3: the packages built by T9, member opinions and the organiser's
+  // choose / remove / change (T10, T11, I3, I4).
+  const PackageParams = z.object({ id: z.string(), packageId: z.string() });
+  router.get('/trips/:id/packages', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await listTripPackages(db, tripId, userId));
+  });
+
+  router.put('/trips/:id/packages/:packageId/opinion', requireSession(auth), async (req, res) => {
+    const { id: tripId, packageId } = parseOrThrow(PackageParams, req.params);
+    const { decision } = parseOrThrow(PackageOpinionInput, req.body);
+    const { userId } = getSessionUser(res);
+    res.json(
+      await giveOpinion({ db, logger: req.log, clock }, tripId, packageId, userId, decision),
+    );
+  });
+
+  router.post('/trips/:id/packages/:packageId/select', requireSession(auth), async (req, res) => {
+    const { id: tripId, packageId } = parseOrThrow(PackageParams, req.params);
+    const { userId } = getSessionUser(res);
+    res.json(await selectPackage({ db, logger: req.log, clock }, tripId, packageId, userId));
+  });
+
+  router.post('/trips/:id/packages/:packageId/remove', requireSession(auth), async (req, res) => {
+    const { id: tripId, packageId } = parseOrThrow(PackageParams, req.params);
+    const { userId } = getSessionUser(res);
+    res.json(await removePackage({ db, logger: req.log, clock }, tripId, packageId, userId));
+  });
+
+  router.patch('/trips/:id/packages/:packageId', requireSession(auth), async (req, res) => {
+    const { id: tripId, packageId } = parseOrThrow(PackageParams, req.params);
+    const input = parseOrThrow(ChangePackageInput, req.body);
+    const { userId } = getSessionUser(res);
+    res.json(await changePackage({ db, logger: req.log, clock }, tripId, packageId, userId, input));
   });
 
   return router;

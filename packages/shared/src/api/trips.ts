@@ -104,6 +104,11 @@ export const TripActionName = z.enum([
   'requestRecommendations',
   'viewRecommendations',
   'chooseDestination',
+  'viewPackages',
+  'givePackageOpinion',
+  'choosePackage',
+  'removePackage',
+  'changePackage',
 ]);
 export type TripActionName = z.infer<typeof TripActionName>;
 
@@ -137,6 +142,15 @@ export const TripDetail = z.object({
   lastActivityAt: z.string().nullable(),
   /** The newest recommendation run (S2-6), or null before the first one. */
   latestRecommendation: LatestRecommendationSummary.nullable(),
+  /** The accepted package (S3-3), or null until one is chosen. */
+  selectedPackage: z
+    .object({
+      id: z.string(),
+      label: z.string(),
+      totalInr: z.number().int(),
+      perPersonInr: z.number().int(),
+    })
+    .nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
