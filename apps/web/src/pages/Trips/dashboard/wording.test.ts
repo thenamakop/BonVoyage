@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { exclusionWarning, progressText, stepLine, waitingFor } from './wording';
+import {
+  exclusionWarning,
+  packageChosenLine,
+  PACKAGES_NEXT_STEP,
+  progressText,
+  stepLine,
+  waitingFor,
+} from './wording';
 
 describe('dashboard wording', () => {
   it('the step line counts the seven planning statuses', () => {
@@ -20,6 +27,15 @@ describe('dashboard wording', () => {
     expect(waitingFor(['A', 'B', 'C'])).toBe('Waiting for A, B and C.');
     expect(waitingFor(['A', 'B', 'C', 'D', 'E'])).toBe('Waiting for A, B, C and 2 others.');
     expect(waitingFor([])).toBe('Waiting for others to join.');
+  });
+
+  it('the packages callout and chosen line use API figures only', () => {
+    expect(PACKAGES_NEXT_STEP).toBe('Compare the packages and say which work for you.');
+    expect(
+      packageChosenLine({ label: 'Comfort by car', totalInr: 39966, perPersonInr: 13322 }),
+    ).toBe(
+      'Comfort by car package chosen: ₹39,966 for the group, about ₹13,322 each (estimate). The day plan comes next.',
+    );
   });
 
   it('the close-submissions confirm names who will be left out', () => {

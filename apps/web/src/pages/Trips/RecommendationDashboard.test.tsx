@@ -286,11 +286,10 @@ describe('dashboard: recommendations', () => {
     });
     renderPage();
     expect(
-      await screen.findByText('Rishikesh chosen. Packages arrive in the next release.'),
+      await screen.findByText('Compare the packages and say which work for you.'),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'See the packages' })).toBeInTheDocument();
     expect(screen.getByText('Rishikesh, Uttarakhand')).toBeInTheDocument();
-    // The banner does not promise packages before Sprint 3 builds them.
     expect(screen.getByText('The destination is chosen; packages come next.')).toBeInTheDocument();
-    expect(screen.queryByText(/Costed packages are ready/)).not.toBeInTheDocument();
   });
 });

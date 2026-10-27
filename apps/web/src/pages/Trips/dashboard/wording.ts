@@ -1,4 +1,5 @@
 import { PLANNING_STATUSES, TRIP_STATUS_LABELS, type TripStatus } from '@bonvoyage/shared';
+import { formatInr } from '../../../lib/format';
 
 // The dashboard's sentences, kept pure so they can be unit-tested.
 
@@ -41,3 +42,15 @@ export function exclusionWarning(names: string[]): string {
   const verb = names.length === 1 ? 'has' : 'have';
   return `${list} ${verb} not submitted and will be left out of planning.`;
 }
+
+/** S3-4: the dashboard callout at package_selected (step 6, wireframe 06). */
+export function packageChosenLine(pkg: {
+  label: string;
+  totalInr: number;
+  perPersonInr: number;
+}): string {
+  return `${pkg.label} package chosen: ${formatInr(pkg.totalInr)} for the group, about ${formatInr(pkg.perPersonInr)} each (estimate). The day plan comes next.`;
+}
+
+/** S3-4: the dashboard callout at packages_proposed (step 5). */
+export const PACKAGES_NEXT_STEP = 'Compare the packages and say which work for you.';
