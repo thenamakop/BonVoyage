@@ -1,6 +1,7 @@
-import { createDb } from '@bonvoyage/db';
+import { createDb, importCatalogue } from '@bonvoyage/db';
 import { costItem, fareFallback, poi, tripPackage } from '@bonvoyage/db/schema';
 import { eq } from 'drizzle-orm';
+import { resolve } from 'node:path';
 import { pino } from 'pino';
 import {
   InvitationResponse,
@@ -124,7 +125,7 @@ type Agent = request.Agent;
 const code = (res: request.Response) => (res.body as ErrorEnvelope).error.code;
 
 /** A 3-member trip with packages_proposed and its organiser/members. */
-async function proposedTrip() {
+async function proposedTrip(trip: { budgetTotalInr?: number } = {}) {
   const members = await Promise.all([
     createTestUser(app, 'Pkg A'),
     createTestUser(app, 'Pkg B'),
@@ -134,7 +135,7 @@ async function proposedTrip() {
   const { id: tripId } = await createTripAs(organiser.agent, {
     originHubSlug: 'pkg-hub',
     radiusKm: 200,
-    budgetTotalInr: 120000,
+    budgetTotalInr: trip.budgetTotalInr ?? 120000,
     durationNights: 2,
   });
   const { token } = InvitationResponse.parse(
@@ -301,14 +302,22 @@ describe('organiser actions', () => {
       (await getPackages(members[1].agent, tripId)).body,
     ).packages.find((p) => p.label === 'Saver')!;
     const member = members[1].agent;
-    for (const [method, path, body] of [
-      ['post', `/api/trips/${tripId}/packages/${saver.id}/select`, {}],
-      ['post', `/api/trips/${tripId}/packages/${saver.id}/remove`, {}],
-      ['patch', `/api/trips/${tripId}/packages/${saver.id}`, { stayTier: 'premium' }],
-    ] as const) {
-      const res = await member[method](path).set(H).send(body);
-      expect(res.status).toBe(403);
-    }
+    expect(
+      (await member.post(`/api/trips/${tripId}/packages/${saver.id}/select`).set(H).send({}))
+        .status,
+    ).toBe(403);
+    expect(
+      (await member.post(`/api/trips/${tripId}/packages/${saver.id}/remove`).set(H).send({}))
+        .status,
+    ).toBe(403);
+    expect(
+      (
+        await member
+          .patch(`/api/trips/${tripId}/packages/${saver.id}`)
+          .set(H)
+          .send({ stayTier: 'premium' })
+      ).status,
+    ).toBe(403);
     // A non-proposed package id hits the 404 first.
     const missing = await members[0].agent
       .post(`/api/trips/${tripId}/packages/${crypto.randomUUID()}/select`)
@@ -316,5 +325,110 @@ describe('organiser actions', () => {
       .send({});
     expect(missing.status).toBe(404);
     expect(code(missing)).toBe('PACKAGE_NOT_FOUND');
+  });
+});
+
+describe('budget flag and re-choose', () => {
+  it('a cap below a package total sets overBudget and overByInr; one at the cap is not over', async () => {
+    // The cap equals the Saver total: Saver sits exactly at it (not over),
+    // the pricier tiers are over by total - cap.
+    const { tripId, organiser } = await proposedTrip({ budgetTotalInr: 15600 });
+    const list = PackagesResponse.parse((await getPackages(organiser.agent, tripId)).body);
+    const over = list.packages.filter((p) => p.overBudget);
+    expect(over.length).toBeGreaterThan(0);
+    for (const p of over) expect(p.overByInr).toBe(p.totalInr - 15600);
+    const saver = list.packages.find((p) => p.label === 'Saver')!;
+    expect(saver.totalInr).toBe(15600); // exactly at the cap: not over budget
+    expect(saver.overBudget).toBe(false);
+    expect(saver.overByInr).toBe(0);
+  });
+
+  it('T10 back to shortlisted then choosing another destination builds fresh packages', async () => {
+    const { tripId, organiser } = await proposedTrip();
+    let list = PackagesResponse.parse((await getPackages(organiser.agent, tripId)).body);
+    const oldIds = new Set(list.packages.map((p) => p.id));
+    while (list.packages.length > 0) {
+      const res = await organiser.agent
+        .post(`/api/trips/${tripId}/packages/${list.packages[0]!.id}/remove`)
+        .set(H)
+        .send({});
+      expect(res.status).toBe(200);
+      list =
+        (res.body as { status: string }).status === 'packages_proposed'
+          ? PackagesResponse.parse((await getPackages(organiser.agent, tripId)).body)
+          : { ...list, packages: [] };
+    }
+    // Now shortlisted again; choose the other feasible destination.
+    const chosen = await organiser.agent
+      .post(`/api/trips/${tripId}/destination`)
+      .set(H)
+      .send({ destinationSlug: 'pkg-dest2' });
+    expect(chosen.status, JSON.stringify(chosen.body)).toBe(200);
+    const fresh = PackagesResponse.parse((await getPackages(organiser.agent, tripId)).body);
+    expect(fresh.destination.slug).toBe('pkg-dest2');
+    expect(fresh.packages.length).toBeGreaterThan(0);
+    expect(fresh.packages.some((p) => oldIds.has(p.id))).toBe(false);
+    const rows = await db.select().from(tripPackage).where(eq(tripPackage.tripId, tripId));
+    expect(rows.filter((r) => r.status === 'proposed').map((r) => r.destinationId)).toEqual(
+      rows
+        .filter((r) => r.status === 'proposed')
+        .map(() => rows.find((x) => x.status === 'proposed')!.destinationId),
+    );
+    expect(rows.filter((r) => oldIds.has(r.id)).every((r) => r.status === 'hidden')).toBe(true);
+  });
+});
+
+describe('speed on the real catalogue (R15, P10)', () => {
+  it('a 3-member Gurugram destination choice completes under 1000 ms', async () => {
+    const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
+    await importCatalogue(db, dir, { today: '2026-11-01' });
+    const members = await Promise.all([
+      createTestUser(app, 'Speed A'),
+      createTestUser(app, 'Speed B'),
+      createTestUser(app, 'Speed C'),
+    ]);
+    const organiser = members[0];
+    const { id: tripId } = await createTripAs(organiser.agent, {
+      originHubSlug: 'gurugram',
+      radiusKm: 450,
+      budgetTotalInr: 60000,
+      durationNights: 2,
+    });
+    const { token } = InvitationResponse.parse(
+      (await organiser.agent.post(`/api/trips/${tripId}/invitations`).set(H).send({})).body,
+    );
+    for (const m of members.slice(1)) {
+      await m.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
+    }
+    for (const [i, m] of members.entries()) {
+      const res = await m.agent
+        .put(`/api/trips/${tripId}/preferences/me`)
+        .set(H)
+        .send(
+          prefs({
+            destinationTypes: [
+              ['hill_station', 'mountain'],
+              ['spiritual', 'mountain'],
+              ['heritage', 'city'],
+            ][i]! as never,
+          }),
+        );
+      expect(res.status).toBe(200);
+    }
+    const run = await organiser.agent.post(`/api/trips/${tripId}/recommendations`).set(H).send({});
+    expect(run.status).toBe(200);
+    const slug = (run.body as { items: { destination: { slug: string } }[] }).items[0]!.destination
+      .slug;
+    const started = performance.now();
+    const res = await organiser.agent
+      .post(`/api/trips/${tripId}/destination`)
+      .set(H)
+      .send({ destinationSlug: slug });
+    const ms = Math.round(performance.now() - started);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    process.stdout.write(`
+S3-3 destination choice: ${ms} ms (${slug})
+`);
+    expect(ms).toBeLessThan(1000);
   });
 });
