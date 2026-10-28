@@ -33,6 +33,7 @@ function pkg(over: Partial<TripPackageView> = {}): TripPackageView {
     perPersonInr: 5200,
     overBudget: false,
     overByInr: 0,
+    oneWayMinutes: 425,
     status: 'proposed',
     lines: [
       { category: 'onward', label: 'Bus there', amountInr: 1200, provenance: 'curated' },
@@ -179,6 +180,36 @@ describe('PackagesPage', () => {
     renderPage();
     const comfort = await screen.findByRole('article', { name: 'Comfort package' });
     expect(within(comfort).getByText('₹24,366 over the group budget')).toBeTruthy();
+  });
+
+  it('says how long the journey takes one way, and nothing when the API has no time (#18)', async () => {
+    const base = response();
+    stubFetch({
+      pkgs: {
+        ...base,
+        packages: base.packages.map((p) =>
+          p.label === 'Balanced' ? { ...p, oneWayMinutes: null } : p,
+        ),
+      },
+    });
+    renderPage();
+    const saver = await screen.findByRole('article', { name: 'Saver package' });
+    expect(within(saver).getByText('About 7 h 5 min each way (planned)')).toBeTruthy();
+    const balanced = screen.getByRole('article', { name: 'Balanced package' });
+    expect(within(balanced).queryByText(/each way/)).toBeNull();
+  });
+
+  it('the "What it costs" toggle is a native summary row at least 44 px tall (#120)', async () => {
+    stubFetch();
+    renderPage();
+    const saver = await screen.findByRole('article', { name: 'Saver package' });
+    const summary = within(saver).getByText('What it costs');
+    // The text sits in the summary itself, so the whole row is the target;
+    // its focus ring is the global :focus-visible outline every Button uses.
+    expect(summary.tagName).toBe('SUMMARY');
+    expect(summary.className).toContain('min-h-11');
+    expect(summary.className).toContain('items-center');
+    expect(summary.closest('details')).not.toBeNull();
   });
 
   it('with no amount from the API (D1, #116), says over budget in words only', async () => {

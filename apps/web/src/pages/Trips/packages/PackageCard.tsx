@@ -11,7 +11,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { ApiError } from '../../../lib/api';
-import { formatDate, formatInr } from '../../../lib/format';
+import { formatDate, formatDuration, formatInr } from '../../../lib/format';
 import {
   useChangePackage,
   useChoosePackage,
@@ -169,6 +169,11 @@ export function PackageCard({
         {TRANSPORT_MODE_LABELS[pkg.transportMode]} · {TIER_LABELS[pkg.stayTier]} stay · {pkg.rooms}{' '}
         {pkg.rooms === 1 ? 'room' : 'rooms'}
       </p>
+      {pkg.oneWayMinutes === null ? null : (
+        <p className="text-sm text-slate-700">
+          About {formatDuration(pkg.oneWayMinutes)} each way (planned)
+        </p>
+      )}
       <p className="text-sm text-slate-700">
         {formatDate(pkg.startDate)} – {formatDate(pkg.endDate)}
       </p>
@@ -188,11 +193,12 @@ export function PackageCard({
         </p>
       ) : null}
 
-      <details className="rounded-md border border-slate-200 p-3">
-        <summary className="cursor-pointer text-sm font-medium text-slate-900">
+      <details className="rounded-md border border-slate-200 px-3">
+        {/* #120: as tall as a Button (44 px); the whole row toggles. */}
+        <summary className="flex min-h-11 cursor-pointer items-center rounded-md text-sm font-medium text-slate-900">
           What it costs
         </summary>
-        <ul className="mt-2 space-y-1">
+        <ul className="mb-3 space-y-1">
           {pkg.lines.map((line) => (
             <li key={line.category} className="flex items-center justify-between gap-2 text-sm">
               <span className="text-slate-700">{line.label}</span>

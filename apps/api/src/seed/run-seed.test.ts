@@ -220,6 +220,10 @@ describe('Sprint 2 demo trips', () => {
     expect(new Set(packages.map((p) => p.transportMode)).size).toBeGreaterThanOrEqual(2);
     // The script also points at the over-budget flags.
     expect(packages.some((p) => p.overBudget)).toBe(true);
+    // #18: the script quotes each card's one-way time (gurugram/bikaner train, 390 min).
+    const saver = packages.find((p) => p.label === 'Saver')!;
+    expect(saver.transportMode).toBe('train');
+    expect(saver.oneWayMinutes).toBe(390);
   });
 
   it('date clash: T4 with F3, windows at least 5 days apart', async () => {
@@ -312,11 +316,19 @@ describe('Long weekend in the hills: the full journey through the services', () 
       ['Comfort', 'car', 'premium'],
     ]);
     const saver = packages.find((p) => p.label === 'Saver')!;
+    // #18: the card's one-way time (gurugram/chakrata car, 425 min).
+    expect(saver.oneWayMinutes).toBe(425);
     await giveOpinion(deps, row.id, saver.id, meera.id, 'accept');
     await selectPackage(deps, row.id, saver.id, asha);
 
     const planned = await planItinerary(deps, row.id, asha);
     const days = planned.itinerary!.days;
+    // The card and the day plan agree: the onward leg lasts oneWayMinutes.
+    // A missing time gives NaN, so the check fails rather than passes.
+    const minutesOf = (hhmm: string | null) =>
+      hhmm === null ? NaN : Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
+    const onward = days.flatMap((d) => d.items).find((i) => i.legId === 'onward')!;
+    expect(minutesOf(onward.end) - minutesOf(onward.start)).toBe(saver.oneWayMinutes);
     const fullDays = days.filter((d) => !d.items.some((i) => i.kind === 'travel'));
     expect(fullDays.length).toBeGreaterThan(0);
     for (const d of fullDays) {

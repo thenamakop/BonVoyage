@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatDate,
+  formatDuration,
   formatHub,
   formatInr,
   formatRelative,
@@ -98,5 +99,20 @@ describe('formatRelative and updatedAgo', () => {
     expect(updatedAgo(now - 7_000, now)).toBe('Updated 5 seconds ago');
     expect(updatedAgo(now - 59_000, now)).toBe('Updated 55 seconds ago');
     expect(updatedAgo(now - 61_000, now)).toBe('Updated 1 minute ago');
+  });
+});
+
+// #18: a package's one-way planned travel time, in the words the card uses.
+describe('formatDuration', () => {
+  it('words minutes, whole hours and both', () => {
+    expect(formatDuration(45)).toBe('45 min');
+    expect(formatDuration(60)).toBe('1 h');
+    expect(formatDuration(425)).toBe('7 h 5 min');
+    expect(formatDuration(600)).toBe('10 h');
+  });
+
+  it('refuses 0 or less: a journey always takes time', () => {
+    expect(() => formatDuration(0)).toThrow();
+    expect(() => formatDuration(-5)).toThrow();
   });
 });

@@ -29,6 +29,8 @@ export const TripPackageView = z.object({
   overBudget: z.boolean(),
   /** D1, #116: null below MIN_MEMBERS_FOR_RANGE contributors when members' maxima set the cap. */
   overByInr: z.number().int().nullable(),
+  /** #18: one-way planned duration for the package's mode, from the catalogue. */
+  oneWayMinutes: z.number().int().positive().nullable(),
   status: PackageStatus,
   lines: z.array(PackageCostLine),
   opinions: z.object({

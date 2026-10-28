@@ -4,6 +4,7 @@ import type { destination as DestinationTable } from '@bonvoyage/db/schema';
 import {
   availableChoices,
   costPackage,
+  durationMinutes,
   generatePackages,
   type PackageDraft,
   type PackageInput,
@@ -218,6 +219,7 @@ function toView(
   mine: 'accept' | 'reject' | null,
   groupCapInr: number | null,
   hideOverBy: boolean,
+  oneWayMinutes: number | null,
 ): TripPackageView {
   // From the stored total, not a fresh default package: after a change (I3)
   // the row's mode and tier differ from what generatePackages would build.
@@ -236,6 +238,7 @@ function toView(
     // D1, #116: the flag is worked out from the real cap; the amount would give
     // the cap, and so a member's maximum, back (total - overByInr).
     overByInr: hideOverBy ? null : overByInr,
+    oneWayMinutes,
     status: pkg.status,
     lines: lines as TripPackageView['lines'],
     opinions: votes,
@@ -267,6 +270,13 @@ export async function getPackages(
   // it is below the trip budget exactly when members set it (capSource).
   const hideOverBy =
     input !== null && hidesBudgetFigures(input.n) && input.groupCapInr < tripRow.budgetTotalInr;
+  // #18: the same one-way minutes the day plan uses for its legs. packageInput
+  // gives car 0 minutes when the catalogue has no car row; that is not a time,
+  // so the card shows none rather than "0 min".
+  const oneWayOf = (mode: TripPackageView['transportMode']) => {
+    const minutes = input ? durationMinutes(input, mode) : null;
+    return minutes !== null && minutes > 0 ? minutes : null;
+  };
 
   const views: TripPackageView[] = all
     .map((pkg) => {
@@ -284,6 +294,7 @@ export async function getPackages(
           'accept' | 'reject' | undefined) ?? null,
         input?.groupCapInr ?? null,
         hideOverBy,
+        oneWayOf(pkg.transportMode),
       );
     })
     .sort((a, b) => LABEL_ORDER.indexOf(a.label) - LABEL_ORDER.indexOf(b.label));
