@@ -12,6 +12,7 @@ import { Card } from '../../../components/ui/Card';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useGroupProfile } from '../../../features/recommendations/api';
 import {
+  BUDGET_HIDDEN_NOTE,
   ROUNDED_NOTE,
   budgetBandText,
   dateConflictText,
@@ -68,11 +69,16 @@ function Profile({
       </Row>
       <Row label="Budget per person">
         {profile.budgetBand.overlaps ? band : <Warning>{band}</Warning>}
+        {profile.budgetBand.maxInr === null ? (
+          <span className="block text-slate-600">{BUDGET_HIDDEN_NOTE}</span>
+        ) : null}
       </Row>
-      <Row label="The group can spend">
-        {formatInr(profile.groupCapInr)} for the group
-        <span className="block text-slate-600">{ROUNDED_NOTE}</span>
-      </Row>
+      {profile.groupCapInr === null ? null : (
+        <Row label="The group can spend">
+          {formatInr(profile.groupCapInr)} for the group
+          <span className="block text-slate-600">{ROUNDED_NOTE}</span>
+        </Row>
+      )}
       <Row label="Shared interests">
         {interests.length > 0 ? (
           <ul className="list-inside list-disc">

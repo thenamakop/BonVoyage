@@ -181,6 +181,23 @@ describe('PackagesPage', () => {
     expect(within(comfort).getByText('₹24,366 over the group budget')).toBeTruthy();
   });
 
+  it('with no amount from the API (D1, #116), says over budget in words only', async () => {
+    const base = response();
+    stubFetch({
+      pkgs: {
+        ...base,
+        n: 2,
+        packages: base.packages.map((p) => ({ ...p, overByInr: null })),
+      },
+    });
+    renderPage();
+    const comfort = await screen.findByRole('article', { name: 'Comfort package' });
+    expect(within(comfort).getByText('Over the group budget')).toBeTruthy();
+    expect(within(comfort).queryByText(/₹[\d,]+ over the group budget/)).toBeNull();
+    const saver = screen.getByRole('article', { name: 'Saver package' });
+    expect(within(saver).queryByText(/over the group budget/i)).toBeNull();
+  });
+
   it('opinion buttons call the API and show the pressed state', async () => {
     const calls = stubFetch({
       pkgs: response({ packages: [pkg({ mine: 'accept' })] }),

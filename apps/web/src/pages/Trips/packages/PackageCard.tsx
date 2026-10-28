@@ -182,7 +182,9 @@ export function PackageCard({
       {pkg.overBudget ? (
         <p className="flex items-center gap-1 text-sm font-medium text-danger">
           <span aria-hidden="true">⚠</span>
-          {formatInr(pkg.overByInr)} over the group budget
+          {pkg.overByInr === null
+            ? 'Over the group budget'
+            : `${formatInr(pkg.overByInr)} over the group budget`}
         </p>
       ) : null}
 

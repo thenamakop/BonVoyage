@@ -279,15 +279,15 @@ describe('recommendation responses hold no other member’s answers or exact bud
     );
     expect(f5.length).toBeGreaterThan(0);
     for (const failure of f5) {
-      // n x (B's maximum rounded down to ₹500), never n x B's exact maximum.
-      expect(failure.limit).toBe(6000);
-      expect(failure.relaxation).toBe(failure.actual - 6000);
-      expect(failure.relative).toBeCloseTo((failure.actual - 6000) / 6000, 12);
+      // D1, #116: with 2 members even the rounded cap (2 x B's maximum rounded
+      // down, 6000) gives B away, so the limit and the gap are left out.
+      expect(failure).toMatchObject({ limit: null, relaxation: null, relative: null });
+      expect(failure.actual).toBeGreaterThan(0);
     }
     expect(body.run!.groupProfile).toMatchObject({
-      budgetBand: { minInr: 2000, maxInr: 3000, overlaps: true },
-      perPersonCapInr: 3000,
-      groupCapInr: 6000,
+      budgetBand: { minInr: null, maxInr: null, overlaps: true },
+      perPersonCapInr: null,
+      groupCapInr: null,
     });
   });
 
@@ -458,6 +458,186 @@ describe('package responses hold opinion counts and only the caller’s own vote
       expect(res.text).not.toContain(asha.userId);
     }
     for (const res of [aGet, aPut, bGet, bPut]) expect(res.text).not.toContain('@');
+  });
+});
+
+// S4-3, D1 (#116): with fewer than 3 contributing members, nothing a member
+// can read carries the budget band's figures, or anything from which the other
+// member's minimum or maximum follows. Budgets are multiples of ₹500, so the
+// raw and the rounded figure are the same number.
+describe('two-member groups: no budget figure gives the other member away (D1, #116)', () => {
+  const numbersIn = (value: unknown): number[] => {
+    if (typeof value === 'number') return [value];
+    if (Array.isArray(value)) return value.flatMap(numbersIn);
+    if (value !== null && typeof value === 'object') return Object.values(value).flatMap(numbersIn);
+    return [];
+  };
+  const twoPrefs = (min: number, max: number) => ({
+    destinationTypes: ['mountain'],
+    activities: ['trekking'],
+    climate: 'mild',
+    travelStyle: 'comfort',
+    budgetMinInr: min,
+    budgetMaxInr: max,
+    dateStart: '2026-11-13',
+    dateEnd: '2026-11-16',
+  });
+  // The organiser 18,000 to 30,000, the member 12,500 to 22,000. (12,000 would
+  // collide with the premium-stay line, 6,000 x 1 room x 2 nights.)
+  const ORG = { min: 18000, max: 30000 };
+  const MEM = { min: 12500, max: 22000 };
+
+  async function twoMemberTrip(budgetTotalInr: number) {
+    await ensureHubAt(db, 'two-hub', 12, 79);
+    // One cheap place passes; two whose food alone (2 people x 3 days) is over
+    // any cap here fail F5, so the run is a diagnostic with budget near misses.
+    await ensureDestination(db, { slug: 'two-cheap', lat: 12.2, lng: 79 });
+    await ensureDestination(db, { slug: 'two-dear-1', lat: 12, lng: 79.3, foodPerDayInr: 9100 });
+    await ensureDestination(db, { slug: 'two-dear-2', lat: 11.8, lng: 79, foodPerDayInr: 9700 });
+    const org = await createTestUser(app, 'Two Org');
+    const mem = await createTestUser(app, 'Two Mem');
+    const id = (
+      await createTripAs(org.agent, {
+        originHubSlug: 'two-hub',
+        radiusKm: 150,
+        budgetTotalInr,
+        durationNights: 2,
+      })
+    ).id;
+    const tok = InvitationResponse.parse(
+      (await org.agent.post(`/api/trips/${id}/invitations`).set(H).send({})).body,
+    ).token;
+    await mem.agent.post(`/api/invitations/${tok}/accept`).set(H).send({});
+    await org.agent.put(`/api/trips/${id}/preferences/me`).set(H).send(twoPrefs(ORG.min, ORG.max));
+    await mem.agent.put(`/api/trips/${id}/preferences/me`).set(H).send(twoPrefs(MEM.min, MEM.max));
+    const run = await org.agent.post(`/api/trips/${id}/recommendations`).set(H).send({});
+    expect(run.status, JSON.stringify(run.body)).toBe(200);
+    return { id, tok, org, mem };
+  }
+
+  /** Every GET in the inventory, for this trip, as this member. */
+  async function everyGet(agent: Agent, id: string, tok: string) {
+    const out: { path: string; body: unknown }[] = [];
+    for (const e of GETS) {
+      const res = await agent.get(e.path.replace(':id', id).replace(':token', tok)).set(H);
+      out.push({ path: e.path, body: res.body });
+    }
+    return out;
+  }
+
+  it('a member-set cap: neither member reads the other’s minimum, maximum or the cap', async () => {
+    // 2 x 22,000 = 44,000 is under the trip budget, so the members set the cap.
+    const { id, tok, org, mem } = await twoMemberTrip(100000);
+    const views = [
+      { who: 'organiser', agent: org.agent, other: [MEM.min, MEM.max] },
+      { who: 'member', agent: mem.agent, other: [ORG.min, ORG.max] },
+    ];
+    for (const { who, agent, other } of views) {
+      for (const { path, body } of await everyGet(agent, id, tok)) {
+        const numbers = numbersIn(body);
+        for (const secret of [...other, 2 * MEM.max]) {
+          expect.soft(numbers, `${who} ${path} carried ${secret}`).not.toContain(secret);
+        }
+      }
+      // A closest miss's gap gives the cap back: actual - relaxation.
+      const latest = LatestRecommendationResponse.parse(
+        (await agent.get(`/api/trips/${id}/recommendations/latest`).set(H)).body,
+      );
+      const f5 = (latest.run?.diagnostic?.nearMisses ?? []).flatMap((e) =>
+        e.failures.filter((f) => f.id === 'F5'),
+      );
+      expect(f5.length, 'the fixture should produce F5 near misses').toBeGreaterThan(0);
+      for (const f of f5) {
+        if (f.relaxation !== null) {
+          expect(f.actual - f.relaxation, `${who}: actual - relaxation`).not.toBe(2 * MEM.max);
+        }
+      }
+    }
+  });
+
+  it('a member-set cap through to packages: an over-budget package carries no amount', async () => {
+    const hubRow = await ensureHubAt(db, 'twopkg-hub', 14, 81);
+    // Three places pass the 44,000 cap; on the dear one (2 x 3 days of food
+    // at 6,000) the budget-stay package fits and the mid-stay one does not.
+    const ids: string[] = [];
+    for (const [slug, lat, food] of [
+      ['twopkg-dear', 14.2, 6000],
+      ['twopkg-b', 14.3, 500],
+      ['twopkg-c', 14.4, 500],
+    ] as const) {
+      ids.push(await ensureDestination(db, { slug, lat, lng: 81, foodPerDayInr: food }));
+    }
+    for (const destinationId of ids) {
+      await db
+        .insert(fareFallback)
+        .values({
+          originHubId: hubRow.id,
+          destinationId,
+          mode: 'bus',
+          farePerPersonInr: 350,
+          durationMinutes: 300,
+          distanceKm: 100,
+          collectedOn: '2026-10-12',
+          reviewStatus: 'verified',
+        })
+        .onConflictDoNothing();
+    }
+    const org = await createTestUser(app, 'TwoPkg Org');
+    const mem = await createTestUser(app, 'TwoPkg Mem');
+    const id = (
+      await createTripAs(org.agent, {
+        originHubSlug: 'twopkg-hub',
+        radiusKm: 200,
+        budgetTotalInr: 100000,
+        durationNights: 2,
+      })
+    ).id;
+    const tok = InvitationResponse.parse(
+      (await org.agent.post(`/api/trips/${id}/invitations`).set(H).send({})).body,
+    ).token;
+    await mem.agent.post(`/api/invitations/${tok}/accept`).set(H).send({});
+    await org.agent.put(`/api/trips/${id}/preferences/me`).set(H).send(twoPrefs(ORG.min, ORG.max));
+    await mem.agent.put(`/api/trips/${id}/preferences/me`).set(H).send(twoPrefs(MEM.min, MEM.max));
+    const run = await org.agent.post(`/api/trips/${id}/recommendations`).set(H).send({});
+    expect(run.status, JSON.stringify(run.body)).toBe(200);
+    const chosen = await org.agent
+      .post(`/api/trips/${id}/destination`)
+      .set(H)
+      .send({ destinationSlug: 'twopkg-dear' });
+    expect(chosen.status, JSON.stringify(chosen.body)).toBe(200);
+
+    const pkgs = PackagesResponse.parse(
+      (await mem.agent.get(`/api/trips/${id}/packages`).set(H)).body,
+    ).packages;
+    const over = pkgs.filter((p) => p.overBudget);
+    expect(over.length, 'the fixture should have an over-budget package').toBeGreaterThan(0);
+    for (const p of pkgs) expect(p.overByInr).toBeNull();
+
+    for (const [who, agent, other] of [
+      ['organiser', org.agent, [MEM.min, MEM.max]],
+      ['member', mem.agent, [ORG.min, ORG.max]],
+    ] as const) {
+      for (const { path, body } of await everyGet(agent, id, tok)) {
+        const numbers = numbersIn(body);
+        for (const secret of [...other, 2 * MEM.max]) {
+          expect.soft(numbers, `${who} ${path} carried ${secret}`).not.toContain(secret);
+        }
+      }
+    }
+  });
+
+  it('a trip-set cap: the cap is the public trip budget; the band and caps are null', async () => {
+    // 30,000 is under 2 x 22,000, so the trip budget sets the cap.
+    const { id, org, mem } = await twoMemberTrip(30000);
+    for (const agent of [org.agent, mem.agent]) {
+      const profile = GroupProfileResponse.parse(
+        (await agent.get(`/api/trips/${id}/group-profile`).set(H)).body,
+      );
+      if (!profile.ready) throw new Error('group profile should be ready');
+      expect(profile.budgetBand).toEqual({ minInr: null, maxInr: null, overlaps: true });
+      expect(profile.perPersonCapInr).toBeNull();
+      expect(profile.groupCapInr).toBe(30000);
+    }
   });
 });
 

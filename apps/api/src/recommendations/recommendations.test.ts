@@ -365,6 +365,51 @@ describe('POST /api/trips/:id/recommendations', () => {
       expect(item.group.highestScore10).toBeNull();
     }
   });
+
+  // D1, #116: with 2 members a cap set by members' maxima would give a maximum
+  // away, so the budget misses carry no limit or gap; a trip-set cap keeps them.
+  const budgetMisses = (body: RequestRecommendationsResponse) =>
+    body.run!.diagnostic!.alternatives.filter((e) => e.failures[0]?.id === 'F5');
+
+  it('2 members, a member-set cap: F5 misses have no amounts, closest first; the per-person ask stays', async () => {
+    const { tripId, members } = await readyTrip(
+      [
+        prefs({ budgetMinInr: 1000, budgetMaxInr: 3000 }),
+        prefs({ budgetMinInr: 1000, budgetMaxInr: 3000 }),
+      ],
+      { budgetTotalInr: 120000 },
+    );
+    const body = RequestRecommendationsResponse.parse((await recommend(members[0]!, tripId)).body);
+    expect(body.run).toMatchObject({ kind: 'diagnostic', bindingConstraint: 'F5' });
+    const misses = budgetMisses(body);
+    expect(misses.length).toBeGreaterThan(1);
+    for (const e of misses) {
+      expect(e.failures[0]).toMatchObject({
+        id: 'F5',
+        limit: null,
+        relaxation: null,
+        relative: null,
+      });
+    }
+    // One cap for all, so closest first by the real gap is cheapest first.
+    const costs = misses.map((e) => e.estimatedCostInr);
+    expect(costs).toEqual([...costs].sort((a, b) => a - b));
+    const f5 = body.run!.diagnostic!.suggestions.find((s) => s.constraint === 'F5');
+    expect(f5).toMatchObject({ capSource: 'members' });
+    expect(f5?.constraint === 'F5' ? f5.newPerPersonMaxInr : undefined).toEqual(expect.any(Number));
+  });
+
+  it('2 members, a trip-set cap: F5 misses keep their amounts', async () => {
+    const { tripId, members } = await readyTrip([prefs(), prefs()], { budgetTotalInr: 5000 });
+    const body = RequestRecommendationsResponse.parse((await recommend(members[0]!, tripId)).body);
+    expect(body.run).toMatchObject({ kind: 'diagnostic', bindingConstraint: 'F5' });
+    const misses = budgetMisses(body);
+    expect(misses.length).toBeGreaterThan(0);
+    for (const e of misses) {
+      const f = e.failures[0]!;
+      expect(f).toMatchObject({ id: 'F5', limit: 5000, relaxation: f.actual - 5000 });
+    }
+  });
 });
 
 // The privacy of these responses (rule S4) is tested in ../security/no-leak.test.ts.
@@ -373,11 +418,14 @@ describe('GET /api/trips/:id/group-profile', () => {
   it('not ready with one submission; ready with two, member budgets rounded inwards to ₹500', async () => {
     const organiser = await createTestUser(app, 'Profile Organiser');
     const member = await createTestUser(app, 'Profile Member');
+    const third = await createTestUser(app, 'Profile Third');
     const { id: tripId } = await createTripAs(organiser.agent, { originHubSlug: HUB.slug });
     const { token } = InvitationResponse.parse(
       (await organiser.agent.post(`/api/trips/${tripId}/invitations`).set(H).send({})).body,
     );
-    await member.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
+    for (const m of [member, third]) {
+      await m.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
+    }
     await organiser.agent
       .put(`/api/trips/${tripId}/preferences/me`)
       .set(H)
@@ -391,14 +439,33 @@ describe('GET /api/trips/:id/group-profile', () => {
       .put(`/api/trips/${tripId}/preferences/me`)
       .set(H)
       .send(prefs({ budgetMinInr: 9000, budgetMaxInr: 25260, dateStart: '2026-11-14' }));
+    const two = GroupProfileResponse.parse(
+      (await member.agent.get(`/api/trips/${tripId}/group-profile`).set(H)).body,
+    );
+    expect(two).toMatchObject({
+      ready: true,
+      memberCount: 2,
+      commonWindow: { start: '2026-11-14', end: '2026-11-16', days: 3 },
+      windowFits: true,
+      // D1, #116: two contributors see whether budgets overlap, not the band.
+      budgetBand: { minInr: null, maxInr: null, overlaps: true },
+      perPersonCapInr: null,
+      // The trip budget (₹20,000) sets the cap; members already see it, so it stays.
+      groupCapInr: 20000,
+      conflicts: [],
+    });
+
+    // A third answer whose limits bind nothing: the figures appear, rounded.
+    await third.agent
+      .put(`/api/trips/${tripId}/preferences/me`)
+      .set(H)
+      .send(prefs({ budgetMinInr: 5000, budgetMaxInr: 90000 }));
     const after = GroupProfileResponse.parse(
       (await member.agent.get(`/api/trips/${tripId}/group-profile`).set(H)).body,
     );
     expect(after).toMatchObject({
       ready: true,
-      memberCount: 2,
-      commonWindow: { start: '2026-11-14', end: '2026-11-16', days: 3 },
-      windowFits: true,
+      memberCount: 3,
       // Minimum up, maximum and caps down: never a cap above the real one.
       budgetBand: { minInr: 12500, maxInr: 25000, overlaps: true },
       perPersonCapInr: 25000,
@@ -428,13 +495,33 @@ describe('GET /api/trips/:id/group-profile', () => {
       [
         prefs({ budgetMinInr: 1000, budgetMaxInr: 9001 }),
         prefs({ budgetMinInr: 2000, budgetMaxInr: 4250 }),
+        prefs({ budgetMinInr: 1000, budgetMaxInr: 90000 }),
       ],
       { budgetTotalInr: 120000 },
     );
     const profile = GroupProfileResponse.parse(
       (await members[0]!.agent.get(`/api/trips/${tripId}/group-profile`).set(H)).body,
     );
-    expect(profile).toMatchObject({ perPersonCapInr: 4000, groupCapInr: 8000 });
+    expect(profile).toMatchObject({ perPersonCapInr: 4000, groupCapInr: 12000 });
+  });
+
+  it('2 members and a cap set by members: no band, no per-person cap, no group cap (D1, #116)', async () => {
+    const { tripId, members } = await readyTrip(
+      [
+        prefs({ budgetMinInr: 1000, budgetMaxInr: 9001 }),
+        prefs({ budgetMinInr: 2000, budgetMaxInr: 4250 }),
+      ],
+      { budgetTotalInr: 120000 },
+    );
+    const profile = GroupProfileResponse.parse(
+      (await members[0]!.agent.get(`/api/trips/${tripId}/group-profile`).set(H)).body,
+    );
+    expect(profile).toMatchObject({
+      memberCount: 2,
+      budgetBand: { minInr: null, maxInr: null, overlaps: true },
+      perPersonCapInr: null,
+      groupCapInr: null,
+    });
   });
 });
 

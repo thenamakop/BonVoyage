@@ -79,16 +79,25 @@ export function dateConflictText(
   return null;
 }
 
-/** "₹12,000 to ₹16,000 per person", or the disjoint-band warning. Figures arrive rounded. */
+/**
+ * "₹12,000 to ₹16,000 per person", or the disjoint-band warning. Figures arrive
+ * rounded; below 3 contributors they do not arrive at all (D1, #116), and only
+ * whether the budgets overlap is said.
+ */
 export function budgetBandText(profile: GroupProfileReady): string {
   const { budgetBand, perPersonCapInr } = profile;
-  if (!budgetBand.overlaps) {
-    return `Budgets do not overlap; plans use the lowest maximum, ${formatInr(perPersonCapInr)} per person.`;
+  const { minInr, maxInr, overlaps } = budgetBand;
+  if (!overlaps) {
+    return perPersonCapInr === null
+      ? 'Budgets do not overlap'
+      : `Budgets do not overlap; plans use the lowest maximum, ${formatInr(perPersonCapInr)} per person.`;
   }
-  return `${formatInr(budgetBand.minInr)} to ${formatInr(budgetBand.maxInr)} per person`;
+  if (minInr === null || maxInr === null) return 'Budgets overlap';
+  return `${formatInr(minInr)} to ${formatInr(maxInr)} per person`;
 }
 
 export const ROUNDED_NOTE = 'Rounded to ₹500 so nobody’s exact limit shows.';
+export const BUDGET_HIDDEN_NOTE = 'Budget figures appear once 3 or more people have answered.';
 
 /** "Mountain: 3 of 3" (counts of 2 or more only; the API never sends fewer). */
 export function voteText(label: string, count: number, memberCount: number): string {
@@ -205,7 +214,10 @@ export function failureText(failure: DiagnosticFailure): string {
     case 'F4':
       return `out of season by ${plural(failure.actual, 'month')}`;
     case 'F5':
-      return `about ${formatInr(failure.relaxation)} over the group budget`;
+      // D1, #116: no amount below 3 contributors when members set the cap.
+      return failure.relaxation === null
+        ? 'over the group budget'
+        : `about ${formatInr(failure.relaxation)} over the group budget`;
   }
 }
 

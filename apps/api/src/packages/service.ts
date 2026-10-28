@@ -27,6 +27,7 @@ import {
   requireOrganiser,
   type TripRow,
 } from '../trips/access';
+import { hidesBudgetFigures } from '../recommendations/budget-figures';
 import { loadMembers } from '../recommendations/service';
 import { getTrip } from '../trips/service';
 import {
@@ -216,6 +217,7 @@ function toView(
   votes: { works: number; notForMe: number; members: number },
   mine: 'accept' | 'reject' | null,
   groupCapInr: number | null,
+  hideOverBy: boolean,
 ): TripPackageView {
   // From the stored total, not a fresh default package: after a change (I3)
   // the row's mode and tier differ from what generatePackages would build.
@@ -231,7 +233,9 @@ function toView(
     totalInr: pkg.totalInr,
     perPersonInr: pkg.perPersonInr,
     overBudget: groupCapInr === null ? pkg.overBudget : overByInr > 0,
-    overByInr,
+    // D1, #116: the flag is worked out from the real cap; the amount would give
+    // the cap, and so a member's maximum, back (total - overByInr).
+    overByInr: hideOverBy ? null : overByInr,
     status: pkg.status,
     lines: lines as TripPackageView['lines'],
     opinions: votes,
@@ -258,6 +262,11 @@ export async function getPackages(
   // generatePackages only for the note: it counts what the destination can
   // cost, which the stored rows (some removed or changed) do not show.
   const note = input ? generatePackages(input).note : null;
+  // D1, #116: below 3 contributors, an amount over a cap set by members'
+  // maxima is left out. groupCapInr is min(trip budget, n x lowest maximum), so
+  // it is below the trip budget exactly when members set it (capSource).
+  const hideOverBy =
+    input !== null && hidesBudgetFigures(input.n) && input.groupCapInr < tripRow.budgetTotalInr;
 
   const views: TripPackageView[] = all
     .map((pkg) => {
@@ -274,6 +283,7 @@ export async function getPackages(
         (votes.find((v) => v.package_decision.userId === viewerId)?.package_decision.decision as
           'accept' | 'reject' | undefined) ?? null,
         input?.groupCapInr ?? null,
+        hideOverBy,
       );
     })
     .sort((a, b) => LABEL_ORDER.indexOf(a.label) - LABEL_ORDER.indexOf(b.label));

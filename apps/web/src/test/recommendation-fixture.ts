@@ -27,6 +27,20 @@ export function profileReady(over: Partial<GroupProfileReady> = {}): GroupProfil
   };
 }
 
+/** D1, #116: 2 contributors and a cap set by members' maxima: no budget figures arrive. */
+export function profileTwoMembers(over: Partial<GroupProfileReady> = {}): GroupProfileReady {
+  return profileReady({
+    memberCount: 2,
+    budgetBand: { minInr: null, maxInr: null, overlaps: true },
+    perPersonCapInr: null,
+    groupCapInr: null,
+    typeVotes: [{ value: 'mountain', count: 2 }],
+    activityVotes: [],
+    climateVotes: [],
+    ...over,
+  });
+}
+
 export function item(rank: number, over: Partial<RecommendationItem> = {}): RecommendationItem {
   return {
     rank,

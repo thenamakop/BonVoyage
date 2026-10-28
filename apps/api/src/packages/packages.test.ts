@@ -124,13 +124,19 @@ afterAll(async () => {
 type Agent = request.Agent;
 const code = (res: request.Response) => (res.body as ErrorEnvelope).error.code;
 
-/** A 3-member trip with packages_proposed and its organiser/members. */
-async function proposedTrip(trip: { budgetTotalInr?: number } = {}) {
+/**
+ * A trip with packages_proposed and its organiser/members: 3 members, or the
+ * first `memberCount` of the three users (the rest are created but never join).
+ */
+async function proposedTrip(
+  trip: { budgetTotalInr?: number; memberCount?: 2 | 3; budget?: Partial<PreferenceInput> } = {},
+) {
   const members = await Promise.all([
     createTestUser(app, 'Pkg A'),
     createTestUser(app, 'Pkg B'),
     createTestUser(app, 'Pkg C'),
   ]);
+  const joined = members.slice(0, trip.memberCount ?? 3);
   const organiser = members[0];
   const { id: tripId } = await createTripAs(organiser.agent, {
     originHubSlug: 'pkg-hub',
@@ -141,11 +147,14 @@ async function proposedTrip(trip: { budgetTotalInr?: number } = {}) {
   const { token } = InvitationResponse.parse(
     (await organiser.agent.post(`/api/trips/${tripId}/invitations`).set(H).send({})).body,
   );
-  for (const m of members.slice(1)) {
+  for (const m of joined.slice(1)) {
     await m.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
   }
-  for (const m of members) {
-    const res = await m.agent.put(`/api/trips/${tripId}/preferences/me`).set(H).send(prefs());
+  for (const m of joined) {
+    const res = await m.agent
+      .put(`/api/trips/${tripId}/preferences/me`)
+      .set(H)
+      .send(prefs(trip.budget));
     expect(res.status, JSON.stringify(res.body)).toBe(200);
   }
   const run = await organiser.agent.post(`/api/trips/${tripId}/recommendations`).set(H).send({});
@@ -341,6 +350,39 @@ describe('budget flag and re-choose', () => {
     expect(saver.totalInr).toBe(15600); // exactly at the cap: not over budget
     expect(saver.overBudget).toBe(false);
     expect(saver.overByInr).toBe(0);
+  });
+
+  it('2 members: an amount over a member-set cap is left out; over a trip-set cap it is shown (D1, #116)', async () => {
+    // The 2-member Saver total, read off a trip with room to spare.
+    const probe = await proposedTrip({ memberCount: 2 });
+    const saverOf = (list: PackagesResponse) => list.packages.find((p) => p.label === 'Saver')!;
+    const s2 = saverOf(
+      PackagesResponse.parse((await getPackages(probe.organiser.agent, probe.tripId)).body),
+    ).totalInr;
+    expect(s2 % 2, 'the cap below is 2 x s2 / 2, so s2 must be even').toBe(0);
+
+    // Members' maxima set the cap at exactly the Saver total.
+    const members = await proposedTrip({
+      memberCount: 2,
+      budgetTotalInr: 120000,
+      budget: { budgetMinInr: 1000, budgetMaxInr: s2 / 2 },
+    });
+    const byMembers = PackagesResponse.parse(
+      (await getPackages(members.members[1].agent, members.tripId)).body,
+    );
+    expect(byMembers.packages.some((p) => p.overBudget)).toBe(true);
+    for (const p of byMembers.packages) {
+      expect(p.overBudget).toBe(p.totalInr > s2);
+      expect(p.overByInr).toBeNull();
+    }
+
+    // The trip budget sets the same cap: it is public, so the amount stays.
+    const byTrip = await proposedTrip({ memberCount: 2, budgetTotalInr: s2 });
+    const list = PackagesResponse.parse(
+      (await getPackages(byTrip.organiser.agent, byTrip.tripId)).body,
+    );
+    expect(list.packages.some((p) => p.overBudget)).toBe(true);
+    for (const p of list.packages) expect(p.overByInr).toBe(Math.max(0, p.totalInr - s2));
   });
 
   it('after a change (I3) overByInr follows the stored total, proposed and accepted', async () => {

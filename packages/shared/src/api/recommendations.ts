@@ -6,7 +6,8 @@ import { Activity, ClimatePreference, DestinationType, TransportMode } from '../
 // S2-6 recommendation contracts (decision 0004). Group views carry counts and
 // values shared by two or more members only (0004 i); a member's own meets and
 // misses travel only in `mine`. Group budget figures are rounded to ₹500 so a
-// response never carries another member's exact budget limit.
+// response never carries another member's exact budget limit, and below 3
+// contributing members the figures members' limits set are left out (D1, #116).
 
 const ValueCountOf = <T extends z.ZodType<string>>(value: T) =>
   z.object({ value, count: z.number().int() });
@@ -25,16 +26,25 @@ export const GroupProfileReady = z.object({
   memberCount: z.number().int(),
   commonWindow: z.object({ start: z.string(), end: z.string(), days: z.number().int() }).nullable(),
   windowFits: z.boolean(),
-  /** Per person: the minimum rounded up and the maximum down to ₹500. */
+  /**
+   * Per person: the minimum rounded up and the maximum down to ₹500, shown for
+   * 3 or more contributing members; below that only `overlaps` is given.
+   */
   budgetBand: z.object({
-    minInr: z.number().int(),
-    maxInr: z.number().int(),
+    /** D1, #116: null below MIN_MEMBERS_FOR_RANGE contributors. */
+    minInr: z.number().int().nullable(),
+    /** D1, #116: null below MIN_MEMBERS_FOR_RANGE contributors. */
+    maxInr: z.number().int().nullable(),
     overlaps: z.boolean(),
   }),
-  /** The lowest member maximum, rounded down to ₹500. */
-  perPersonCapInr: z.number().int(),
-  /** Exact when the trip budget sets it; n x perPersonCapInr when members' maxima do. */
-  groupCapInr: z.number().int(),
+  /** The lowest member maximum, rounded down to ₹500. D1, #116: null below MIN_MEMBERS_FOR_RANGE contributors. */
+  perPersonCapInr: z.number().int().nullable(),
+  /**
+   * Exact when the trip budget sets it (always shown: the trip budget is
+   * public); n x perPersonCapInr when members' maxima do. D1, #116: null below
+   * MIN_MEMBERS_FOR_RANGE contributors when members' maxima set it.
+   */
+  groupCapInr: z.number().int().nullable(),
   typeVotes: z.array(ValueCountOf(DestinationType)),
   activityVotes: z.array(ValueCountOf(Activity)),
   climateVotes: z.array(ValueCountOf(ClimatePreference)),
@@ -51,14 +61,28 @@ export const GroupProfileResponse = z.discriminatedUnion('ready', [
 ]);
 export type GroupProfileResponse = z.infer<typeof GroupProfileResponse>;
 
-export const DiagnosticFailure = z.object({
-  id: z.enum(['F1', 'F2', 'F4', 'F5']),
-  limit: z.number(),
-  actual: z.number(),
-  relaxation: z.number(),
-  relative: z.number(),
-  unit: z.enum(['km', 'nights', 'months', 'inr']),
-});
+const Unit = z.enum(['km', 'nights', 'months', 'inr']);
+export const DiagnosticFailure = z.discriminatedUnion('id', [
+  z.object({
+    id: z.enum(['F1', 'F2', 'F4']),
+    limit: z.number(),
+    actual: z.number(),
+    relaxation: z.number(),
+    relative: z.number(),
+    unit: Unit,
+  }),
+  z.object({
+    id: z.literal('F5'),
+    /** D1, #116: null below MIN_MEMBERS_FOR_RANGE contributors when members' maxima set the cap. */
+    limit: z.number().nullable(),
+    actual: z.number(),
+    /** D1, #116: null below MIN_MEMBERS_FOR_RANGE contributors when members' maxima set the cap. */
+    relaxation: z.number().nullable(),
+    /** D1, #116: null below MIN_MEMBERS_FOR_RANGE contributors when members' maxima set the cap. */
+    relative: z.number().nullable(),
+    unit: Unit,
+  }),
+]);
 export type DiagnosticFailure = z.infer<typeof DiagnosticFailure>;
 
 export const DiagnosticEvaluation = z.object({
