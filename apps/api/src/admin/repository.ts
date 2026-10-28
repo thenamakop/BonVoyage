@@ -28,26 +28,26 @@ export async function tableCounts(db: Reader) {
 
 /** Verified and total rows per stage, read from the database (decision 0002). */
 export async function stageCounts(db: Reader) {
-  const [h, d, p, f, c] = await Promise.all([
-    db.select({ n: count, v: verified(hub.reviewStatus) }).from(hub),
-    db
-      .select({
-        n: count,
-        v: verified(destination.reviewStatus),
-        costV: verified(destination.costReviewStatus),
-      })
-      .from(destination),
-    db.select({ n: count, v: verified(poi.reviewStatus) }).from(poi),
-    db
-      .select({
-        carN: sql<number>`(count(*) filter (where ${fareFallback.mode} = 'car'))::int`,
-        carV: sql<number>`(count(*) filter (where ${fareFallback.mode} = 'car' and ${fareFallback.reviewStatus} = 'verified'))::int`,
-        ptN: sql<number>`(count(*) filter (where ${fareFallback.mode} <> 'car'))::int`,
-        ptV: sql<number>`(count(*) filter (where ${fareFallback.mode} <> 'car' and ${fareFallback.reviewStatus} = 'verified'))::int`,
-      })
-      .from(fareFallback),
-    db.select({ n: count, v: verified(costRule.reviewStatus) }).from(costRule),
-  ]);
+  // One after another: the import calls this on its transaction, which is a
+  // single client, and pg refuses overlapping queries on one client (#118).
+  const h = await db.select({ n: count, v: verified(hub.reviewStatus) }).from(hub);
+  const d = await db
+    .select({
+      n: count,
+      v: verified(destination.reviewStatus),
+      costV: verified(destination.costReviewStatus),
+    })
+    .from(destination);
+  const p = await db.select({ n: count, v: verified(poi.reviewStatus) }).from(poi);
+  const f = await db
+    .select({
+      carN: sql<number>`(count(*) filter (where ${fareFallback.mode} = 'car'))::int`,
+      carV: sql<number>`(count(*) filter (where ${fareFallback.mode} = 'car' and ${fareFallback.reviewStatus} = 'verified'))::int`,
+      ptN: sql<number>`(count(*) filter (where ${fareFallback.mode} <> 'car'))::int`,
+      ptV: sql<number>`(count(*) filter (where ${fareFallback.mode} <> 'car' and ${fareFallback.reviewStatus} = 'verified'))::int`,
+    })
+    .from(fareFallback);
+  const c = await db.select({ n: count, v: verified(costRule.reviewStatus) }).from(costRule);
   const zero = { n: 0, v: 0, costV: 0, carN: 0, carV: 0, ptN: 0, ptV: 0 };
   const [hr, dr, pr, fr, cr] = [
     h[0] ?? zero,
