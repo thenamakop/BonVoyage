@@ -13,25 +13,23 @@ const ME = { id: 'u4', name: 'Kabir', email: 'kabir@test.bv', homeHubSlug: null,
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
 
 function stubFetch(profile: Record<string, unknown>, deleteReply?: () => Response) {
-  // After a successful DELETE the old session cookie gets 401, as on the server.
+  // After a successful DELETE the old session cookie gets 401 on /api/me and
+  // /api/me/profile, as on the server; a still-mounted page may refetch either.
   let deleted = false;
+  const unauthenticated = () =>
+    Response.json({ error: { code: 'UNAUTHENTICATED', message: 'Sign in.' } }, { status: 401 });
   fetchMock.mockImplementation((url, init) => {
     if (url === '/api/me') {
-      return Promise.resolve(
-        deleted
-          ? Response.json(
-              { error: { code: 'UNAUTHENTICATED', message: 'Sign in.' } },
-              { status: 401 },
-            )
-          : Response.json(ME),
-      );
+      return Promise.resolve(deleted ? unauthenticated() : Response.json(ME));
     }
     if (url === '/api/me/profile' && init?.method === 'DELETE') {
       const reply = deleteReply ? deleteReply() : Response.json({ deleted: true });
       deleted = reply.ok;
       return Promise.resolve(reply);
     }
-    if (url === '/api/me/profile') return Promise.resolve(Response.json(profile));
+    if (url === '/api/me/profile') {
+      return Promise.resolve(deleted ? unauthenticated() : Response.json(profile));
+    }
     if (url === '/api/hubs') {
       return Promise.resolve(
         Response.json({ hubs: [{ slug: 'delhi', name: 'Delhi', state: 'Delhi' }] }),
@@ -166,9 +164,12 @@ describe('ProfilePage delete account', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Your account has been deleted.');
     expect(router.state.location.pathname).toBe('/');
     expect(screen.getByRole('heading', { name: 'Group trips, decided together.' })).toBeVisible();
-    // No cached user survives: `me` was cleared and the refetch says signed out.
-    await waitFor(() => expect(queryClient.getQueryData(['me'])).toBeNull());
-    expect(queryClient.getQueryData(['me', 'profile'])).toBeUndefined();
+    // No cached user survives: `me` was cleared and the refetch says signed out;
+    // a profile refetch from the unmounting page gets 401 and holds no data.
+    await waitFor(() => {
+      expect(queryClient.getQueryData(['me'])).toBeNull();
+      expect(queryClient.getQueryData(['me', 'profile'])).toBeUndefined();
+    });
     expect(screen.queryByText('trips page')).not.toBeInTheDocument();
     const call = fetchMock.mock.calls.find(
       (c) => c[0] === '/api/me/profile' && c[1]?.method === 'DELETE',
