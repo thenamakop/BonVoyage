@@ -1,4 +1,4 @@
-import { asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import type { Db } from '../client';
 import { costRule, destination, fareFallback, hub, poi } from '../schema';
@@ -7,8 +7,10 @@ import { loadCatalogue, type Catalogue } from './load';
 // S0-5 step 5: imports packages/db/catalogue into Postgres. Refuses when the
 // loader reports any error-level issue; upserts by natural key so re-runs
 // update in place. Never decides review_status: it writes exactly what the
-// files say (decision 0002). It deletes nothing, except that S3-8's prune
-// removes places of interest that have left pois.csv.
+// files say (decision 0002). It deletes nothing, except with prune: places of
+// interest that have left pois.csv (S3-8) and fares that have left fares.csv
+// (S4-8, #126), each only for destinations (and, for fares, hubs) the files
+// list.
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -33,12 +35,21 @@ export interface ImportCounts {
   updated: Record<string, number>;
   /** S3-8: places of interest the prune deleted (empty without it). */
   pruned: StalePoi[];
+  /** S4-8: fares the prune deleted (empty without it). */
+  prunedFares: StaleFare[];
 }
 
 export interface StalePoi {
   destinationSlug: string;
   poiKey: string;
   name: string;
+}
+
+export interface StaleFare {
+  hubSlug: string;
+  destinationSlug: string;
+  mode: string;
+  reviewStatus: string;
 }
 
 type Outcome = 'inserted' | 'updated' | 'unchanged';
@@ -243,6 +254,35 @@ export async function findStalePois(
   return rows.filter((r) => !keep.has(`${r.destinationSlug}/${r.poiKey}`));
 }
 
+/**
+ * S4-8 (#126): fares in the database whose (hub, destination, mode) is no
+ * longer in fares.csv. Only rows whose hub and destination the files both list
+ * are looked at, so a hub or destination outside the files keeps its fares.
+ */
+export async function findStaleFares(
+  db: Db | Tx,
+  parsed: Pick<Catalogue, 'hubs' | 'destinations' | 'fares'>,
+): Promise<(StaleFare & { id: string })[]> {
+  const hubSlugs = parsed.hubs.map((h) => h.slug);
+  const destSlugs = parsed.destinations.map((d) => d.slug);
+  if (hubSlugs.length === 0 || destSlugs.length === 0) return [];
+  const keep = new Set(parsed.fares.map((f) => `${f.origin_hub}/${f.destination_slug}/${f.mode}`));
+  const rows = await db
+    .select({
+      id: fareFallback.id,
+      hubSlug: hub.slug,
+      destinationSlug: destination.slug,
+      mode: fareFallback.mode,
+      reviewStatus: fareFallback.reviewStatus,
+    })
+    .from(fareFallback)
+    .innerJoin(hub, eq(hub.id, fareFallback.originHubId))
+    .innerJoin(destination, eq(destination.id, fareFallback.destinationId))
+    .where(and(inArray(hub.slug, hubSlugs), inArray(destination.slug, destSlugs)))
+    .orderBy(asc(hub.slug), asc(destination.slug), asc(fareFallback.mode));
+  return rows.filter((r) => !keep.has(`${r.hubSlug}/${r.destinationSlug}/${r.mode}`));
+}
+
 /** Load a directory and refuse on any error-level issue. */
 export function loadCatalogueOrThrow(dir: string, opts: { today: string }): Catalogue {
   const parsed = loadCatalogue(dir, opts);
@@ -255,38 +295,74 @@ export function loadCatalogueOrThrow(dir: string, opts: { today: string }): Cata
   return parsed;
 }
 
+// Thrown at the end of a dry run's transaction so that it rolls back on purpose.
+class DryRunRollback extends Error {}
+
 /**
  * The CLI and seed entry point: load a directory, refuse on errors, import.
- * With `prune`, places of interest that left pois.csv are deleted after the
- * upsert, in the same transaction; day-plan items that pointed at them keep
- * their text (itinerary_item.poi_id is ON DELETE SET NULL).
+ * With `prune`, places of interest that left pois.csv and fares that left
+ * fares.csv are deleted after the upsert, in the same transaction; day-plan
+ * items that pointed at a pruned place keep their text (itinerary_item.poi_id
+ * is ON DELETE SET NULL). With `dryRun` everything runs and is reported, then
+ * rolled back: nothing is written or deleted.
  */
 export async function importCatalogue(
   db: Db,
   dir: string,
-  opts: { today: string; prune?: boolean },
+  opts: { today: string; prune?: boolean; dryRun?: boolean },
 ): Promise<ImportCounts> {
   const parsed = loadCatalogueOrThrow(dir, opts);
-  const { counts, pruned } = await db.transaction(async (tx) => {
-    const counts = await importParsedCatalogue(tx, parsed);
-    if (!opts.prune) return { counts, pruned: [] };
-    const stale = await findStalePois(tx, parsed);
-    if (stale.length > 0) {
-      await tx.delete(poi).where(
-        inArray(
-          poi.id,
-          stale.map((p) => p.id),
-        ),
-      );
-    }
-    return {
-      counts,
-      pruned: stale.map(({ destinationSlug, poiKey, name }) => ({ destinationSlug, poiKey, name })),
-    };
-  });
+  let result:
+    { counts: ParsedImportCounts; pruned: StalePoi[]; prunedFares: StaleFare[] } | undefined;
+  try {
+    await db.transaction(async (tx) => {
+      const counts = await importParsedCatalogue(tx, parsed);
+      if (!opts.prune) {
+        result = { counts, pruned: [], prunedFares: [] };
+      } else {
+        const stale = await findStalePois(tx, parsed);
+        if (stale.length > 0) {
+          await tx.delete(poi).where(
+            inArray(
+              poi.id,
+              stale.map((p) => p.id),
+            ),
+          );
+        }
+        const staleFares = await findStaleFares(tx, parsed);
+        if (staleFares.length > 0) {
+          await tx.delete(fareFallback).where(
+            inArray(
+              fareFallback.id,
+              staleFares.map((f) => f.id),
+            ),
+          );
+        }
+        result = {
+          counts,
+          pruned: stale.map(({ destinationSlug, poiKey, name }) => ({
+            destinationSlug,
+            poiKey,
+            name,
+          })),
+          prunedFares: staleFares.map(({ hubSlug, destinationSlug, mode, reviewStatus }) => ({
+            hubSlug,
+            destinationSlug,
+            mode,
+            reviewStatus,
+          })),
+        };
+      }
+      if (opts.dryRun) throw new DryRunRollback();
+    });
+  } catch (err) {
+    if (!(err instanceof DryRunRollback)) throw err;
+  }
+  // Set in the transaction, which either finished or rolled back on purpose.
+  const { counts, pruned, prunedFares } = result!;
   // Keep the CLI's S0-5 meaning: "updated" counts every existing row matched,
   // changed or not. Tables with no rows in the files are left out, as before.
-  const out: ImportCounts = { inserted: {}, updated: {}, pruned };
+  const out: ImportCounts = { inserted: {}, updated: {}, pruned, prunedFares };
   for (const table of CATALOGUE_TABLES) {
     const c = counts[table];
     if (c.inserted + c.updated + c.unchanged === 0) continue;
