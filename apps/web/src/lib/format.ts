@@ -31,6 +31,15 @@ export function entryFeeText(entryFeeInr: number): string {
   return entryFeeInr > 0 ? `Entry ${formatInr(entryFeeInr)} per person (estimate)` : 'Free entry';
 }
 
+/** "45 min", "1 h", "7 h 5 min": a package's one-way planned travel time (#18). */
+export function formatDuration(minutes: number): string {
+  if (!(minutes > 0)) throw new RangeError(`A duration must be positive, got ${minutes}`);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min`;
+  return m === 0 ? `${h} h` : `${h} h ${m} min`;
+}
+
 export function formatDate(isoDate: string | Date): string {
   return dateFmt.format(typeof isoDate === 'string' ? new Date(isoDate) : isoDate);
 }

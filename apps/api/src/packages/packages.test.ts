@@ -305,6 +305,23 @@ describe('organiser actions', () => {
     expect(changed.opinions).toMatchObject({ works: 0, notForMe: 0 });
   });
 
+  it('each package carries its mode’s one-way minutes from the fare rows, also after Change (#18)', async () => {
+    const { tripId, organiser } = await proposedTrip();
+    const saver = PackagesResponse.parse(
+      (await getPackages(organiser.agent, tripId)).body,
+    ).packages.find((p) => p.label === 'Saver')!;
+    expect(saver.transportMode).toBe('train');
+    expect(saver.oneWayMinutes).toBe(240); // the train row's duration_minutes
+    const res = await organiser.agent
+      .patch(`/api/trips/${tripId}/packages/${saver.id}`)
+      .set(H)
+      .send({ transportMode: 'car' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const changed = PackagesResponse.parse(res.body).packages.find((p) => p.id === saver.id)!;
+    expect(changed.transportMode).toBe('car');
+    expect(changed.oneWayMinutes).toBe(180); // the car row's duration_minutes
+  });
+
   it('a member gets 403 on every organiser write; wrong states give 409', async () => {
     const { tripId, members } = await proposedTrip();
     const saver = PackagesResponse.parse(

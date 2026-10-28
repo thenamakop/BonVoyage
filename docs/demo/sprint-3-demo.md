@@ -75,13 +75,13 @@ Leave this window open for step 6.
 
 1. **Asha:** click **See the packages**. The page reads **"Packages for Chakrata"** and **"From Gurugram · 2 nights · 3 people"**, with three packages:
 
-   | Package | Line under the name | Group total | Each |
+   | Package | Lines under the name | Group total | Each |
    | --- | --- | --- | --- |
-   | Saver | Car · Budget stay · 2 rooms | ₹29,566 for the group | about ₹9,856 each |
-   | Balanced | Car · Mid stay · 2 rooms | ₹31,566 for the group | about ₹10,522 each |
-   | Comfort | Car · Premium stay · 2 rooms | ₹39,966 for the group | about ₹13,322 each |
+   | Saver | Car · Budget stay · 2 rooms<br>About 7 h 5 min each way (planned) | ₹29,566 for the group | about ₹9,856 each |
+   | Balanced | Car · Mid stay · 2 rooms<br>About 7 h 5 min each way (planned) | ₹31,566 for the group | about ₹10,522 each |
+   | Comfort | Car · Premium stay · 2 rooms<br>About 7 h 5 min each way (planned) | ₹39,966 for the group | about ₹13,322 each |
 
-   > "Chakrata can only be reached by car in our catalogue, so its three packages compare stays, not transport."
+   > "Chakrata can only be reached by car in our catalogue, so its three packages compare stays, not transport. Each package says how long the journey takes one way; the day plan uses the same time."
 2. On **Saver**, open **What it costs**. Point at the badges: **"Car, 3 people, one way ₹5,958 Curated"**, **"Budget stay, 2 rooms x 2 nights ₹10,000 Curated"**, **"Entry fees, 3 people, 6 places ₹0 Estimate"**.
    > "Every line says where its number came from: curated from a checked source, or estimated. The total is the sum of these lines, and each person's share is the total divided by three."
 3. **Meera:** click **Back to the trip**, then **See the packages**. On **Saver**, click **Works for me**. Her card reads **"1 of 3 say it works"** and **"You said it works."**
@@ -116,15 +116,15 @@ Leave this window open for step 6.
 5. The page reads **"Round 2"**: **"1. Vrindavan"**, **"2. Mathura"**, **"3. Bikaner"** (**"429 km, curated road distance"**, **"₹13,860 for the group, about ₹4,620 each, estimate, cheapest by train"**).
 6. On **Bikaner**, click **Choose**, then **Choose Bikaner**. Click **See the packages**:
 
-   | Package | Line under the name | Group total | Flag |
+   | Package | Lines under the name | Group total | Flag |
    | --- | --- | --- | --- |
-   | Saver | Train · Budget stay · 2 rooms | ₹13,995 for the group | none |
-   | Balanced | Train · Mid stay · 2 rooms | ₹19,195 for the group | ₹5,195 over the group budget |
-   | Comfort | Train · Premium stay · 2 rooms | ₹25,195 for the group | ₹11,195 over the group budget |
-   | Comfort by car | Car · Premium stay · 2 rooms | ₹36,688 for the group | ₹22,688 over the group budget |
+   | Saver | Train · Budget stay · 2 rooms<br>About 6 h 30 min each way (planned) | ₹13,995 for the group | none |
+   | Balanced | Train · Mid stay · 2 rooms<br>About 6 h 30 min each way (planned) | ₹19,195 for the group | ₹5,195 over the group budget |
+   | Comfort | Train · Premium stay · 2 rooms<br>About 6 h 30 min each way (planned) | ₹25,195 for the group | ₹11,195 over the group budget |
+   | Comfort by car | Car · Premium stay · 2 rooms<br>About 8 h 5 min each way (planned) | ₹36,688 for the group | ₹22,688 over the group budget |
 
    > "Bikaner has checked train, bus and car fares from Gurugram, so here the packages compare transport. The train is both the cheapest and the quickest, so three packages use it, and one goes by car. A package that costs more than the group can spend is flagged in words, not hidden."
-7. On **Balanced**, click **Change**. The card shows **Transport mode** (**Train**, **Bus**, **Car**), **Stay tier** (**Budget**, **Mid**, **Premium**) and **"Saving clears everyone’s opinion on this package."** Set **Transport mode** to **Bus** and click **Save changes**. Balanced now reads **"Bus · Mid stay · 2 rooms"**, **"₹22,570 for the group"**, **"about ₹7,524 each"** and **"₹8,570 over the group budget"**.
+7. On **Balanced**, click **Change**. The card shows **Transport mode** (**Train**, **Bus**, **Car**), **Stay tier** (**Budget**, **Mid**, **Premium**) and **"Saving clears everyone’s opinion on this package."** Set **Transport mode** to **Bus** and click **Save changes**. Balanced now reads **"Bus · Mid stay · 2 rooms"**, **"About 9 h 40 min each way (planned)"**, **"₹22,570 for the group"**, **"about ₹7,524 each"** and **"₹8,570 over the group budget"**.
    > "Change re-costs the package from the catalogue straight away, and the over-budget flag follows the new total."
 
 Stop here. This trip does not need a day plan.
