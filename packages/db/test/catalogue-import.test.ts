@@ -29,19 +29,28 @@ const POI_HEADER =
 const poiRow = (dest: string, key: string, name: string) =>
   `${dest},${key},${name},viewpoint,60,,,,0,31.0,77.2,,2026-10-12,draft`;
 
+const FARE_HEADER =
+  'origin_hub,destination_slug,mode,fare_per_person_inr,duration_minutes,distance_km,source_url,collected_on,review_status';
+const fareRow = (hubSlug: string, dest: string, mode: string, status = 'draft') =>
+  mode === 'car'
+    ? `${hubSlug},${dest},car,,300,420,,2026-10-12,${status}`
+    : `${hubSlug},${dest},${mode},250,330,410,,2026-10-12,${status}`;
+
 function fixtureDir(
   destExtra = '',
   {
     extraDestinations = '',
+    extraHubs = '',
     pois = [poiRow('impdest', 'p1', 'Viewpoint')],
-  }: { extraDestinations?: string; pois?: string[] } = {},
+    fares = [fareRow('imphub', 'impdest', 'car')],
+  }: { extraDestinations?: string; extraHubs?: string; pois?: string[]; fares?: string[] } = {},
 ): string {
   const dir = mkdtempSync(join(tmpdir(), 'bv-catalogue-'));
   writeFileSync(
     join(dir, 'hubs.csv'),
     `slug,name,state,lat,lng,source_url,collected_on,review_status
 imphub,Import Hub,HR,28.1,77.1,,2026-10-12,draft
-`,
+${extraHubs}`,
   );
   writeFileSync(
     join(dir, 'destinations.csv'),
@@ -49,12 +58,7 @@ imphub,Import Hub,HR,28.1,77.1,,2026-10-12,draft
 impdest,Import Dest${destExtra},HP,31.0,77.2,mountain,trekking,cold,10|11,2,500,900,1500,400,300,,2026-10-12,draft,,,draft
 ${extraDestinations}`,
   );
-  writeFileSync(
-    join(dir, 'fares.csv'),
-    `origin_hub,destination_slug,mode,fare_per_person_inr,duration_minutes,distance_km,source_url,collected_on,review_status
-imphub,impdest,car,,300,420,,2026-10-12,draft
-`,
-  );
+  writeFileSync(join(dir, 'fares.csv'), `${[FARE_HEADER, ...fares].join('\n')}\n`);
   writeFileSync(join(dir, 'pois.csv'), `${[POI_HEADER, ...pois].join('\n')}\n`);
   const rule = {
     value: 100,
@@ -257,5 +261,80 @@ describe('importCatalogue with prune', () => {
       // Cascades to the package, the day plan and its item.
       await db.delete(user).where(inArray(user.id, [userId]));
     }
+  });
+});
+
+// S4-8 batch 1 (#126): --prune also deletes fares that left fares.csv, but only
+// for a hub and a destination the files list; a dry run lists and keeps them.
+describe('importCatalogue with prune: fares', () => {
+  const OTHER_HUB = 'othhub,Other Hub,DL,28.6,77.2,,2026-10-12,draft\n';
+  const OTHER_DEST =
+    'fareother,Fare Other,HP,31.0,77.2,mountain,trekking,cold,10|11,2,500,900,1500,400,300,,2026-10-12,draft,,,draft\n';
+  const modesOf = async (hubSlug: string, destSlug: string) =>
+    (
+      await db
+        .select({ mode: fareFallback.mode })
+        .from(fareFallback)
+        .innerJoin(hub, eq(hub.id, fareFallback.originHubId))
+        .innerJoin(destination, eq(destination.id, fareFallback.destinationId))
+        .where(and(eq(hub.slug, hubSlug), eq(destination.slug, destSlug)))
+    )
+      .map((r) => r.mode)
+      // mode is a Postgres enum, ordered by declaration, so sort by name here.
+      .sort();
+  const withTrain = () =>
+    fixtureDir('', {
+      fares: [fareRow('imphub', 'impdest', 'car'), fareRow('imphub', 'impdest', 'train')],
+    });
+
+  it('a fare that left fares.csv survives without prune and is listed and deleted with it', async () => {
+    await importCatalogue(db, withTrain(), { today: TODAY });
+    const trimmed = fixtureDir();
+
+    const kept = await importCatalogue(db, trimmed, { today: TODAY });
+    expect(kept.prunedFares).toEqual([]);
+    expect(await modesOf('imphub', 'impdest')).toEqual(['car', 'train']);
+
+    const pruned = await importCatalogue(db, trimmed, { today: TODAY, prune: true });
+    expect(pruned.prunedFares).toEqual([
+      { hubSlug: 'imphub', destinationSlug: 'impdest', mode: 'train', reviewStatus: 'draft' },
+    ]);
+    expect(await modesOf('imphub', 'impdest')).toEqual(['car']);
+    // The upsert still ran in the same import.
+    expect(pruned.updated.fare_fallback).toBe(1);
+  });
+
+  it('never touches a fare whose hub or destination the files do not list', async () => {
+    await importCatalogue(
+      db,
+      fixtureDir('', {
+        extraHubs: OTHER_HUB,
+        extraDestinations: OTHER_DEST,
+        fares: [
+          fareRow('imphub', 'impdest', 'car'),
+          fareRow('othhub', 'impdest', 'bus'),
+          fareRow('imphub', 'fareother', 'bus'),
+        ],
+      }),
+      { today: TODAY },
+    );
+    // These files list neither othhub nor fareother.
+    const res = await importCatalogue(db, fixtureDir(), { today: TODAY, prune: true });
+    expect(res.prunedFares).toEqual([]);
+    expect(await modesOf('othhub', 'impdest')).toEqual(['bus']);
+    expect(await modesOf('imphub', 'fareother')).toEqual(['bus']);
+  });
+
+  it('a dry run lists the fare and deletes nothing', async () => {
+    await importCatalogue(db, withTrain(), { today: TODAY });
+    const dry = await importCatalogue(db, fixtureDir(), {
+      today: TODAY,
+      prune: true,
+      dryRun: true,
+    });
+    expect(dry.prunedFares).toEqual([
+      { hubSlug: 'imphub', destinationSlug: 'impdest', mode: 'train', reviewStatus: 'draft' },
+    ]);
+    expect(await modesOf('imphub', 'impdest')).toEqual(['car', 'train']);
   });
 });
