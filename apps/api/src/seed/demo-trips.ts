@@ -65,6 +65,9 @@ const meera = (inDays: (n: number) => string): PreferenceInput => ({
   dateEnd: inDays(34),
 });
 
+/** S3-8: what Meera submits on screen for "Long weekend in the hills" (demo step 1). */
+export const MEERA_PREFERENCE = meera;
+
 /** Hills: 3 members, a common window of 3 days, ₹48,000 from Gurugram within 450 km. */
 export const HILLS_DEMO: DemoScenario = {
   title: 'Hills shortlist demo',

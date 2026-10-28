@@ -232,11 +232,12 @@ All scripts run from the repository root.
 | | `pnpm db:generate` | Create a migration from schema changes |
 | | `pnpm db:migrate` | Apply migrations to the local database |
 | | `pnpm db:seed` | Load the catalogue, demo users and a demo trip |
+| | `pnpm db:seed --fresh-demos` | Delete the used demo trips and build them again (local or `--target preview`) |
 | | `pnpm db:reset` | Rebuild the local database from scratch |
 | | `pnpm db:studio` | Browse the database in Drizzle Studio |
 | | `pnpm db:migrate:remote` | Migrate a Neon branch from your laptop with `--target preview` or `--target production` (asks for confirmation) |
 | Catalogue | `pnpm catalogue:check` | Validate the catalogue CSVs and report verification progress |
-| | `pnpm catalogue:import` | Load the catalogue into a database (`--target local`, `preview` or `production`) |
+| | `pnpm catalogue:import` | Load the catalogue into a database (`--target local`, `preview` or `production`; `--prune` also deletes places of interest that left `pois.csv`) |
 | Deploy | `pnpm vercel-build` | Build the `.vercel/output` directory that Vercel deploys |
 | | `pnpm smoke:function` | Smoke-test the exact function bundle that CI ships |
 
@@ -290,6 +291,7 @@ The requirements follow the project's MoSCoW prioritisation: **R1 to R11** are M
 | [`docs/security/privacy.md`](docs/security/privacy.md) | What personal data is stored, who sees what, logs and deletion |
 | [`docs/prompts/`](docs/prompts) | The agent prompts each sprint was built from |
 | [`docs/sprints/`](docs/sprints) | Sprint reviews |
+| [`docs/demo/sprint-3-demo.md`](docs/demo/sprint-3-demo.md) | The ten-minute demo of the whole journey, click by click (the [Sprint 2 script](docs/demo/sprint-2-demo.md) covers the diagnostic and date clash) |
 | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | The original pre-development plan |
 
 ## Contributing

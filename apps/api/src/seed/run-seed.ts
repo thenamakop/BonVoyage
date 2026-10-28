@@ -33,6 +33,7 @@ import type { Auth } from '../auth/auth';
 import { saveMyPreference } from '../preferences/service';
 import { transitionTrip } from '../trips/transition-trip';
 import { DEMO_SCENARIOS, seedDemoTrip } from './demo-trips';
+import { deleteDemoTrips } from './fresh-demos';
 
 // S0-5 step 6: demo seed. Every step is idempotent so the seed can run again
 // without duplicating anything. Prints row counts, never the password.
@@ -54,6 +55,8 @@ export interface SeedOptions {
   auth: Auth;
   catalogueDir: string;
   password: string;
+  /** S3-8: delete every demo-organised trip first, so each is built fresh. */
+  freshDemos?: boolean;
   /** Where progress lines go; defaults to stdout (the seed is a CLI step). */
   log?: (line: string) => void;
 }
@@ -105,6 +108,7 @@ export async function runSeed({
   auth,
   catalogueDir,
   password,
+  freshDemos = false,
   log = stdout,
 }: SeedOptions): Promise<void> {
   const today = TODAY();
@@ -115,6 +119,14 @@ export async function runSeed({
     .map(([t, n]) => `${t} +${n}`)
     .join(', ');
   log(`catalogue: ${imported}`);
+
+  // a2) S3-8: --fresh-demos removes the used demo trips; the steps below
+  // rebuild them exactly as a first seed does.
+  if (freshDemos) {
+    const deleted = await deleteDemoTrips(db);
+    log(`\nFresh demos: deleted ${deleted.length} demo trip${deleted.length === 1 ? '' : 's'}:`);
+    for (const t of deleted) log(`  ${t.title} (was ${t.status})`);
+  }
 
   // b) demo users
   const userIds = new Map<string, string>();
@@ -301,7 +313,7 @@ export async function runSeed({
     .from(trip)
     .where(eq(trip.organiserId, asha))
     .orderBy(trip.createdAt);
-  log('\nDemo trips:');
+  log(freshDemos ? '\nDemo trips created:' : '\nDemo trips:');
   for (const t of trips) log(`  ${t.title}: ${t.status}`);
   log('\nDemo sign-ins (password is never printed):');
   for (const { name } of DEMO_USERS) log(`  ${demoEmail(name)}`);
