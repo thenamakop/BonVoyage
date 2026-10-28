@@ -56,10 +56,11 @@ export function availableChoices(input: PackageInput): { mode: TransportMode; ti
   return choices;
 }
 
-export function generatePackages(input: PackageInput): {
-  packages: PackageDraft[];
-  note: string | null;
-} {
+/**
+ * 0005 b's spec loop, shared by generatePackages and costablePackageCount so the
+ * two cannot drift (#123). `build` returns null for a spec that cannot be built.
+ */
+function buildSpecs<T>(input: PackageInput, build: (spec: PackageSpec) => T | null): T[] {
   const cheapest = cheapestMode(input);
   const quickest = quickestMode(input);
   const specs: PackageSpec[] = [
@@ -70,7 +71,8 @@ export function generatePackages(input: PackageInput): {
   ];
 
   const built = new Set<string>();
-  const packages: PackageDraft[] = [];
+  const labels = new Set<string>();
+  const results: T[] = [];
   for (const spec of specs) {
     // 0005 b row 3: if the Quickest (mode, mid) pair is already built, use
     // premium and relabel it Comfort.
@@ -83,18 +85,38 @@ export function generatePackages(input: PackageInput): {
     // 0005 b: labels are unique; when Quickest became Comfort, row 4 is
     // "Comfort by car".
     const labelled: PackageSpec =
-      effective.label === 'Comfort' && packages.some((pkg) => pkg.label === 'Comfort')
+      effective.label === 'Comfort' && labels.has('Comfort')
         ? { ...effective, label: 'Comfort by car' }
         : effective;
-    const draft = costPackage(input, labelled);
-    if (draft === null) continue;
+    const result = build(labelled);
+    if (result === null) continue;
     built.add(effectivePair);
-    packages.push(draft);
+    labels.add(labelled.label);
+    results.push(result);
   }
+  return results;
+}
 
-  const note =
-    packages.length < 3
-      ? `Only ${packages.length} packages could be costed for ${input.destinationName}`
-      : null;
-  return { packages, note };
+/** 0005 b: the note when fewer than 3 packages can be built; the one source of its words. */
+export function packagesNote(destinationName: string, count: number): string | null {
+  return count < 3 ? `Only ${count} packages could be costed for ${destinationName}` : null;
+}
+
+/**
+ * #123: how many packages generatePackages would build, decided from mode
+ * availability and stay-rate presence only (costPackage returns null for no
+ * other reason), so a read needs no costing and no day planning.
+ */
+export function costablePackageCount(input: PackageInput): number {
+  return buildSpecs(input, (spec) =>
+    modeAvailable(input, spec.mode) && input.stay[spec.tier] !== null ? spec : null,
+  ).length;
+}
+
+export function generatePackages(input: PackageInput): {
+  packages: PackageDraft[];
+  note: string | null;
+} {
+  const packages = buildSpecs(input, (spec) => costPackage(input, spec));
+  return { packages, note: packagesNote(input.destinationName, packages.length) };
 }

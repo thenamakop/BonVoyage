@@ -62,7 +62,12 @@ export type {
   PackageSpec,
   StayRates,
 } from './packages/cost';
-export { availableChoices, generatePackages } from './packages/generate';
+export {
+  availableChoices,
+  costablePackageCount,
+  generatePackages,
+  packagesNote,
+} from './packages/generate';
 export type { LatLng } from './geo';
 export {
   ACTION_NAMES,

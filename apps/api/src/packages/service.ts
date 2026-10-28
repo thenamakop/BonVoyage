@@ -3,9 +3,11 @@ import { costItem, packageDecision, trip, tripPackage } from '@bonvoyage/db/sche
 import type { destination as DestinationTable } from '@bonvoyage/db/schema';
 import {
   availableChoices,
+  costablePackageCount,
   costPackage,
   durationMinutes,
   generatePackages,
+  packagesNote,
   type PackageDraft,
   type PackageInput,
 } from '@bonvoyage/engine';
@@ -262,9 +264,10 @@ export async function getPackages(
     where: (d, { eq }) => eq(d.id, destinationId),
   });
   const input = dest ? await packageInput(db, tripRow, members, dest) : null;
-  // generatePackages only for the note: it counts what the destination can
-  // cost, which the stored rows (some removed or changed) do not show.
-  const note = input ? generatePackages(input).note : null;
+  // The note counts what the destination can cost, which the stored rows (some
+  // removed or changed) do not show. #123: counted from mode availability and
+  // stay rates, so a read costs and plans nothing.
+  const note = input ? packagesNote(input.destinationName, costablePackageCount(input)) : null;
   // D1, #116: below 3 contributors, an amount over a cap set by members'
   // maxima is left out. groupCapInr is min(trip budget, n x lowest maximum), so
   // it is below the trip budget exactly when members set it (capSource).
