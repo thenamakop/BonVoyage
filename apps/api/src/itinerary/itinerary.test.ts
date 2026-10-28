@@ -10,8 +10,9 @@ import {
 import { eq } from 'drizzle-orm';
 import { resolve } from 'node:path';
 import { pino } from 'pino';
-import type { LlmClient } from '@bonvoyage/integrations';
-import { FixtureLlmClient } from '@bonvoyage/integrations';
+import { randomUUID } from 'node:crypto';
+import type { LlmClient, LlmRequest, LlmResult } from '@bonvoyage/integrations';
+import { createGuardedLlmClient, FixtureLlmClient } from '@bonvoyage/integrations';
 import {
   buildFactSheet,
   durationMinutes,
@@ -51,11 +52,11 @@ const auth = createAuth({
   baseURL: { allowedHosts: ['localhost:5173', 'localhost:4000', '*.vercel.app'] },
 });
 
-const makeApp = (llm?: LlmClient, wordingTimeoutMs?: number) =>
+const makeApp = (llm?: LlmClient, wordingTimeoutMs?: number, logger = pino({ level: 'silent' })) =>
   createApp({
     db,
     pool,
-    logger: pino({ level: 'silent' }),
+    logger,
     auth,
     clock: () => new Date('2026-11-01T06:30:00Z'),
     scoringWeights: { alpha: 0.5, beta: 0.3, gamma: 0.2 },
@@ -434,6 +435,73 @@ describe('model path (FixtureLlmClient)', () => {
     const res = await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
     const view = ItineraryResponse.parse(res.body).itinerary!;
     expect(view.model).toBe('catalogue-planner');
+  });
+});
+
+// #121: deployments reach the model only through the guarded client.
+describe('model path behind the daily quota (guarded client)', () => {
+  class CountingClient extends FixtureLlmClient {
+    calls = 0;
+    override generateStructured<T>(request: LlmRequest<T>): Promise<LlmResult<T>> {
+      this.calls += 1;
+      return super.generateStructured(request);
+    }
+  }
+  const words = {
+    ItineraryWording: {
+      summary: 'A gentle three days among the hills.',
+      reasons: ['The whole group liked mountain places.'],
+      notes: [{ day: 1, index: 0, note: 'A slow start on the road.' }],
+    },
+  };
+  function plannedLogs() {
+    const lines: Record<string, unknown>[] = [];
+    const logger = pino(
+      { level: 'info' },
+      { write: (line: string) => void lines.push(JSON.parse(line) as Record<string, unknown>) },
+    );
+    return { lines, logger, planned: () => lines.filter((l) => l.msg === 'itinerary planned') };
+  }
+  const guard = (inner: CountingClient, dailyLimit: number) =>
+    createGuardedLlmClient(inner, {
+      db,
+      provider: `gemini-itin-${randomUUID().slice(0, 8)}`,
+      dailyLimit,
+      clock: () => new Date('2026-11-01T06:30:00Z'),
+    });
+
+  it('a limit of 0: the catalogue plan, no model call, and wordingFallback "quota" in the log', async () => {
+    const inner = new CountingClient(words);
+    const { logger, planned } = plannedLogs();
+    const limited = makeApp(guard(inner, 0), undefined, logger);
+    const { tripId, organiser } = await selectedTrip(limited);
+    const res = await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
+    const view = ItineraryResponse.parse(res.body).itinerary!;
+    expect(view.source).toBe('catalogue');
+    expect(view.model).toBe('catalogue-planner');
+    expect(inner.calls).toBe(0);
+    expect(planned().at(-1)).toMatchObject({ wordingFallback: 'quota', wordingCache: null });
+  });
+
+  it('within the limit: the model words the plan; the log says no fallback and a cache miss', async () => {
+    const inner = new CountingClient(words);
+    const { logger, planned } = plannedLogs();
+    const allowed = makeApp(guard(inner, 5), undefined, logger);
+    const { tripId, organiser } = await selectedTrip(allowed);
+    const res = await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
+    const view = ItineraryResponse.parse(res.body).itinerary!;
+    expect(view.source).toBe('model');
+    expect(view.model).toBe('fixture');
+    expect(inner.calls).toBe(1);
+    expect(planned().at(-1)).toMatchObject({ wordingFallback: null, wordingCache: 'miss' });
+  });
+
+  it('the template path logs no fallback and no cache', async () => {
+    const { logger, planned } = plannedLogs();
+    const templates = makeApp(undefined, undefined, logger);
+    const { tripId, organiser } = await selectedTrip(templates);
+    await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
+    expect(planned().at(-1)).toMatchObject({ wordingFallback: null, wordingCache: null });
   });
 });
 

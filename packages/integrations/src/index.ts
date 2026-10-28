@@ -1,10 +1,12 @@
 export type { CatalogueSource } from './catalogue';
-export { IntegrationError } from './errors';
-export type { LlmClient, LlmResult, LlmUsage } from './llm/types';
+export { IntegrationError, ModelOutputError } from './errors';
+export type { LlmClient, LlmRequest, LlmResult, LlmUsage } from './llm/types';
+export { createGuardedLlmClient } from './llm/guarded';
+export type { GuardedLlmOptions } from './llm/guarded';
 export { GeminiLlmClient } from './llm/gemini';
 export type { GeminiSdkLike } from './llm/gemini';
 export { FixtureLlmClient } from './llm/fixture';
 export { createLlmClient } from './llm/factory';
 export { composeItineraryWording, ItineraryWording } from './itinerary/wording';
-export type { WordingResult } from './itinerary/wording';
+export type { WordingFailure, WordingResult } from './itinerary/wording';
 export * from './routing';
