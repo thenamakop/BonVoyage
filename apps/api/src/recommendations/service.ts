@@ -27,6 +27,7 @@ import {
   type Activity,
   type ChooseDestinationInput,
   type DestinationType,
+  type DiagnosticFailure,
   type GroupProfileReady,
   type GroupProfileResponse,
   type LatestRecommendationResponse,
@@ -43,6 +44,7 @@ import type { Logger } from 'pino';
 import { AppError } from '../http/errors';
 import { loadTripForMember, requireActiveMember, requireOrganiser } from '../trips/access';
 import { draftPackages, storePackages } from '../packages/service';
+import { MIN_MEMBERS_FOR_RANGE, hidesBudgetFigures } from './budget-figures';
 import { getTrip } from '../trips/service';
 import { assertEventLegal, transitionTrip } from '../trips/transition-trip';
 import {
@@ -97,8 +99,6 @@ const WEAK_MATCH_MEAN = 0.25;
  * a member's exact limit and never shows a cap above the real one.
  */
 const GROUP_BUDGET_STEP = 500;
-/** Score ranges are shown only for groups at least this large. */
-const MIN_MEMBERS_FOR_RANGE = 3;
 
 // ---------------------------------------------------------------------------
 // Stored shapes. The run's `diagnostic` jsonb column holds the whole run
@@ -223,6 +223,7 @@ export function groupProfileView(profile: GroupProfile, source: CapSource): Grou
   const singles = [...profile.typeVotes, ...profile.activityVotes, ...profile.climateVotes].filter(
     (v) => v.count === 1,
   ).length;
+  const hide = hidesBudgetFigures(profile.memberCount);
   const minInr = ceilStep(profile.budgetBand.minInr);
   const maxInr = floorStep(profile.budgetBand.maxInr);
   return {
@@ -232,12 +233,13 @@ export function groupProfileView(profile: GroupProfile, source: CapSource): Grou
     windowFits: profile.windowFits,
     budgetBand: {
       // A band narrower than one step would round to min > max; show it closed.
-      minInr: profile.budgetBand.overlaps ? Math.min(minInr, maxInr) : minInr,
-      maxInr,
+      minInr: hide ? null : profile.budgetBand.overlaps ? Math.min(minInr, maxInr) : minInr,
+      maxInr: hide ? null : maxInr,
       overlaps: profile.budgetBand.overlaps,
     },
-    perPersonCapInr: floorStep(profile.perPersonCapInr),
-    groupCapInr: shownGroupCap(profile, source),
+    perPersonCapInr: hide ? null : floorStep(profile.perPersonCapInr),
+    // The trip budget is public, so a cap it sets is always shown.
+    groupCapInr: hide && source === 'members' ? null : shownGroupCap(profile, source),
     typeVotes: shared(profile.typeVotes),
     activityVotes: shared(profile.activityVotes),
     climateVotes: shared(profile.climateVotes),
@@ -250,9 +252,20 @@ export function groupProfileView(profile: GroupProfile, source: CapSource): Grou
  * F5 compares the estimate with the group cap. When members' maxima set the
  * cap, the exact limit is n times the lowest member maximum, so the view
  * replaces it with the rounded cap the profile shows and recomputes the gap.
+ * Below 3 contributors even the rounded cap gives a member's maximum away, and
+ * actual - relaxation would rebuild it, so all three figures are left out (D1,
+ * #116). The stored order, closest first by the real gap, is kept.
  */
-function failureView(failure: Failure, source: CapSource, shownCapInr: number): Failure {
+function failureView(
+  failure: Failure,
+  source: CapSource,
+  shownCapInr: number,
+  memberCount: number,
+): DiagnosticFailure {
   if (failure.id !== 'F5' || source === 'trip') return failure;
+  if (hidesBudgetFigures(memberCount)) {
+    return { ...failure, id: 'F5', limit: null, relaxation: null, relative: null };
+  }
   const relaxation = failure.actual - shownCapInr;
   return {
     ...failure,
@@ -275,7 +288,7 @@ function toRunView(run: RunRow, doc: RunDocument): RecommendationRun {
   const evaluationView = (e: StoredEvaluation) => ({
     ...e,
     name: doc.names[e.slug] ?? e.slug,
-    failures: e.failures.map((f) => failureView(f, source, shownCap)),
+    failures: e.failures.map((f) => failureView(f, source, shownCap, doc.groupProfile.memberCount)),
   });
   const diagnostic = doc.diagnostic
     ? {

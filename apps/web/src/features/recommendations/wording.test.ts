@@ -110,6 +110,16 @@ describe('group profile', () => {
         }),
       ),
     ).toBe('Budgets do not overlap; plans use the lowest maximum, ₹10,000 per person.');
+    // D1, #116: below 3 contributors the figures do not arrive; nothing stands in for them.
+    const hidden = { minInr: null, maxInr: null };
+    expect(
+      budgetBandText(profile({ budgetBand: { ...hidden, overlaps: true }, perPersonCapInr: null })),
+    ).toBe('Budgets overlap');
+    expect(
+      budgetBandText(
+        profile({ budgetBand: { ...hidden, overlaps: false }, perPersonCapInr: null }),
+      ),
+    ).toBe('Budgets do not overlap');
   });
 
   it('counts votes and the interests nobody shares', () => {
@@ -258,6 +268,12 @@ describe('diagnostic', () => {
         e({ id: 'F5', limit: 48000, actual: 50500, relaxation: 2500, relative: 0.05, unit: 'inr' }),
       ),
     ).toBe('Mussoorie: about ₹2,500 over the group budget');
+    // D1, #116: below 3 contributors a member-set cap's gap does not arrive.
+    expect(
+      alternativeText(
+        e({ id: 'F5', limit: null, actual: 50500, relaxation: null, relative: null, unit: 'inr' }),
+      ),
+    ).toBe('Mussoorie: over the group budget');
     expect(alternativeText({ ...near('x', 'Xville'), failures: [] })).toBe('Xville');
   });
 

@@ -9,7 +9,9 @@ import {
   diagnosticRun,
   item,
   latest,
+  nearMiss,
   profileReady,
+  profileTwoMembers,
   run,
   summaryOf,
 } from '../../../test/recommendation-fixture';
@@ -242,6 +244,47 @@ describe('diagnostic view', () => {
     expect(screen.getByText('Vrindavan: 40 km beyond the radius')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '1. Place 1' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Choose' })).not.toBeInTheDocument();
+  });
+
+  it('2 members, a member-set cap: a budget miss is named with no amount (D1, #116)', async () => {
+    const f5 = (slug: string, name: string) =>
+      nearMiss(slug, name, {
+        failures: [
+          { id: 'F5', limit: null, actual: 52000, relaxation: null, relative: null, unit: 'inr' },
+        ],
+      });
+    const misses = [f5('mathura', 'Mathura'), f5('vrindavan', 'Vrindavan')];
+    const r = diagnosticRun({
+      memberCount: 2,
+      bindingConstraint: 'F5',
+      groupProfile: profileTwoMembers(),
+      diagnostic: {
+        feasible: ['place-1'],
+        nearMisses: misses,
+        alternatives: misses,
+        suggestions: [
+          {
+            constraint: 'F5',
+            newGroupCapInr: 52000,
+            capSource: 'members',
+            newPerPersonMaxInr: 26000,
+            unlocks: ['mathura', 'vrindavan'],
+          },
+        ],
+        incomplete: [],
+      },
+    });
+    stubFetch({ trip: collecting(r), response: latest(r, [item(1)]) });
+    renderPage();
+    expect(await screen.findByText('Mathura: over the group budget')).toBeInTheDocument();
+    expect(screen.getByText('Vrindavan: over the group budget')).toBeInTheDocument();
+    expect(screen.queryByText(/about ₹[\d,]+ over the group budget/)).not.toBeInTheDocument();
+    // B: the per-person ask comes from destination costs only, so it stays.
+    expect(
+      screen.getByText('Members need to raise their maximum to ₹26,000 per person', {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
   });
 
   it('the organiser’s suggestion PATCHes the radius, then offers Mark ready again', async () => {

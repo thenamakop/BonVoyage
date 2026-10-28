@@ -14,6 +14,7 @@ import {
   item,
   latest,
   profileReady,
+  profileTwoMembers,
   run,
   summaryOf,
 } from '../../test/recommendation-fixture';
@@ -137,6 +138,47 @@ describe('dashboard: group profile', () => {
     expect(
       card.getByText('Budgets do not overlap; plans use the lowest maximum, ₹10,000 per person.'),
     ).toBeInTheDocument();
+  });
+
+  // D1, #116: two contributors see only whether budgets overlap.
+  it('2 members: says the budgets overlap, why no figures, and leaves the group cap out', async () => {
+    stubFetch({ trip: tripDetail(), profile: profileTwoMembers() });
+    renderPage();
+    const card = within(await profileCard());
+    expect(await card.findByText('Budgets overlap')).toBeInTheDocument();
+    expect(
+      card.getByText('Budget figures appear once 3 or more people have answered.'),
+    ).toBeInTheDocument();
+    expect(card.queryByText('The group can spend')).not.toBeInTheDocument();
+    expect(
+      card.queryByText('Rounded to ₹500 so nobody’s exact limit shows.'),
+    ).not.toBeInTheDocument();
+    expect(card.queryByText(/₹/)).not.toBeInTheDocument();
+  });
+
+  it('2 members with disjoint budgets: a warning in words, still no figures', async () => {
+    stubFetch({
+      trip: tripDetail(),
+      profile: profileTwoMembers({
+        budgetBand: { minInr: null, maxInr: null, overlaps: false },
+        conflicts: [{ code: 'BUDGET_BANDS_DISJOINT', blocking: false }],
+      }),
+    });
+    renderPage();
+    const card = within(await profileCard());
+    expect(await card.findByText('Budgets do not overlap')).toBeInTheDocument();
+    expect(
+      card.getByText('Budget figures appear once 3 or more people have answered.'),
+    ).toBeInTheDocument();
+    expect(card.queryByText(/₹/)).not.toBeInTheDocument();
+  });
+
+  it('2 members and a trip-set cap: the public group budget stays', async () => {
+    stubFetch({ trip: tripDetail(), profile: profileTwoMembers({ groupCapInr: 30000 }) });
+    renderPage();
+    const card = within(await profileCard());
+    expect(await card.findByText('Budgets overlap')).toBeInTheDocument();
+    expect(card.getByText('₹30,000 for the group', { exact: false })).toBeInTheDocument();
   });
 
   it('waits for two submissions before showing a profile', async () => {

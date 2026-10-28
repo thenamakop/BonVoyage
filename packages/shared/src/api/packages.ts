@@ -27,7 +27,8 @@ export const TripPackageView = z.object({
   totalInr: z.number().int(),
   perPersonInr: z.number().int(),
   overBudget: z.boolean(),
-  overByInr: z.number().int(),
+  /** D1, #116: null below MIN_MEMBERS_FOR_RANGE contributors when members' maxima set the cap. */
+  overByInr: z.number().int().nullable(),
   status: PackageStatus,
   lines: z.array(PackageCostLine),
   opinions: z.object({
