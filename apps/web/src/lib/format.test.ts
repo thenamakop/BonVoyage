@@ -86,6 +86,13 @@ describe('formatRelative and updatedAgo', () => {
     expect(formatRelative(ago(26 * 3_600_000), now)).toBe('yesterday');
   });
 
+  it('never words a time ahead of the browser clock as the future', () => {
+    expect(formatRelative(ago(30_000), now)).toBe('just now');
+    expect(formatRelative(ago(-2 * 60_000), now)).toBe('just now');
+    // Further ahead is still clock skew, not a future event: also "just now".
+    expect(formatRelative(ago(-10 * 60_000), now)).toBe('just now');
+  });
+
   it('ticks the footer in 5-second steps, then minutes', () => {
     expect(updatedAgo(now - 3_000, now)).toBe('Updated just now');
     expect(updatedAgo(now - 7_000, now)).toBe('Updated 5 seconds ago');

@@ -203,7 +203,11 @@ describe('ProfilePage delete account', () => {
     await user.type(await screen.findByLabelText(PW_LABEL), 'pw-123456789');
     await user.type(screen.getByLabelText(EMAIL_LABEL), ME.email);
     await user.click(screen.getByRole('button', { name: 'Delete my account' }));
-    expect(await screen.findByText('Cancel or finish these trips first.')).toBeInTheDocument();
+    // One alert: the trip list, not a second one repeating the server message.
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Cancel or finish these trips first:');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    expect(screen.queryByText('Cancel or finish these trips first.')).not.toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/me');
     expect(screen.getByRole('link', { name: 'Hills' })).toHaveAttribute('href', '/trips/t1');
     expect(screen.getByRole('link', { name: 'Beach' })).toHaveAttribute('href', '/trips/t2');

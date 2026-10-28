@@ -42,7 +42,9 @@ export function formatDateTime(iso: string): string {
 
 /** "just now", "5 minutes ago", "2 hours ago", "yesterday", "3 days ago". */
 export function formatRelative(iso: string, now: number): string {
-  const seconds = Math.round((Date.parse(iso) - now) / 1000);
+  // The server stamps events and its clock can run ahead of the browser's;
+  // a time "in the future" is something that just happened, never "in 2 minutes".
+  const seconds = Math.min(0, Math.round((Date.parse(iso) - now) / 1000));
   const abs = Math.abs(seconds);
   if (abs < 45) return 'just now';
   if (abs < 3600) return relative.format(Math.round(seconds / 60), 'minute');
