@@ -35,24 +35,24 @@ Limited providers reserve calls using `provider_usage(provider, day, calls)` and
 
 Each routing batch reserves one call per provider invocation, not one per destination. An adapter that makes multiple outbound requests must reserve the corresponding number of calls through the generic helper.
 
-For Sprint 4, wrap the existing Gemini client at its application boundary:
+## The model client: quota guard and cache (#121)
 
-```ts
-withQuota(db, {
-  provider: 'gemini',
-  limit: config.dailyLimit,
-  calls: 1,
-  day: indiaDate(clock()),
-}, () => llm.generateStructured(input));
-```
+Gemini is wired through `createGuardedLlmClient(inner, { db, provider: 'gemini', dailyLimit, clock, ttlDays: 30, logger })` in `src/llm/guarded.ts`, which returns an `LlmClient`. The API builds it once, in `apps/api/src/llm.ts` (`createLlmFromEnv`), for both `server.ts` and the Vercel function. With `LIVE_APIS=off`, or `on` without `GEMINI_API_KEY` or `GEMINI_MODEL` (one warning naming the missing variable), there is no client and the day plan uses the catalogue templates.
 
-Handle `QuotaExceededError` with the appropriate non-live fallback. Keep prompts limited to verified destination facts: no member names, user IDs or personal preferences. Do not hold trip-state locks while awaiting a model.
+Each `generateStructured` request:
+
+1. builds `cache_key`, the sha256 hex of provider, the inner model id, the schema name, the system text and the prompt, joined by NUL. The prompt is never stored, only this hash, so `llm_cache` holds no member data;
+2. reads `llm_cache` (migration 0003). A fresh row (`expires_at` after now) whose response passes the request's schema is returned with `fromCache: true`: no model call and no quota. A row that fails the schema is a miss, logged as `cache_corrupt`;
+3. on a miss, reserves one call with `withQuota(db, { provider, limit: GEMINI_DAILY_LIMIT, calls: 1, day: indiaDate(now) })` and calls the model. The default limit is 0, so every call is refused until `GEMINI_DAILY_LIMIT` is set; `QuotaExceededError` propagates;
+4. writes the reply with `expires_at = now + 30 days`. A failed read or write logs `cache_read_failed` or `cache_write_failed` (provider and code only) and never fails the call.
+
+`composeItineraryWording` catches every failure and returns a fixed code (`quota`, `timeout`, `invalid` or `error`), never a raw message. The itinerary service logs it as `wordingFallback`, with `wordingCache: 'hit' | 'miss' | null`, on its "itinerary planned" line. Prompts stay limited to verified destination facts (`assertNoPersonalData` runs before the client is called), and no trip-state lock is held while awaiting the model.
 
 ## API wiring and package exports
 
 `createApp` builds one routing instance per application, using curated then estimate, the injected clock/logger/database and a 30-day TTL. Tests can supply `AppDeps.routing`. The instance is passed into API dependencies; no endpoint consumes it until S2-6.
 
-The package root continues to export Gemini and the routing API. The API imports `@bonvoyage/integrations/routing`, a subpath backed by `src/routing.ts` with no Gemini import. Measuring the root import added 1,021,258 bytes to the existing function bundle; the subpath avoids bringing the SDK into production before Sprint 4.
+The package root exports Gemini, the guarded client and the routing API; `@bonvoyage/integrations/routing` is a subpath with no Gemini import. Since #121 the Vercel function imports the root to build the model client: `.vercel/output/functions/api.func/index.mjs` went from 5,678,281 to 6,317,009 bytes (+638,728, about 0.6 MB), 16.8 MB with its source map, far under Vercel's 250 MB function limit.
 
 ## Verification
 

@@ -496,6 +496,28 @@ describe('model path behind the daily quota (guarded client)', () => {
     expect(planned().at(-1)).toMatchObject({ wordingFallback: null, wordingCache: 'miss' });
   });
 
+  it('re-planning the same package after a reject is a cache hit: same notes, no model call', async () => {
+    const inner = new CountingClient(words);
+    const { logger, planned } = plannedLogs();
+    const cached = makeApp(guard(inner, 5), undefined, logger);
+    const { tripId, organiser } = await selectedTrip(cached);
+    const first = ItineraryResponse.parse(
+      (await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({})).body,
+    ).itinerary!;
+    await organiser.agent.post(`/api/trips/${tripId}/itinerary/reject`).set(H).send({});
+    const again = ItineraryResponse.parse(
+      (await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({})).body,
+    ).itinerary!;
+    expect(again.version).toBe(2);
+    expect(again.source).toBe('model');
+    expect(again.model).toBe('fixture'); // the cached reply keeps its model id
+    expect(again.days.map((d) => d.items.map((i) => i.note))).toEqual(
+      first.days.map((d) => d.items.map((i) => i.note)),
+    );
+    expect(inner.calls).toBe(1);
+    expect(planned().map((l) => l.wordingCache)).toEqual(['miss', 'hit']);
+  });
+
   it('the template path logs no fallback and no cache', async () => {
     const { logger, planned } = plannedLogs();
     const templates = makeApp(undefined, undefined, logger);

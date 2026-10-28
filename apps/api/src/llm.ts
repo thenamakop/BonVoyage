@@ -35,5 +35,7 @@ export function createLlmFromEnv(
     provider: 'gemini',
     dailyLimit: env.GEMINI_DAILY_LIMIT,
     clock,
+    ttlDays: 30,
+    logger,
   });
 }

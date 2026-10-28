@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createDb } from '@bonvoyage/db';
-import { providerUsage } from '@bonvoyage/db/schema';
+import { llmCache, providerUsage } from '@bonvoyage/db/schema';
 import { and, eq } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -114,5 +114,121 @@ describe('createGuardedLlmClient: the daily quota', () => {
       clock: () => NOV_3,
     });
     expect(guarded.modelId).toBe('fixture');
+  });
+});
+
+describe('createGuardedLlmClient: the cache (migration 0003)', () => {
+  const warnings: { provider: string; reason: string }[] = [];
+  const logger = {
+    warn: (details: { provider: string; reason: string }) => warnings.push(details),
+  };
+  const guarded = (
+    inner: CountingClient,
+    provider: string,
+    opts: { now?: () => Date; cacheDb?: typeof db } = {},
+  ) =>
+    createGuardedLlmClient(inner, {
+      db: opts.cacheDb ?? db,
+      provider,
+      dailyLimit: 5,
+      clock: opts.now ?? (() => NOV_3),
+      ttlDays: 30,
+      logger,
+    });
+  const rowsFor = async (provider: string) =>
+    db.select().from(llmCache).where(eq(llmCache.provider, provider));
+
+  it('an identical request twice: one model call, the second from the cache, quota up by 1 only', async () => {
+    const inner = new CountingClient();
+    const provider = providerName();
+    const client = guarded(inner, provider);
+    const first = await client.generateStructured(request('same trip'));
+    const second = await client.generateStructured(request('same trip'));
+    expect(first).toMatchObject({ data: { text: 'Hello' }, model: 'fixture', fromCache: false });
+    expect(second).toMatchObject({ data: { text: 'Hello' }, model: 'fixture', fromCache: true });
+    expect(inner.calls).toBe(1);
+    expect(await usedOn(provider, '2026-11-03')).toBe(1);
+    // The table holds a hash, never the prompt.
+    const [row] = await rowsFor(provider);
+    expect(row?.cacheKey).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(row)).not.toContain('same trip');
+  });
+
+  it('a different request misses', async () => {
+    const inner = new CountingClient();
+    const client = guarded(inner, providerName());
+    await client.generateStructured(request('trip one'));
+    const other = await client.generateStructured(request('trip two'));
+    expect(other.fromCache).toBe(false);
+    expect(inner.calls).toBe(2);
+  });
+
+  it('an expired row is a miss', async () => {
+    const inner = new CountingClient();
+    const provider = providerName();
+    let now = NOV_3;
+    const client = guarded(inner, provider, { now: () => now });
+    await client.generateStructured(request('old trip'));
+    now = new Date(NOV_3.getTime() + 31 * 86_400_000);
+    const later = await client.generateStructured(request('old trip'));
+    expect(later.fromCache).toBe(false);
+    expect(inner.calls).toBe(2);
+  });
+
+  it('a stored reply that fails the schema is a miss, logged with a fixed code', async () => {
+    const inner = new CountingClient();
+    const provider = providerName();
+    const client = guarded(inner, provider);
+    await client.generateStructured(request('corrupt'));
+    await db
+      .update(llmCache)
+      .set({ response: { nope: 1 } })
+      .where(eq(llmCache.provider, provider));
+    const again = await client.generateStructured(request('corrupt'));
+    expect(again).toMatchObject({ data: { text: 'Hello' }, fromCache: false });
+    expect(inner.calls).toBe(2);
+    expect(warnings).toContainEqual({ provider, reason: 'cache_corrupt' });
+  });
+
+  it('a cache write that fails still returns the reply, logged with a fixed code', async () => {
+    const inner = new CountingClient();
+    const provider = providerName();
+    // The quota still uses the real database (inside its own transaction);
+    // only a direct insert, the cache write, throws.
+    const failingInsert = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop === 'insert') {
+          return () => {
+            throw new Error('insert refused');
+          };
+        }
+        return Reflect.get(target, prop, receiver) as unknown;
+      },
+    });
+    const client = guarded(inner, provider, { cacheDb: failingInsert });
+    const result = await client.generateStructured(request('no cache'));
+    expect(result).toMatchObject({ data: { text: 'Hello' }, fromCache: false });
+    expect(await rowsFor(provider)).toEqual([]);
+    expect(warnings).toContainEqual({ provider, reason: 'cache_write_failed' });
+  });
+
+  it('a cache read that fails falls through to the model', async () => {
+    const inner = new CountingClient();
+    const provider = providerName();
+    const failingSelect = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop === 'select') {
+          return () => {
+            throw new Error('select refused');
+          };
+        }
+        return Reflect.get(target, prop, receiver) as unknown;
+      },
+    });
+    const client = guarded(inner, provider, { cacheDb: failingSelect });
+    const result = await client.generateStructured(request('unreadable'));
+    expect(result).toMatchObject({ data: { text: 'Hello' }, fromCache: false });
+    expect(inner.calls).toBe(1);
+    expect(warnings).toContainEqual({ provider, reason: 'cache_read_failed' });
   });
 });

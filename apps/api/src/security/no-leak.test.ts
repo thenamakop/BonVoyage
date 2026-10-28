@@ -1,5 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import { createDb } from '@bonvoyage/db';
-import { fareFallback, poi } from '@bonvoyage/db/schema';
+import { fareFallback, llmCache, poi } from '@bonvoyage/db/schema';
+import { createGuardedLlmClient, FixtureLlmClient } from '@bonvoyage/integrations';
+import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import {
   GroupProfileResponse,
@@ -643,9 +646,10 @@ describe('two-member groups: no budget figure gives the other member away (D1, #
 
 // S3-6: the day plan holds no member data — no names, emails, ids or budgets.
 describe('itinerary responses hold no member data', () => {
-  it('the itinerary body and the fixture prompt carry nothing personal', async () => {
-    const asha = await createTestUser(app, 'LeakIt Asha');
-    const rohan = await createTestUser(app, 'LeakIt Rohan');
+  /** Two members plan a day plan on `appUnderTest`; returns the POST and the member GET. */
+  async function planLeakTrip(appUnderTest: Parameters<typeof createTestUser>[0]) {
+    const asha = await createTestUser(appUnderTest, 'LeakIt Asha');
+    const rohan = await createTestUser(appUnderTest, 'LeakIt Rohan');
     const hub = await ensureHubAt(db, 'leakit-hub', 33, 85);
     const destId = await ensureDestination(db, { slug: 'leakit-dest', lat: 33.2, lng: 85 });
     for (const [id, fare] of [[destId, 400]] as const) {
@@ -730,6 +734,11 @@ describe('itinerary responses hold no member data', () => {
     expect(plan.status, JSON.stringify(plan.body)).toBe(200);
     const get = await rohan.agent.get(`/api/trips/${trip.id}/itinerary`).set(H);
     expect(get.status).toBe(200);
+    return { asha, rohan, plan, get };
+  }
+
+  it('the itinerary body and the fixture prompt carry nothing personal', async () => {
+    const { asha, rohan, plan, get } = await planLeakTrip(app);
     const view = ItineraryResponse.parse(get.body).itinerary!;
     expect(view.days.length).toBeGreaterThan(0);
     for (const res of [plan, get]) {
@@ -740,5 +749,47 @@ describe('itinerary responses hold no member data', () => {
       expect(res.text).not.toContain('@');
       expect(res.text).not.toContain('40000');
     }
+  });
+
+  // #121: the model cache stores a hash of the request, never the prompt, so
+  // no row can hold a member's name, email, id or budget.
+  it('llm_cache rows written while planning carry nothing personal', async () => {
+    const provider = `gemini-leak-${randomUUID().slice(0, 8)}`;
+    const llm = createGuardedLlmClient(
+      new FixtureLlmClient({
+        ItineraryWording: {
+          summary: 'Two easy days.',
+          reasons: ['It fits the group.'],
+          notes: [{ day: 1, index: 0, note: 'An unhurried start.' }],
+        },
+      }),
+      { db, provider, dailyLimit: 5, clock: () => new Date('2026-11-01T06:30:00Z') },
+    );
+    const withModel = createApp({
+      db,
+      pool,
+      logger: pino({ level: 'silent' }),
+      auth,
+      clock: () => new Date('2026-11-01T06:30:00Z'),
+      llm,
+    });
+    const { asha, rohan, plan } = await planLeakTrip(withModel);
+    expect(ItineraryResponse.parse(plan.body).itinerary?.source).toBe('model');
+    const rows = await db.select().from(llmCache).where(eq(llmCache.provider, provider));
+    expect(rows).toHaveLength(1);
+    const text = JSON.stringify(rows);
+    for (const secret of [
+      'LeakIt Asha',
+      'LeakIt Rohan',
+      asha.userId,
+      rohan.userId,
+      asha.email,
+      rohan.email,
+      '10000',
+      '40000',
+    ]) {
+      expect(text, secret).not.toContain(secret);
+    }
+    expect(text).not.toContain('@');
   });
 });
