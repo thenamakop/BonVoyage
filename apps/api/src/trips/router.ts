@@ -4,6 +4,7 @@ import type { Routing } from '@bonvoyage/integrations/routing';
 import type { LlmClient } from '@bonvoyage/integrations';
 import {
   ChangePackageInput,
+  ModifyItineraryInput,
   ChooseDestinationInput,
   CloseSubmissionsInput,
   CreateTripInput,
@@ -32,6 +33,8 @@ import {
 } from '../recommendations/service';
 import {
   acceptItinerary,
+  itineraryAlternatives,
+  modifyItinerary,
   getItinerary,
   planItinerary,
   rejectItinerary,
@@ -296,6 +299,23 @@ export function createRouter({
     const tripId = parseTripId(req.params.id);
     const { userId } = getSessionUser(res);
     res.json(await rejectItinerary({ db, logger: req.log, clock }, tripId, userId));
+  });
+
+  const ItemParams = z.object({ id: z.string(), itemId: z.string().min(1) });
+  router.get(
+    '/trips/:id/itinerary/items/:itemId/alternatives',
+    requireSession(auth),
+    async (req, res) => {
+      const { id, itemId } = parseOrThrow(ItemParams, req.params);
+      const { userId } = getSessionUser(res);
+      res.json(await itineraryAlternatives({ db, logger: req.log, clock }, id, itemId, userId));
+    },
+  );
+  router.patch('/trips/:id/itinerary/items/:itemId', requireSession(auth), async (req, res) => {
+    const { id, itemId } = parseOrThrow(ItemParams, req.params);
+    const change = parseOrThrow(ModifyItineraryInput, req.body);
+    const { userId } = getSessionUser(res);
+    res.json(await modifyItinerary({ db, logger: req.log, clock }, id, itemId, userId, change));
   });
 
   return router;

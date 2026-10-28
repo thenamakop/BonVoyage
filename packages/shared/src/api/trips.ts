@@ -113,6 +113,7 @@ export const TripActionName = z.enum([
   'viewItinerary',
   'acceptItinerary',
   'rejectItinerary',
+  'modifyItinerary',
 ]);
 export type TripActionName = z.infer<typeof TripActionName>;
 
@@ -198,9 +199,7 @@ export const TRIP_STATUS_LABELS: Record<TripStatusType, { label: string; explana
   },
   packages_proposed: {
     label: 'Packages proposed',
-    // T9 reaches this state before Sprint 3 builds packages (R8); restore the
-    // "costed packages are ready" wording when they ship.
-    explanation: 'The destination is chosen; packages come next.',
+    explanation: 'Costed packages are ready for the group to compare.',
   },
   package_selected: {
     label: 'Package selected',
@@ -212,7 +211,7 @@ export const TRIP_STATUS_LABELS: Record<TripStatusType, { label: string; explana
   },
   finalised: {
     label: 'Finalised',
-    explanation: 'The itinerary is accepted and the trip is booked in.',
+    explanation: 'The day plan is accepted; the trip is ready to go.',
   },
   in_progress: {
     label: 'In progress',
@@ -264,7 +263,7 @@ export const EVENT_SUMMARIES: Record<TripEventName, (actor: string, detail?: str
   itineraryRejected: (a) => `${a} asked for a new day plan`,
   itineraryAccepted: (a) => `${a} accepted the day plan; the trip is finalised`,
   packageModified: (a) => `${a} changed the package`,
-  itineraryModified: (a) => `${a} changed the itinerary`,
+  itineraryModified: (a) => `${a} adjusted the day plan`,
   cancelTrip: (a) => `${a} cancelled the trip`,
   tripStarted: (a) => `${a} marked the trip as started`,
   tripEnded: (a) => `${a} marked the trip as finished`,

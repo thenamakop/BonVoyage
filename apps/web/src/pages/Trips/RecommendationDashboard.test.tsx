@@ -290,6 +290,8 @@ describe('dashboard: recommendations', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'See the packages' })).toBeInTheDocument();
     expect(screen.getByText('Rishikesh, Uttarakhand')).toBeInTheDocument();
-    expect(screen.getByText('The destination is chosen; packages come next.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Costed packages are ready for the group to compare.'),
+    ).toBeInTheDocument();
   });
 });

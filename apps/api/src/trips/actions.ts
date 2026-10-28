@@ -47,7 +47,10 @@ export function tripActions({
   // Removed members can read the trip but not act (conventions rule 4); reading
   // the recommendations is not acting.
   if (myStatus === 'excluded') {
-    return hasRecommendation ? [{ action: 'viewRecommendations', enabled: true }] : [];
+    return [
+      ...(hasRecommendation ? [{ action: 'viewRecommendations' as const, enabled: true }] : []),
+      ...(hasItinerary ? [{ action: 'viewItinerary' as const, enabled: true }] : []),
+    ];
   }
 
   const legal = new Set(legalEvents(status));
@@ -115,6 +118,7 @@ export function tripActions({
   if (organiser && status === 'itinerary_proposed') {
     actions.push({ action: 'acceptItinerary', enabled: true });
     actions.push({ action: 'rejectItinerary', enabled: true });
+    actions.push({ action: 'modifyItinerary', enabled: true });
   }
 
   if (organiser && PLANNING.includes(status) && legal.has('cancelTrip')) {

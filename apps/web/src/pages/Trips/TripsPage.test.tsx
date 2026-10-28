@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -70,6 +70,36 @@ describe('TripsPage', () => {
     expect(screen.getByText('Organiser')).toBeInTheDocument();
     expect(screen.getByText(/₹30,000 for the group/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Beach run/ })).toHaveAttribute('href', '/trips/t2');
+  });
+
+  it('separates planning from every past and finalised status', async () => {
+    stubFetch({
+      trips: [
+        ...TRIPS.trips,
+        ...['finalised', 'in_progress', 'completed', 'cancelled'].map((status) => ({
+          ...TRIPS.trips[0],
+          id: status,
+          title: status,
+          status,
+        })),
+      ],
+    });
+    renderPage();
+    const planning = await screen.findByRole('region', { name: 'Planning' });
+    expect(within(planning).getByText('Long weekend in the hills')).toBeInTheDocument();
+    const history = screen.getByRole('region', { name: 'Past and finalised trips' });
+    for (const status of ['finalised', 'in_progress', 'completed', 'cancelled']) {
+      expect(within(history).getByRole('link', { name: new RegExp(status) })).toHaveAttribute(
+        'href',
+        `/trips/${status}`,
+      );
+    }
+  });
+
+  it('shows an empty state for history independently of planning', async () => {
+    stubFetch(TRIPS);
+    renderPage();
+    expect(await screen.findByText('No past or finalised trips yet.')).toBeInTheDocument();
   });
 
   it('shows an error alert with Retry when loading fails', async () => {

@@ -11,6 +11,8 @@ import {
 describe('dashboard wording', () => {
   it('the step line counts the seven planning statuses', () => {
     expect(stepLine('draft')).toBe('Step 1 of 7: Draft');
+    expect(stepLine('package_selected')).toBe('Step 6 of 7: Package selected');
+    expect(stepLine('finalised')).toBe('Step 7 of 7: Finalised');
     expect(stepLine('collecting_preferences')).toBe('Step 2 of 7: Collecting preferences');
     expect(stepLine('cancelled')).toBe('This trip was cancelled, so planning has stopped.');
     expect(stepLine('completed')).toBe('This trip is over.');

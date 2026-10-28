@@ -4,6 +4,8 @@ import { ButtonLink } from '../../../components/ui/Button';
 import { useLatestRecommendation } from '../../../features/recommendations/api';
 import { lastRoundText } from '../../../features/recommendations/wording';
 import { packageChosenLine, PACKAGES_NEXT_STEP, waitingFor } from './wording';
+import { PlanDays } from '../itinerary/PlanDays';
+import { FinalisedTrip } from '../itinerary/FinalisedTrip';
 
 // The next-step callout, worded for this viewer (wireframe 06).
 
@@ -50,6 +52,9 @@ export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: strin
     return (
       <Callout text="You were removed from this trip, so you can only view it.">
         {view ? shortlistLink('See the recommendations') : null}
+        {trip.availableActions.find((a) => a.action === 'viewItinerary')?.enabled ? (
+          <ButtonLink to={`/trips/${trip.id}/itinerary`}>See the day plan</ButtonLink>
+        ) : null}
       </Callout>
     );
   }
@@ -115,7 +120,31 @@ export function NextStep({ trip, myUserId }: { trip: TripDetail; myUserId: strin
     );
   }
   if (trip.status === 'package_selected' && trip.selectedPackage) {
-    return <Callout text={packageChosenLine(trip.selectedPackage)} />;
+    const action = trip.availableActions.find((a) => a.action === 'planDays');
+    return (
+      <Callout text={packageChosenLine(trip.selectedPackage)}>
+        {action ? (
+          <PlanDays id={trip.id} action={action} />
+        ) : (
+          <p>{organiserName} will plan the days next.</p>
+        )}
+      </Callout>
+    );
+  }
+  const viewPlan = trip.availableActions.find((a) => a.action === 'viewItinerary');
+  if ((trip.status === 'itinerary_proposed' || trip.status === 'finalised') && viewPlan) {
+    return (
+      <Callout
+        text={trip.status === 'finalised' ? 'Planning is complete.' : 'Review the day plan.'}
+      >
+        {trip.status === 'finalised' ? <FinalisedTrip trip={trip} /> : null}
+        {viewPlan.enabled ? (
+          <ButtonLink to={`/trips/${trip.id}/itinerary`}>See the day plan</ButtonLink>
+        ) : (
+          <p>{viewPlan.reason}</p>
+        )}
+      </Callout>
+    );
   }
   if (trip.status === 'cancelled') return <Callout text="This trip was cancelled." />;
   return null;
