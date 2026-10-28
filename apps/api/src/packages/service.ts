@@ -215,7 +215,11 @@ function toView(
   lines: { category: string; label: string; amountInr: number; provenance: string }[],
   votes: { works: number; notForMe: number; members: number },
   mine: 'accept' | 'reject' | null,
+  groupCapInr: number | null,
 ): TripPackageView {
+  // From the stored total, not a fresh default package: after a change (I3)
+  // the row's mode and tier differ from what generatePackages would build.
+  const overByInr = groupCapInr === null ? 0 : Math.max(0, pkg.totalInr - groupCapInr);
   return {
     id: pkg.id,
     label: pkg.label,
@@ -226,8 +230,8 @@ function toView(
     endDate: pkg.endDate,
     totalInr: pkg.totalInr,
     perPersonInr: pkg.perPersonInr,
-    overBudget: pkg.overBudget,
-    overByInr: 0, // replaced by the matching draft's overByInr below
+    overBudget: groupCapInr === null ? pkg.overBudget : overByInr > 0,
+    overByInr,
     status: pkg.status,
     lines: lines as TripPackageView['lines'],
     opinions: votes,
@@ -251,15 +255,15 @@ export async function getPackages(
     where: (d, { eq }) => eq(d.id, destinationId),
   });
   const input = dest ? await packageInput(db, tripRow, members, dest) : null;
-  const { packages: drafts, note } = input ? generatePackages(input) : { packages: [], note: null };
-  const byId = new Map(drafts.map((d) => [d.label, d]));
+  // generatePackages only for the note: it counts what the destination can
+  // cost, which the stored rows (some removed or changed) do not show.
+  const note = input ? generatePackages(input).note : null;
 
   const views: TripPackageView[] = all
     .map((pkg) => {
       const pkgLines = lines.filter((l) => l.cost_item.packageId === pkg.id);
       const votes = decisions.filter((d) => d.package_decision.packageId === pkg.id);
-      const draft = byId.get(pkg.label);
-      const view = toView(
+      return toView(
         pkg,
         pkgLines.map((l) => l.cost_item),
         {
@@ -269,9 +273,8 @@ export async function getPackages(
         },
         (votes.find((v) => v.package_decision.userId === viewerId)?.package_decision.decision as
           'accept' | 'reject' | undefined) ?? null,
+        input?.groupCapInr ?? null,
       );
-      view.overByInr = draft?.overByInr ?? 0;
-      return view;
     })
     .sort((a, b) => LABEL_ORDER.indexOf(a.label) - LABEL_ORDER.indexOf(b.label));
 
