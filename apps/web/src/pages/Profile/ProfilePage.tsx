@@ -326,7 +326,10 @@ function DeleteAccount() {
         onError: (err) => {
           if (err instanceof ApiError && err.code === 'ACCOUNT_HAS_ACTIVE_TRIPS') {
             const details = err.details as { trips?: ActiveTrip[] } | undefined;
-            setBlocking(details?.trips ?? []);
+            const trips = details?.trips ?? [];
+            setBlocking(trips);
+            // The trip-list alert already says this; the plain message would repeat it.
+            if (trips.length > 0) return;
           }
           if (err instanceof ApiError && err.fields) setFields(err.fields);
           setMessage(errorText(err));
