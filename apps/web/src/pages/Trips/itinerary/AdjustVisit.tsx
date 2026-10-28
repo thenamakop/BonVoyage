@@ -4,7 +4,7 @@ import { POI_CATEGORY_LABELS } from '@bonvoyage/shared';
 import { Alert } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
 import { useAlternatives, useModifyItinerary } from '../../../features/itinerary/api';
-import { formatInr } from '../../../lib/format';
+import { entryFeeText } from '../../../lib/format';
 
 export function AdjustVisit({
   tripId,
@@ -54,8 +54,8 @@ export function AdjustVisit({
                 )
               }
             >
-              {place.name} · {POI_CATEGORY_LABELS[place.category]} · Entry{' '}
-              {formatInr(place.entryFeeInr)} per person (estimate)
+              {place.name} · {POI_CATEGORY_LABELS[place.category]} ·{' '}
+              {entryFeeText(place.entryFeeInr)}
             </Button>
           ))}
         </div>

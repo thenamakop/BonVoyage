@@ -6,7 +6,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button, ButtonLink } from '../../../components/ui/Button';
 import { useDecideItinerary, useItinerary } from '../../../features/itinerary/api';
 import { useTrip } from '../../../features/trips/api';
-import { formatDate, formatInr } from '../../../lib/format';
+import { entryFeeText, formatDate } from '../../../lib/format';
 import { useDocumentTitle } from '../../../lib/use-document-title';
 import { AdjustVisit } from './AdjustVisit';
 
@@ -108,9 +108,7 @@ export function ItineraryPage() {
                 {item.place ? (
                   <p>
                     {item.place.name} · {POI_CATEGORY_LABELS[item.place.category]} ·{' '}
-                    {item.place.entryFeeInr > 0
-                      ? `Entry ${formatInr(item.place.entryFeeInr)} per person (estimate)`
-                      : 'Free entry'}
+                    {entryFeeText(item.place.entryFeeInr)}
                   </p>
                 ) : null}
                 <p className="text-sm text-slate-600">{item.note}</p>

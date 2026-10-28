@@ -26,6 +26,11 @@ export function formatInr(amount: number): string {
   return inr.format(amount);
 }
 
+/** One wording for a place's fee on the day plan and in the Swap list. */
+export function entryFeeText(entryFeeInr: number): string {
+  return entryFeeInr > 0 ? `Entry ${formatInr(entryFeeInr)} per person (estimate)` : 'Free entry';
+}
+
 export function formatDate(isoDate: string | Date): string {
   return dateFmt.format(typeof isoDate === 'string' ? new Date(isoDate) : isoDate);
 }
