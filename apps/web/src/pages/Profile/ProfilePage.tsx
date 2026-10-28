@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -15,7 +16,7 @@ import { RadioGroup } from '../../components/ui/RadioGroup';
 import { Select } from '../../components/ui/Select';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { TextField } from '../../components/ui/TextField';
-import { useMe } from '../../features/auth/api';
+import { clearSession, useMe } from '../../features/auth/api';
 import {
   useAddPastTrip,
   useDeleteAccount,
@@ -299,6 +300,7 @@ export function ProfilePage() {
 function DeleteAccount() {
   const me = useMe();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const remove = useDeleteAccount();
   const [password, setPassword] = useState('');
   const [confirmEmail, setConfirmEmail] = useState('');
@@ -315,6 +317,10 @@ function DeleteAccount() {
       { password, confirmEmail },
       {
         onSuccess: () => {
+          // The session is gone on the server; drop it from the client as
+          // sign-out does, or the cached `me` keeps the user "signed in" and
+          // the home page redirects to an empty trip list.
+          clearSession(queryClient);
           void navigate('/', { state: { notice: 'Your account has been deleted.' } });
         },
         onError: (err) => {

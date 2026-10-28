@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, useLocation } from 'react-router';
+import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LandingPage } from '../Landing/LandingPage';
 import { ProfilePage } from './ProfilePage';
 
 // S1-4: the /me profile page.
@@ -12,10 +13,23 @@ const ME = { id: 'u4', name: 'Kabir', email: 'kabir@test.bv', homeHubSlug: null,
 const fetchMock = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>();
 
 function stubFetch(profile: Record<string, unknown>, deleteReply?: () => Response) {
+  // After a successful DELETE the old session cookie gets 401, as on the server.
+  let deleted = false;
   fetchMock.mockImplementation((url, init) => {
-    if (url === '/api/me') return Promise.resolve(Response.json(ME));
+    if (url === '/api/me') {
+      return Promise.resolve(
+        deleted
+          ? Response.json(
+              { error: { code: 'UNAUTHENTICATED', message: 'Sign in.' } },
+              { status: 401 },
+            )
+          : Response.json(ME),
+      );
+    }
     if (url === '/api/me/profile' && init?.method === 'DELETE') {
-      return Promise.resolve(deleteReply ? deleteReply() : Response.json({ deleted: true }));
+      const reply = deleteReply ? deleteReply() : Response.json({ deleted: true });
+      deleted = reply.ok;
+      return Promise.resolve(reply);
     }
     if (url === '/api/me/profile') return Promise.resolve(Response.json(profile));
     if (url === '/api/hubs') {
@@ -44,17 +58,13 @@ function stubFetch(profile: Record<string, unknown>, deleteReply?: () => Respons
   });
 }
 
-function HomeNotice() {
-  const location = useLocation() as { state: { notice?: string } | null };
-  return <p>{location.state?.notice ?? 'home'}</p>;
-}
-
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const router = createMemoryRouter(
     [
       { path: '/me', element: <ProfilePage /> },
-      { path: '/', element: <HomeNotice /> },
+      { path: '/', element: <LandingPage /> },
+      { path: '/trips', element: <p>trips page</p> },
     ],
     { initialEntries: ['/me'] },
   );
@@ -63,6 +73,7 @@ function renderPage() {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+  return { queryClient, router };
 }
 
 const PROFILE = { homeHubSlug: null, pastTrips: [] };
@@ -145,14 +156,20 @@ describe('ProfilePage delete account', () => {
     expect(button).toBeEnabled();
   });
 
-  it('sends DELETE /api/me/profile and goes home with the goodbye line', async () => {
+  it('sends DELETE /api/me/profile, signs out in the client and goes home with the goodbye line', async () => {
     stubFetch(PROFILE);
     const user = userEvent.setup();
-    renderPage();
+    const { queryClient, router } = renderPage();
     await user.type(await screen.findByLabelText(PW_LABEL), 'pw-123456789');
     await user.type(screen.getByLabelText(EMAIL_LABEL), ME.email);
     await user.click(screen.getByRole('button', { name: 'Delete my account' }));
-    expect(await screen.findByText('Your account has been deleted.')).toBeInTheDocument();
+    expect(await screen.findByRole('status')).toHaveTextContent('Your account has been deleted.');
+    expect(router.state.location.pathname).toBe('/');
+    expect(screen.getByRole('heading', { name: 'Group trips, decided together.' })).toBeVisible();
+    // No cached user survives: `me` was cleared and the refetch says signed out.
+    await waitFor(() => expect(queryClient.getQueryData(['me'])).toBeNull());
+    expect(queryClient.getQueryData(['me', 'profile'])).toBeUndefined();
+    expect(screen.queryByText('trips page')).not.toBeInTheDocument();
     const call = fetchMock.mock.calls.find(
       (c) => c[0] === '/api/me/profile' && c[1]?.method === 'DELETE',
     );
@@ -181,11 +198,12 @@ describe('ProfilePage delete account', () => {
       ),
     );
     const user = userEvent.setup();
-    renderPage();
+    const { router } = renderPage();
     await user.type(await screen.findByLabelText(PW_LABEL), 'pw-123456789');
     await user.type(screen.getByLabelText(EMAIL_LABEL), ME.email);
     await user.click(screen.getByRole('button', { name: 'Delete my account' }));
     expect(await screen.findByText('Cancel or finish these trips first.')).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/me');
     expect(screen.getByRole('link', { name: 'Hills' })).toHaveAttribute('href', '/trips/t1');
     expect(screen.getByRole('link', { name: 'Beach' })).toHaveAttribute('href', '/trips/t2');
   });
