@@ -10,7 +10,8 @@ import {
   type PreferenceInput,
 } from '@bonvoyage/shared';
 import type request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import * as engine from '@bonvoyage/engine';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import {
@@ -23,6 +24,17 @@ import {
 
 // S3-3: migration 0002 and the packages API (T9 to T11, I3, I4), against a
 // small fixture catalogue around a hub far from the real one.
+
+// #123: the engine exports the service imports are wrapped, so a test can
+// count the calls a request makes; they still run the real code.
+vi.mock('@bonvoyage/engine', async (importOriginal) => {
+  const actual = await importOriginal<typeof engine>();
+  return {
+    ...actual,
+    generatePackages: vi.fn(actual.generatePackages),
+    costPackage: vi.fn(actual.costPackage),
+  };
+});
 
 const { db, pool } = createDb(process.env.DATABASE_URL ?? '');
 const auth = createAuth({
@@ -533,5 +545,23 @@ describe('speed on the real catalogue (R15, P10)', () => {
 S3-3 destination choice: ${ms} ms (${slug})
 `);
     expect(ms).toBeLessThan(1000);
+  });
+});
+
+// #123: reading packages builds the note from a count, never by costing or
+// planning packages again.
+describe('GET /api/trips/:id/packages costs nothing', () => {
+  it('calls neither generatePackages nor costPackage, and the note is unchanged', async () => {
+    vi.mocked(engine.generatePackages).mockClear();
+    const { tripId, organiser } = await proposedTrip();
+    // The spies do see the service: choosing a destination built the packages (T9).
+    expect(engine.generatePackages).toHaveBeenCalledTimes(1);
+    vi.mocked(engine.generatePackages).mockClear();
+    vi.mocked(engine.costPackage).mockClear();
+    const res = await getPackages(organiser.agent, tripId);
+    expect(res.status).toBe(200);
+    expect(PackagesResponse.parse(res.body).packages.length).toBeGreaterThanOrEqual(3);
+    expect(engine.generatePackages).not.toHaveBeenCalled();
+    expect(engine.costPackage).not.toHaveBeenCalled();
   });
 });

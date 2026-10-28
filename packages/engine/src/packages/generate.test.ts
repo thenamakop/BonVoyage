@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { goldenInput } from './cost.test';
-import { availableChoices, generatePackages } from './generate';
+import { availableChoices, costablePackageCount, generatePackages, packagesNote } from './generate';
 
 describe('generatePackages order', () => {
   it('builds Saver, Balanced, Quickest and Comfort in the 0005 b order', () => {
@@ -154,5 +154,50 @@ describe('availableChoices', () => {
       { mode: 'car', tier: 'budget' },
       { mode: 'car', tier: 'premium' },
     ]);
+  });
+});
+
+// #123: the read path counts packages without costing or planning them.
+describe('costablePackageCount and packagesNote', () => {
+  const fixtures = () => [
+    goldenInput(),
+    goldenInput({ stay: { budget: 900, mid: null, premium: 3000 } }),
+    goldenInput({ stay: { budget: null, mid: null, premium: null } }),
+    goldenInput({ modes: { bus: null, train: null, car: goldenInput().modes.car } }),
+    goldenInput({
+      modes: { bus: null, train: null, car: goldenInput().modes.car },
+      stay: { budget: 900, mid: null, premium: null },
+    }),
+    (() => {
+      // Quickest becomes Comfort, then car premium becomes "Comfort by car".
+      const input = goldenInput();
+      input.modes.car = { ...input.modes.car, durationMinutes: 500 };
+      return input;
+    })(),
+  ];
+
+  it('equals the number of packages generatePackages builds, for every fixture', () => {
+    for (const input of fixtures()) {
+      expect(costablePackageCount(input)).toBe(generatePackages(input).packages.length);
+    }
+  });
+
+  it('counts 4 with the relabels, 2 with a missing mid rate and 0 with no rates at all', () => {
+    const [golden, noMid, noRates, , , relabelled] = fixtures();
+    expect(costablePackageCount(golden!)).toBe(4);
+    expect(costablePackageCount(noMid!)).toBe(2);
+    expect(costablePackageCount(noRates!)).toBe(0);
+    expect(costablePackageCount(relabelled!)).toBe(4);
+  });
+
+  it('words the note only below three, as generatePackages does', () => {
+    expect(packagesNote('Rishikesh', 0)).toBe('Only 0 packages could be costed for Rishikesh');
+    expect(packagesNote('Rishikesh', 2)).toBe('Only 2 packages could be costed for Rishikesh');
+    expect(packagesNote('Rishikesh', 3)).toBeNull();
+    for (const input of fixtures()) {
+      const { note, packages } = generatePackages(input);
+      expect(packagesNote(input.destinationName, costablePackageCount(input))).toBe(note);
+      expect(packages.length).toBe(costablePackageCount(input));
+    }
   });
 });
