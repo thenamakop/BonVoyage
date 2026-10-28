@@ -115,6 +115,33 @@ it('renders API dates, kinds, fees, planned legs, notes and verification badges'
   expect(screen.getByText('Verified')).toBeInTheDocument();
   expect(screen.getByText('Not verified: Details not verified yet.')).toBeInTheDocument();
 });
+
+it('shows "Free entry" for a zero-fee place and keeps its note visible', async () => {
+  const free: ItineraryView = {
+    ...view,
+    days: [
+      {
+        ...view.days[0]!,
+        items: [
+          {
+            ...view.days[0]!.items[1]!,
+            id: 'poi-free',
+            place: {
+              key: 'chakrata/park',
+              name: 'Deoban Park',
+              category: 'nature',
+              entryFeeInr: 0,
+            },
+            note: 'Visit Deoban Park (nature).',
+          },
+        ],
+      },
+    ],
+  };
+  setup(proposed(), free);
+  expect(await screen.findByText('Deoban Park · Nature · Free entry')).toBeInTheDocument();
+  expect(screen.getByText('Visit Deoban Park (nature).')).toBeInTheDocument();
+});
 it.each(['member', 'excluded'] as const)(
   '%s can read but sees no decision or adjustment buttons',
   async (role) => {

@@ -57,6 +57,7 @@ export function ItineraryPage() {
       label: 'Reject and plan again',
       text: 'Reject this plan? You can plan the days again.',
       mutation: reject,
+      secondary: true,
     },
   ];
   return (
@@ -106,11 +107,13 @@ export function ItineraryPage() {
                 </p>
                 {item.place ? (
                   <p>
-                    {item.place.name} · {POI_CATEGORY_LABELS[item.place.category]} · Entry{' '}
-                    {formatInr(item.place.entryFeeInr)} per person (estimate)
+                    {item.place.name} · {POI_CATEGORY_LABELS[item.place.category]} ·{' '}
+                    {item.place.entryFeeInr > 0
+                      ? `Entry ${formatInr(item.place.entryFeeInr)} per person (estimate)`
+                      : 'Free entry'}
                   </p>
                 ) : null}
-                <p>{item.note}</p>
+                <p className="text-sm text-slate-600">{item.note}</p>
                 <Badge tone={item.verified ? 'success' : 'warning'}>
                   {item.verified
                     ? 'Verified'
@@ -124,7 +127,7 @@ export function ItineraryPage() {
           </ol>
         </section>
       ))}
-      {decisions.map(({ name, action, label, text, mutation }) =>
+      {decisions.map(({ name, action, label, text, mutation, secondary }) =>
         action ? (
           <div key={name} className="space-y-2">
             {confirm === name ? (
@@ -143,7 +146,11 @@ export function ItineraryPage() {
                 </Button>
               </div>
             ) : (
-              <Button disabled={!action.enabled} onClick={() => setConfirm(name)}>
+              <Button
+                variant={secondary ? 'secondary' : 'primary'}
+                disabled={!action.enabled}
+                onClick={() => setConfirm(name)}
+              >
                 {label}
               </Button>
             )}
