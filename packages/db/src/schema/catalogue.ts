@@ -6,6 +6,7 @@ import {
   doublePrecision,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   smallint,
@@ -171,6 +172,25 @@ export const distanceCache = pgTable(
     uniqueIndex('distance_cache_key').on(t.originKey, t.destinationId, t.provider),
     index('distance_cache_destination_idx').on(t.destinationId),
   ],
+);
+
+/**
+ * #121 (D4, migration 0003): model replies keyed by a sha256 of the exact
+ * request (provider, model, schema name, system and prompt). The prompt itself
+ * is never stored, only its hash, so no member data can be in this table.
+ */
+export const llmCache = pgTable(
+  'llm_cache',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    cacheKey: text('cache_key').notNull().unique(),
+    provider: text('provider').notNull(),
+    model: text('model').notNull(),
+    response: jsonb('response').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('llm_cache_expires_at_idx').on(t.expiresAt)],
 );
 
 export const providerUsage = pgTable(

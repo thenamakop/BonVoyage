@@ -4,6 +4,7 @@ import type { LlmClient, LlmResult } from './types';
 
 /** Returns recorded outputs keyed by schemaName; used whenever LIVE_APIS is off. */
 export class FixtureLlmClient implements LlmClient {
+  readonly modelId = 'fixture';
   private readonly fixtures: Record<string, unknown>;
 
   constructor(fixtures: Record<string, unknown>) {

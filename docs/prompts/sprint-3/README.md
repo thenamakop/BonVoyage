@@ -41,7 +41,7 @@ Open the second session in `TripSync-2`. Only one session at a time may run test
 **Your steps between prompts (Maulik only):**
 
 - After S3-3 merges: `pnpm db:migrate:remote --target preview`, then `--target production` (migration 0002).
-- Before S3-9, optional: to have Gemini write the day-plan wording on preview, set `LIVE_APIS=on`, `GEMINI_API_KEY` and `GEMINI_MODEL=gemini-3.5-flash-lite` on the preview environment in Vercel and redeploy. Without them the plan uses the catalogue templates, which is fine for the demo.
+- Model wording on preview: see docs/prompts/sprint-4/S4-7-live-preview-check.md (needs #121). Until #121, the Vercel function never built the model client, so setting these variables changed nothing; the plan used the catalogue templates, which is fine for the demo.
 - After S3-8 merges: `pnpm db:seed --target preview --fresh-demos`.
 
 ## Cut order if a day slips

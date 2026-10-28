@@ -1,7 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import type { z } from 'zod';
 import { z as zod } from 'zod';
-import { IntegrationError } from '../errors';
+import { IntegrationError, ModelOutputError } from '../errors';
 import type { LlmClient, LlmResult, LlmUsage } from './types';
 
 export interface GeminiUsageMetadata {
@@ -38,6 +38,10 @@ function statusOf(error: unknown): number | undefined {
 export class GeminiLlmClient implements LlmClient {
   private readonly model: string;
   private readonly sdk: GeminiSdkLike;
+
+  get modelId(): string {
+    return this.model;
+  }
 
   constructor(options: { apiKey: string; model: string; sdk?: GeminiSdkLike }) {
     this.model = options.model;
@@ -84,20 +88,19 @@ export class GeminiLlmClient implements LlmClient {
 
     const text = response.text;
     if (text === undefined || text === '') {
-      throw new IntegrationError(PROVIDER, 'Model returned no text.', false);
+      throw new ModelOutputError(PROVIDER, 'Model returned no text.');
     }
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
     } catch {
-      throw new IntegrationError(PROVIDER, 'Model output was not valid JSON.', false, text);
+      throw new ModelOutputError(PROVIDER, 'Model output was not valid JSON.', text);
     }
     const result = request.schema.safeParse(parsed);
     if (!result.success) {
-      throw new IntegrationError(
+      throw new ModelOutputError(
         PROVIDER,
         `Model output failed schema ${request.schemaName}: ${result.error.issues[0]?.message ?? 'invalid'}`,
-        false,
         text,
       );
     }

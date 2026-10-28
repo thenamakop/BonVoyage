@@ -107,6 +107,8 @@ describe('composeItineraryWording', () => {
   it('a reply outside the schema returns ok:false', async () => {
     const out = await composeItineraryWording(malformed, factSheet, skeleton);
     expect(out.ok).toBe(false);
+    // #121: a fixed code, never the provider's message.
+    if (!out.ok) expect(out.reason).toBe('invalid');
   });
 
   it('a client that never resolves times out instead of hanging', async () => {
@@ -114,7 +116,7 @@ describe('composeItineraryWording', () => {
       timeoutMs: 50,
     });
     expect(out).toMatchObject({ ok: false });
-    if (!out.ok) expect(out.reason).toContain('timed out');
+    if (!out.ok) expect(out.reason).toBe('timeout');
   });
 
   it('records the prompt on the fixture so tests can search it for member data', async () => {

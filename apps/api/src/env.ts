@@ -19,6 +19,9 @@ const EnvSchema = z
     LIVE_APIS: z.enum(['on', 'off']).default('off'),
     GEMINI_API_KEY: z.string().optional(),
     GEMINI_MODEL: z.string().optional(),
+    // #121 (D4): model calls allowed per India day; 0 means none, so the
+    // catalogue templates word every day plan.
+    GEMINI_DAILY_LIMIT: z.coerce.number().int().min(0).default(0),
     VERCEL: z.string().optional(),
     VERCEL_ENV: z.enum(['production', 'preview', 'development']).optional(),
     VERCEL_URL: z.string().min(1).optional(),

@@ -1,8 +1,9 @@
 import type { TripPlan } from '@bonvoyage/engine';
 import type { FactSheet } from '@bonvoyage/shared';
 import { z } from 'zod';
-import { IntegrationError } from '../errors';
+import { ModelOutputError } from '../errors';
 import type { LlmClient } from '../llm/types';
+import { QuotaExceededError } from '../quota/quota';
 import { assertNoPersonalData, buildItineraryPrompt } from './prompt';
 
 // 0005 e/f: with LIVE_APIS=on the model rewrites the WORDS only. Times,
@@ -22,8 +23,24 @@ export const ItineraryWording = z.object({
 });
 export type ItineraryWording = z.infer<typeof ItineraryWording>;
 
+/**
+ * #121: why the templates were used, as a fixed code. A raw error message can
+ * echo provider text, so it never goes into the result or a log.
+ */
+export type WordingFailure = 'quota' | 'timeout' | 'invalid' | 'error';
+
 export type WordingResult =
-  { ok: true; wording: ItineraryWording; model: string } | { ok: false; reason: string };
+  | { ok: true; wording: ItineraryWording; model: string; fromCache: boolean }
+  | { ok: false; reason: WordingFailure };
+
+class WordingTimeout extends Error {}
+
+function failureOf(error: unknown): WordingFailure {
+  if (error instanceof QuotaExceededError) return 'quota';
+  if (error instanceof WordingTimeout) return 'timeout';
+  if (error instanceof ModelOutputError || error instanceof z.ZodError) return 'invalid';
+  return 'error';
+}
 
 /**
  * One model call with a timeout; never throws to the caller. The prompt pins
@@ -43,7 +60,7 @@ export async function composeItineraryWording(
     let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(
-        () => reject(new Error(`wording timed out after ${timeoutMs} ms`)),
+        () => reject(new WordingTimeout(`wording timed out after ${timeoutMs} ms`)),
         timeoutMs,
       );
     });
@@ -57,9 +74,13 @@ export async function composeItineraryWording(
       timeout,
     ]).finally(() => clearTimeout(timer));
 
-    return { ok: true, wording: result.data, model: result.model };
+    return {
+      ok: true,
+      wording: result.data,
+      model: result.model,
+      fromCache: result.fromCache ?? false,
+    };
   } catch (error) {
-    const reason = error instanceof IntegrationError ? error.message : String(error);
-    return { ok: false, reason };
+    return { ok: false, reason: failureOf(error) };
   }
 }

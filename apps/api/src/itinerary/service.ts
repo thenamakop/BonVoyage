@@ -10,7 +10,7 @@ import {
   type TripPlan,
 } from '@bonvoyage/engine';
 import { composeItineraryWording } from '@bonvoyage/integrations';
-import type { LlmClient } from '@bonvoyage/integrations';
+import type { LlmClient, WordingFailure } from '@bonvoyage/integrations';
 import { and, eq } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import {
@@ -188,6 +188,9 @@ export async function planItinerary(
   let output = toOutput(plan.days, summary, TEMPLATE.reasons);
   let model = TEMPLATE.model;
   let source: ItineraryView['source'] = 'catalogue';
+  // #121: S4-7 reads these from the deployment's logs; codes only, no text.
+  let wordingFallback: WordingFailure | null = null;
+  let wordingCache: 'hit' | 'miss' | null = null;
 
   if (deps.llm) {
     const wording = await composeItineraryWording(deps.llm, facts, plan, {
@@ -201,7 +204,9 @@ export async function planItinerary(
       }
       model = wording.model;
       source = 'model';
+      wordingCache = wording.fromCache ? 'hit' : 'miss';
     } else {
+      wordingFallback = wording.reason;
       logger.warn({ tripId, reason: wording.reason }, 'itinerary wording fell back to templates');
     }
   }
@@ -339,6 +344,8 @@ export async function planItinerary(
       verifiedRatio: result.verifiedRatio,
       ok: result.ok,
       errorCodes: result.errors.map((e) => e.code),
+      wordingFallback,
+      wordingCache,
     },
     'itinerary planned',
   );
