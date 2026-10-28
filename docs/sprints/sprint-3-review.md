@@ -1,10 +1,19 @@
 # Sprint 3 review (27 to 28 October 2026)
 
-**Result: G2 holds on preview. The production halves of R5 and R7 (#94) were not run and move to Sprint 4.** The MVP requirements R1 to R11 are built and tested; `pnpm verify` passes, and CI is green on every Sprint 3 merge. On 28 October the Monday demo script ran end to end on preview: sign-up, preferences, shortlist, packages, day plan, finalised trip, the transport comparison and account deletion. The dry run found three defects (D1 to D3), and all three are fixed and merged (#112, #113, #114). Nothing checked has failed. G2's acceptance itself is Maulik's call at the Monday demo. See [To finish](#to-finish).
+**Result: G2 holds on preview and production.** The MVP requirements R1 to R11 are built and tested, `pnpm verify` passes, and CI is green on every Sprint 3 merge.
+
+- **Preview:** on 28 October the Monday demo script ran end to end: sign-up, preferences, shortlist, packages, day plan, finalised trip, the transport comparison and account deletion. The dry run found three defects (D1 to D3); all three are fixed and merged (#112, #113, #114).
+- **Production:** the checks carried from Sprint 2 (#94) passed the same day. Two real accounts in one trip each saw only their own For you line, and the shortlist appeared in 250 ms.
+
+Nothing checked has failed. One privacy observation from production becomes a Sprint 4 decision (#116). G2's acceptance itself is Maulik's call at the Monday demo. See [To finish](#to-finish).
 
 Sprint 3 was planned for Tuesday 27 October to Monday 2 November, with prompts S3-1 to S3-9 ([re-plan](replan-2026-10-27.md)). S3-1 to S3-8 merged between 27 October 11:22 and 28 October 15:04. The dry-run fixes merged by 28 October 19:42. This review was written on 28 October from the dry-run results and the commands below. Times are India time unless marked UTC.
 
-Evidence comes from two sources. **Dry run:** Maulik's dry-run results of 28 October. Preview deployment `bonvoyage-f38tn50vh`, `LIVE_APIS` off. Claude drove Asha in the Claude app's built-in browser, Meera ran in Brave, and Maulik ran steps 0 and 6 in a private window. **Commands:** the outputs listed under [Commands run for this review](#commands-run-for-this-review).
+Evidence comes from three sources:
+
+- **Dry run:** Maulik's dry-run results of 28 October. Preview deployment `bonvoyage-f38tn50vh`, `LIVE_APIS` off. Claude drove Asha in the Claude app's built-in browser, Meera ran in Brave, and Maulik ran steps 0 and 6 in a private window.
+- **Production check (#94):** 28 October, `https://bonvoyage-orpin.vercel.app`, `LIVE_APIS` off, run by Claude in Cowork. Maulik Gupta was the organiser in the built-in browser and Parth Bansal the member in Brave. Trip "Production Check": Gurugram, 2 nights, ₹30,000, 300 km; both members submitted.
+- **Commands:** the outputs listed under [Commands run for this review](#commands-run-for-this-review).
 
 ## Review items
 
@@ -17,8 +26,8 @@ Evidence comes from two sources. **Dry run:** Maulik's dry-run results of 28 Oct
 | R12 | A day plan built only from catalogue facts, with unverified items marked in words | Dry run step 4: "Planning the days. This can take up to 30 seconds."; the plan appeared in 552 ms with "Saver package · version 1" and "Planned from the BonVoyage catalogue". Tiger Falls read "Not verified: This place's details are not verified yet."; every other item read Verified. Tests: the itinerary, engine and seed tests in `docs/traceability.md` R12 all passed in `pnpm verify`. **Not exercised:** model wording (`LIVE_APIS=on`); every plan in the dry run came from the catalogue planner. | pass (catalogue planner); model wording not exercised | Sprint 4: run once with `LIVE_APIS=on` |
 | R13 | Accept, adjust or reject the day plan | Dry run step 4: Remove Lakhamandal gave "17:50–18:50 · Free time". Swap on Tiger Falls offered only Lakhamandal Temple; after the swap, Day 2 12:30–14:30 read Lakhamandal Temple, Verified. Meera's view was read-only: "Waiting for Asha (demo) to accept the plan." Accept took 226 ms and the dashboard read "Step 7 of 7: Finalised" and "Trip finalised: Chakrata, 28 Nov 2026 – 30 Nov 2026, Saver package, ₹29,566 for the group, about ₹9,856 each (estimate)." The Trips page listed it under "Past and finalised trips". Reject (T13) was not part of the dry run; `apps/api/src/itinerary/itinerary.test.ts` covers T13 and version 2. The full-journey test asserts I5, I5 and T14 over HTTP. | pass (reject by test only) | — |
 | R14 | Every figure labelled by provenance | Dry run step 3: the cost lines show Curated badges, and the entry-fee line shows Estimate. Step 4: day-plan items read Verified or "Not verified" in words. `packages.test.ts` (provenance per line) and `ItineraryPage.test.tsx` (badges) passed in `pnpm verify`. | pass | — |
-| R15 | Recommend under 10 s (design target 2 s); destination choice with packages under 1 s; day plan under 2 s with templates | Preview, browser clock (dry run): recommend 278 ms; choose Chakrata 258 ms; Change 282 ms; choose Saver 390 ms; plan 552 ms; accept 226 ms; Tight budget round 1 214 ms and round 2 260 ms; choose Bikaner 400 ms. Local `pnpm perf:recommend` with `pnpm dev` running: 138, 73, 56, 54 and 52 ms (33 feasible each), **min 52 ms, median 56 ms, max 138 ms**, 5 of 5 copies cancelled. In-process tests: destination choice 42 ms, day plan 55 ms, shortlist 43 ms (`pnpm verify`); full journey recommend 57 ms, choose 50 ms, plan 58 ms (integration run). | pass (local and preview) | Production time: #94 |
-| Privacy | Members see only their own reasons and opinion; counts carry no names; the day plan holds no member data | Preview (dry run): Asha's For you line on Chakrata was 2.9 (adventure, trekking, camping) and Meera's was 4.3 (‘hill station’, trekking). Meera had no Choose button and read "Waiting for Asha (demo) to choose a destination." Package opinions were counts with no member names on either packages page; Meera saw no organiser buttons and a read-only day plan. Tests: the access matrix covers **42 endpoints × 6 actors**; the leak test covers package opinions ("package responses hold opinion counts and only the caller’s own vote") and the day plan ("itinerary responses hold no member data"). Production (#94): **not run**, because there were no two real production accounts in one trip. | preview and tests pass; production not run | #94 moves to Sprint 4 |
+| R15 | Recommend under 10 s (design target 2 s); destination choice with packages under 1 s; day plan under 2 s with templates | Preview, browser clock (dry run): recommend 278 ms; choose Chakrata 258 ms; Change 282 ms; choose Saver 390 ms; plan 552 ms; accept 226 ms; Tight budget round 1 214 ms and round 2 260 ms; choose Bikaner 400 ms. Local `pnpm perf:recommend` with `pnpm dev` running: 138, 73, 56, 54 and 52 ms (33 feasible each), **min 52 ms, median 56 ms, max 138 ms**, 5 of 5 copies cancelled. In-process tests: destination choice 42 ms, day plan 55 ms, shortlist 43 ms (`pnpm verify`); full journey recommend 57 ms, choose 50 ms, plan 58 ms (integration run). Production (#94): Get recommendations to the shortlist on screen in **250 ms** (limit 10 s). There were 15 feasible places; the first three were Lansdowne, Mussoorie and Dehradun, with the note "These are the closest options; none match the types the group asked for well." | pass (local, preview and production) | — |
+| Privacy | Members see only their own reasons and opinion; counts carry no names; the day plan holds no member data | Preview (dry run): Asha's For you line on Chakrata was 2.9 (adventure, trekking, camping) and Meera's was 4.3 (‘hill station’, trekking). Meera had no Choose button and read "Waiting for Asha (demo) to choose a destination." Package opinions were counts with no member names on either packages page; Meera saw no organiser buttons and a read-only day plan. Tests: the access matrix covers **42 endpoints × 6 actors**; the leak test covers package opinions ("package responses hold opinion counts and only the caller’s own vote") and the day plan ("itinerary responses hold no member data"). Production (#94), 2 members: each member's For you lines cite only their own picks (the organiser's mountain, trekking, rafting and camping; the member's beach and boating). The member's shortlist page, and his GET responses for the trip, the group profile and the latest recommendation, contain none of the organiser's picks and no email; the only name is in "Waiting for Maulik Gupta to choose a destination." The member has no organiser actions and no Choose buttons. With 2 members the "Opinions differ" range is hidden. **Observation, not a failure:** with 2 members, the group profile's common window (4 to 10 Nov) and budget band (₹20,000 to ₹25,000) let each member infer the other's binding start date and minimum budget (rounded to ₹500). | pass (tests, preview and production) | #116 (two-member bounds) |
 | Demo | `docs/demo/sprint-3-demo.md` end to end on preview | Every step ran on preview, and the screens matched the script line for line, except D1 (R8), D2 (below) and D3 (R10). **D2:** Change on Chakrata's Comfort made it identical to Balanced; the ₹135 gap between Bikaner's shortlist (₹13,860) and its Saver package (₹13,995) was unexplained; the Swap list said "Entry ₹0 per person (estimate)". Fixed in #113: Change moved to step 5.7, the gap is explained (the shortlist estimate has no entry-fee line, confirmed against `composeEstimate`), and the Swap list says "Free entry". | pass (D1 to D3 fixed) | Rerun steps 3, 4.6 and 5.7 on preview after a reset |
 | Catalogue | Stage status | `pnpm catalogue:check` → exit 0, **0 errors, 3 warnings** (no beach destination; neemrana 3 POIs, ranthambore 5). Stage A 50/50 (due 26 Oct), **B1 136/137** (due 1 Nov), B2 85/116 (best effort, 5 Nov), **C 202/276** (due 1 Nov). The same as the re-plan of 27 October: no rows were verified during the sprint. Every destination has places of interest (min 3, median 6). | in progress, not yet due | #38, #39 (due 1 Nov) |
 
@@ -65,7 +74,7 @@ All four are merged. **Spill issues: none.** Nothing that failed is still open.
   - #106 (S3-3) said "Closes #97", so it closed S3-4's issue.
   - On 28 October at 04:00 (22:30 UTC on 27 October) Maulik reopened #97 and closed #98 by hand. #108 then closed #97.
   - Every S3 build issue is now closed, but GitHub shows #105 as the closer of #96.
-- **The dry run** used a preview deployment built after #111 (the deletion notice was there) and before #112. The fixes from #112 to #114 are covered by tests, and #112's figures were read off a local run. They have not been seen on preview.
+- **The dry run** used a preview deployment built after #111 (the deletion notice was there) and before #112. The fixes for D1 to D3 (#112 to #114) are covered by tests. They are on production through master's deployment, and #112's figures were also read off a local run. They were not re-run on preview. Monday's demo runs on a preview reset after this review merges.
 - **Feature PRs are over the 400-line guide:** #104 about 1,650 lines, #106 about 5,000, #107 about 1,750, #109 about 1,250 and #110 about 1,100.
 
 ## Commands run for this review
@@ -96,11 +105,11 @@ All were run on 28 October on `c179e87` (master after #114), with Node 24.21.0.
 - `pnpm perf:recommend` with `pnpm dev` running (health `{"status":"ok","db":"ok"}`) → "min 52 ms, median 56 ms, max 138 ms (target under 10,000 ms; test budget 2,000 ms)", "Cancelled 5 of 5 timing copies." The dev server was then stopped.
 - `gh api` for the "Sprint 3 (27 Oct-2 Nov)" milestone: **9 open, 9 closed**.
   - Closed: #54, #81 and #95 to #101.
-  - Open: requirement issues #18 (R8), #20 (R10), #22 (R12), #23 (R13) and #24 (R14); catalogue #38 and #39; #94; and #102 (S3-9, closed by this PR).
+  - Open: requirement issues #18 (R8), #20 (R10), #22 (R12), #23 (R13) and #24 (R14); catalogue #38 and #39; #94 (closed by this PR); and #102 (S3-9, closed by this PR).
 
 ## Known gaps (not spill issues)
 
-- **#112 to #114 have not been seen on preview.** The dry-run deployment predates them.
+- **#112 to #114 have not been re-run on preview.** The dry-run deployment predates them; they reach production through master's deployment.
 - **Model wording has never run against Gemini on preview.** It is optional for the demo; the templates are the fallback.
 - **Reject (T13) is tested but was not part of the dry run.**
 - **B1 (136/137) and C (202/276) are due Sunday 1 November.** Where they are not verified, packages and day plans keep saying Estimate or Not verified.
@@ -132,14 +141,14 @@ The last column is the time from the previous merge to this one, not hours worke
 
 Before the Monday demo:
 
-1. **Reset preview** (`pnpm db:seed --target preview --fresh-demos`, Maulik). Then rerun steps 3, 4.6 and 5.7, plus step 6's refusal, on a deployment that includes #114. This confirms D1 to D3 on screen.
+1. **Reset preview after this review merges** (`pnpm db:seed --target preview --fresh-demos`, Maulik). Monday's demo runs on that reset. Before then, rerun steps 3, 4.6 and 5.7, plus step 6's refusal, on a deployment that includes #114. This confirms D1 to D3 on preview.
 2. **Accept G2:** Maulik reviews this page. Then close the requirement issues #18, #20, #22, #23 and #24, as was done for Sprint 2.
 
 Sprint 4 (hardening, 3 to 7 November):
 
-1. **#94:** the production halves of R5 (two real accounts in one trip each see only their own For you line) and R7 (click-to-shortlist time on production). Move it to the Sprint 4 milestone; do not close it.
+1. **Two-member groups (#116):** decide whether to hide the window and budget bounds below 3 members, or document the limit in `docs/security/privacy.md`. That file already keeps the common window for every group size (decided 26 October) and says what it shows in a 2-member group. The budget band's 2-member inference is not documented, so the budget band is the open part.
 2. **Model wording:** one day plan on preview with `LIVE_APIS=on`, checking that the wording passes `validateItinerary` and stays within the quota.
 3. **Catalogue:** B1 and C by 1 November (#38, #39); B2 and fee pass 2 best effort by 5 November.
 4. Fixes from the Monday demo.
 
-Then close the Sprint 3 milestone once #38, #39 and #94 are closed or moved.
+Then close the Sprint 3 milestone once #38 and #39 are closed or moved.
