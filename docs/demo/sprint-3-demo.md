@@ -87,9 +87,9 @@ Leave this window open for step 6.
 3. **Meera:** click **Back to the trip**, then **See the packages**. On **Saver**, click **Works for me**. Her card reads **"1 of 3 say it works"** and **"You said it works."**
 4. **Asha:** the Saver card reads **"1 of 3 say it works"**, with no name.
    > "Opinions are counts. Asha sees that one person said yes, not who."
-5. **Asha:** on **Comfort**, click **Change**. Set **Stay tier** to **Mid** and read **"Saving clears everyone’s opinion on this package."** Click **Save changes**. Comfort now reads **"Car · Mid stay · 2 rooms"** and **"₹31,566 for the group"**.
-   > "Change re-costs the package from the catalogue straight away."
-6. **Asha:** on **Saver**, click **Choose this package**. The confirm reads **"Choose the Saver package? Everyone moves on to the day plan."** Click **Choose Saver**. The card shows **"Chosen"**.
+5. **Asha:** on **Saver**, click **Choose this package**. The confirm reads **"Choose the Saver package? Everyone moves on to the day plan."** Click **Choose Saver**. The card shows **"Chosen"**.
+
+**Change** is shown in step 5, where it switches a package's transport.
 
 ## 4. Plan the days (2.5 minutes)
 
@@ -100,7 +100,7 @@ Leave this window open for step 6.
 4. Point at Day 2, **"12:30–14:30 · Visit"**, **"Tiger Falls · Nature · Free entry"** and **"Not verified: This place's details are not verified yet."**
    > "Every other item says 'Verified'. Tiger Falls is in the catalogue but its details have not been checked yet, and the plan says so in words."
 5. **Remove:** on Day 1, **"17:50–18:50 · Visit"**, **"Lakhamandal Temple · Temple · Free entry"**, click **Remove**. That slot now reads **"17:50–18:50 · Free time"** and **"Free time to explore."**
-6. **Swap:** on Tiger Falls, click **Swap**. One option fits: **"Lakhamandal Temple · Temple · Entry ₹0 per person (estimate)"**. Click it. Day 2 now reads **"12:30–14:30 · Visit"**, **"Lakhamandal Temple · Temple · Free entry"** and **"Verified"**.
+6. **Swap:** on Tiger Falls, click **Swap**. One option fits: **"Lakhamandal Temple · Temple · Free entry"**. Click it. Day 2 now reads **"12:30–14:30 · Visit"**, **"Lakhamandal Temple · Temple · Free entry"** and **"Verified"**.
    > "Swap only offers places that are not already in the plan and that fit the slot's time and opening hours. We swapped an unverified visit for a verified one."
 7. **Meera:** click **Back to the trip**, then **See the day plan**. She sees the same plan with no Remove or Swap buttons, and **"Waiting for Asha (demo) to accept the plan."**
 8. **Asha:** click **Accept this plan**. The confirm reads **"Accept this plan? The trip is finalised."** Click **Accept plan**.
@@ -124,7 +124,8 @@ Leave this window open for step 6.
    | Comfort by car | Car · Premium stay · 2 rooms | ₹36,688 for the group | ₹22,688 over the group budget |
 
    > "Bikaner has checked train, bus and car fares from Gurugram, so here the packages compare transport. The train is both the cheapest and the quickest, so three packages use it, and one goes by car. A package that costs more than the group can spend is flagged in words, not hidden."
-7. Optional, if asked about the bus: on **Balanced**, click **Change**. The **Transport mode** list offers **Train**, **Bus** and **Car**. Click **Cancel**.
+7. On **Balanced**, click **Change**. The card shows **Transport mode** (**Train**, **Bus**, **Car**), **Stay tier** (**Budget**, **Mid**, **Premium**) and **"Saving clears everyone’s opinion on this package."** Set **Transport mode** to **Bus** and click **Save changes**. Balanced now reads **"Bus · Mid stay · 2 rooms"**, **"₹22,570 for the group"**, **"about ₹7,524 each"** and **"₹8,570 over the group budget"**.
+   > "Change re-costs the package from the catalogue straight away, and the over-budget flag follows the new total."
 
 Stop here. This trip does not need a day plan.
 
@@ -153,5 +154,6 @@ The account from step 0 is deleted in step 6, so nothing is left to clean up.
 - **Swap shows "No unused places fit this slot."** The plan already uses every Chakrata place. Remove Lakhamandal Temple first (step 4.5), then Swap.
 - **The source line reads "Written with … from catalogue facts".** Gemini wording is switched on for preview (`LIVE_APIS=on`). The notes under each visit are worded differently; places, times and prices stay the same.
 - **The shortlist says ₹29,565 and the Saver package says ₹29,566.** The shortlist rounds its estimate once; a package rounds each cost line up to whole rupees and adds them.
+- **The shortlist says ₹13,860 for Bikaner and the Saver package says ₹13,995.** The shortlist estimate leaves out entry fees; a package adds them as their own line (₹135 here).
 - **The dates are different.** The reset ran on another day; every date moves by the same number of days.
 - **There's no "Get recommendations" button, or a trip is already further along.** It was used since the last reset. Ask Maulik to run the preview reset again.

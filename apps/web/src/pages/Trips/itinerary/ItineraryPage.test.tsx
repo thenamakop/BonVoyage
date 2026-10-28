@@ -209,6 +209,35 @@ it('Remove and Swap use only the API alternatives and send JSON changes', async 
   );
 });
 
+it('the Swap list words fees as the day plan does: "Free entry" for ₹0', async () => {
+  const trip = proposed({ availableActions: [{ action: 'modifyItinerary', enabled: true }] });
+  setup(trip);
+  fetchMock.mockImplementation((url) =>
+    Promise.resolve(
+      Response.json(
+        url.endsWith('/alternatives')
+          ? {
+              places: [
+                { key: 'chakrata/temple', name: 'Temple', category: 'temple', entryFeeInr: 0 },
+                { key: 'chakrata/museum', name: 'Museum', category: 'museum', entryFeeInr: 25 },
+              ],
+            }
+          : url.endsWith('/itinerary')
+            ? { itinerary: view }
+            : trip,
+      ),
+    ),
+  );
+  await userEvent.click(await screen.findByRole('button', { name: 'Swap' }));
+  expect(
+    await screen.findByRole('button', { name: 'Temple · Temple · Free entry' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Museum · Museum · Entry ₹25 per person (estimate)' }),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Entry ₹0/)).not.toBeInTheDocument();
+});
+
 it('an adjustment error shows the API message and keeps the plan', async () => {
   const trip = proposed({ availableActions: [{ action: 'modifyItinerary', enabled: true }] });
   setup(trip);
