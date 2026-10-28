@@ -343,6 +343,50 @@ describe('budget flag and re-choose', () => {
     expect(saver.overByInr).toBe(0);
   });
 
+  it('after a change (I3) overByInr follows the stored total, proposed and accepted', async () => {
+    // Saver sits at the 15600 cap; premium makes it dearer. The figure must
+    // come from the changed row, not from a default Saver rebuilt by label.
+    const cap = 15600;
+    const { tripId, organiser } = await proposedTrip({ budgetTotalInr: cap });
+    const saverOf = async () =>
+      PackagesResponse.parse((await getPackages(organiser.agent, tripId)).body).packages.find(
+        (p) => p.label === 'Saver',
+      )!;
+    const change = async (id: string, stayTier: 'budget' | 'premium') => {
+      const res = await organiser.agent
+        .patch(`/api/trips/${tripId}/packages/${id}`)
+        .set(H)
+        .send({ stayTier });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+    };
+    const { id } = await saverOf();
+
+    await change(id, 'premium');
+    const dearer = await saverOf();
+    expect(dearer.totalInr).toBeGreaterThan(cap);
+    expect(dearer.overBudget).toBe(true);
+    expect(dearer.overByInr).toBe(dearer.totalInr - cap);
+    const [row] = await db.select().from(tripPackage).where(eq(tripPackage.id, id));
+    expect(row?.overBudget).toBe(true);
+
+    await change(id, 'budget');
+    const back = await saverOf();
+    expect(back.totalInr).toBe(cap);
+    expect(back.overBudget).toBe(false);
+    expect(back.overByInr).toBe(0);
+
+    await change(id, 'premium');
+    const select = await organiser.agent
+      .post(`/api/trips/${tripId}/packages/${id}/select`)
+      .set(H)
+      .send({});
+    expect(select.status).toBe(200);
+    const accepted = await saverOf();
+    expect(accepted.status).toBe('accepted');
+    expect(accepted.overBudget).toBe(true);
+    expect(accepted.overByInr).toBe(accepted.totalInr - cap);
+  });
+
   it('T10 back to shortlisted then choosing another destination builds fresh packages', async () => {
     const { tripId, organiser } = await proposedTrip();
     let list = PackagesResponse.parse((await getPackages(organiser.agent, tripId)).body);
