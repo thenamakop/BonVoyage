@@ -1,19 +1,41 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createDb } from '../src/client';
 import { importCatalogue } from '../src/catalogue/import';
-import { destination, fareFallback, hub } from '../src/schema';
+import {
+  destination,
+  fareFallback,
+  hub,
+  itinerary,
+  itineraryItem,
+  poi,
+  trip,
+  tripPackage,
+} from '../src/schema';
+import { user } from '../src/schema/auth';
 
 // S0-5: importCatalogue upserts a fixture catalogue twice and refuses an
-// error-level catalogue.
+// error-level catalogue. S3-8: --prune deletes places of interest that left
+// pois.csv, and nothing else.
 
 const { db, pool } = createDb(process.env.DATABASE_URL ?? '');
 const TODAY = '2026-10-12';
 
-function fixtureDir(destExtra = ''): string {
+const POI_HEADER =
+  'destination_slug,poi_key,name,category,typical_minutes,open_time,close_time,closed_days,entry_fee_inr,lat,lng,source_url,collected_on,review_status';
+const poiRow = (dest: string, key: string, name: string) =>
+  `${dest},${key},${name},viewpoint,60,,,,0,31.0,77.2,,2026-10-12,draft`;
+
+function fixtureDir(
+  destExtra = '',
+  {
+    extraDestinations = '',
+    pois = [poiRow('impdest', 'p1', 'Viewpoint')],
+  }: { extraDestinations?: string; pois?: string[] } = {},
+): string {
   const dir = mkdtempSync(join(tmpdir(), 'bv-catalogue-'));
   writeFileSync(
     join(dir, 'hubs.csv'),
@@ -25,7 +47,7 @@ imphub,Import Hub,HR,28.1,77.1,,2026-10-12,draft
     join(dir, 'destinations.csv'),
     `slug,name,state,lat,lng,types,activities,climate,best_months,min_nights,stay_budget_inr,stay_mid_inr,stay_premium_inr,food_per_day_inr,local_per_day_inr,source_url,collected_on,review_status,cost_source_url,cost_collected_on,cost_review_status
 impdest,Import Dest${destExtra},HP,31.0,77.2,mountain,trekking,cold,10|11,2,500,900,1500,400,300,,2026-10-12,draft,,,draft
-`,
+${extraDestinations}`,
   );
   writeFileSync(
     join(dir, 'fares.csv'),
@@ -33,12 +55,7 @@ impdest,Import Dest${destExtra},HP,31.0,77.2,mountain,trekking,cold,10|11,2,500,
 imphub,impdest,car,,300,420,,2026-10-12,draft
 `,
   );
-  writeFileSync(
-    join(dir, 'pois.csv'),
-    `destination_slug,poi_key,name,category,typical_minutes,open_time,close_time,closed_days,entry_fee_inr,lat,lng,source_url,collected_on,review_status
-impdest,p1,Viewpoint,viewpoint,60,,,,0,31.0,77.2,,2026-10-12,draft
-`,
-  );
+  writeFileSync(join(dir, 'pois.csv'), `${[POI_HEADER, ...pois].join('\n')}\n`);
   const rule = {
     value: 100,
     unit: 'INR/litre',
@@ -105,5 +122,140 @@ imphub,nonexistent,car,,300,250,,2026-10-12,draft
 `,
     );
     await expect(importCatalogue(db, dir, { today: TODAY })).rejects.toThrow(/refused|error/i);
+  });
+});
+
+describe('importCatalogue with prune', () => {
+  const OTHER_DEST =
+    'pruneother,Prune Other,HP,31.0,77.2,mountain,trekking,cold,10|11,2,500,900,1500,400,300,,2026-10-12,draft,,,draft\n';
+  const poisOf = async (slug: string) =>
+    (
+      await db
+        .select({ key: poi.poiKey })
+        .from(poi)
+        .innerJoin(destination, eq(destination.id, poi.destinationId))
+        .where(eq(destination.slug, slug))
+        .orderBy(poi.poiKey)
+    ).map((r) => r.key);
+
+  it('without prune, a place that left pois.csv stays; with prune it is listed and deleted', async () => {
+    await importCatalogue(
+      db,
+      fixtureDir('', {
+        pois: [
+          poiRow('impdest', 'p1', 'Viewpoint'),
+          poiRow('impdest', 'stale-a', 'Old garden'),
+          poiRow('impdest', 'stale-b', 'Old ashram'),
+        ],
+      }),
+      { today: TODAY },
+    );
+    const trimmed = fixtureDir();
+
+    const kept = await importCatalogue(db, trimmed, { today: TODAY });
+    expect(kept.pruned).toEqual([]);
+    expect(await poisOf('impdest')).toEqual(['p1', 'stale-a', 'stale-b']);
+
+    const pruned = await importCatalogue(db, trimmed, { today: TODAY, prune: true });
+    expect(pruned.pruned).toEqual([
+      { destinationSlug: 'impdest', poiKey: 'stale-a', name: 'Old garden' },
+      { destinationSlug: 'impdest', poiKey: 'stale-b', name: 'Old ashram' },
+    ]);
+    expect(await poisOf('impdest')).toEqual(['p1']);
+    // The upsert still ran in the same import.
+    expect(pruned.updated.poi).toBe(1);
+
+    const again = await importCatalogue(db, trimmed, { today: TODAY, prune: true });
+    expect(again.pruned).toEqual([]);
+  });
+
+  it("leaves a destination's places alone when the destination is not in the files", async () => {
+    await importCatalogue(
+      db,
+      fixtureDir('', {
+        extraDestinations: OTHER_DEST,
+        pois: [poiRow('impdest', 'p1', 'Viewpoint'), poiRow('pruneother', 'q1', 'Other view')],
+      }),
+      { today: TODAY },
+    );
+    const res = await importCatalogue(db, fixtureDir(), { today: TODAY, prune: true });
+    expect(res.pruned).toEqual([]);
+    expect(await poisOf('pruneother')).toEqual(['q1']);
+    // Destinations are never pruned either.
+    expect(
+      await db.select().from(destination).where(eq(destination.slug, 'pruneother')),
+    ).toHaveLength(1);
+  });
+
+  it('a day-plan item that pointed at a pruned place keeps its text, with no place', async () => {
+    await importCatalogue(
+      db,
+      fixtureDir('', {
+        pois: [poiRow('impdest', 'p1', 'Viewpoint'), poiRow('impdest', 'gone', 'Gone falls')],
+      }),
+      { today: TODAY },
+    );
+    const [dest] = await db.select().from(destination).where(eq(destination.slug, 'impdest'));
+    const [origin] = await db.select().from(hub).where(eq(hub.slug, 'imphub'));
+    const [gone] = await db
+      .select()
+      .from(poi)
+      .where(and(eq(poi.destinationId, dest!.id), eq(poi.poiKey, 'gone')));
+    const userId = `prune-user-${Date.now()}`;
+    await db.insert(user).values({ id: userId, name: 'Prune', email: `${userId}@test.bv` });
+    const [t] = await db
+      .insert(trip)
+      .values({
+        title: 'Prune trip',
+        organiserId: userId,
+        originHubId: origin!.id,
+        durationNights: 2,
+        budgetTotalInr: 30000,
+        radiusKm: 450,
+      })
+      .returning();
+    const [pkg] = await db
+      .insert(tripPackage)
+      .values({
+        tripId: t!.id,
+        destinationId: dest!.id,
+        transportMode: 'car',
+        stayTier: 'budget',
+        rooms: 1,
+        startDate: '2026-11-20',
+        endDate: '2026-11-22',
+        totalInr: 20000,
+        perPersonInr: 10000,
+      })
+      .returning();
+    const [plan] = await db
+      .insert(itinerary)
+      .values({ packageId: pkg!.id, version: 1 })
+      .returning();
+    const [item] = await db
+      .insert(itineraryItem)
+      .values({
+        itineraryId: plan!.id,
+        dayNumber: 2,
+        position: 0,
+        kind: 'activity',
+        poiId: gone!.id,
+        note: 'Visit Gone falls (nature). Entry ₹0 per person.',
+      })
+      .returning();
+
+    try {
+      const res = await importCatalogue(db, fixtureDir(), { today: TODAY, prune: true });
+      expect(res.pruned.map((p) => p.poiKey)).toEqual(['gone']);
+      const [after] = await db.select().from(itineraryItem).where(eq(itineraryItem.id, item!.id));
+      expect(after).toMatchObject({
+        poiId: null,
+        note: 'Visit Gone falls (nature). Entry ₹0 per person.',
+        kind: 'activity',
+      });
+    } finally {
+      // Cascades to the package, the day plan and its item.
+      await db.delete(user).where(inArray(user.id, [userId]));
+    }
   });
 });

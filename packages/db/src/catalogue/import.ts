@@ -1,4 +1,4 @@
-import { sql, type SQL } from 'drizzle-orm';
+import { asc, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import type { Db } from '../client';
 import { costRule, destination, fareFallback, hub, poi } from '../schema';
@@ -6,8 +6,9 @@ import { loadCatalogue, type Catalogue } from './load';
 
 // S0-5 step 5: imports packages/db/catalogue into Postgres. Refuses when the
 // loader reports any error-level issue; upserts by natural key so re-runs
-// update in place. Never deletes a row and never decides review_status: it
-// writes exactly what the files say (decision 0002).
+// update in place. Never decides review_status: it writes exactly what the
+// files say (decision 0002). It deletes nothing, except that S3-8's prune
+// removes places of interest that have left pois.csv.
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
@@ -30,6 +31,14 @@ export type ParsedImportCounts = Record<
 export interface ImportCounts {
   inserted: Record<string, number>;
   updated: Record<string, number>;
+  /** S3-8: places of interest the prune deleted (empty without it). */
+  pruned: StalePoi[];
+}
+
+export interface StalePoi {
+  destinationSlug: string;
+  poiKey: string;
+  name: string;
 }
 
 type Outcome = 'inserted' | 'updated' | 'unchanged';
@@ -207,12 +216,35 @@ export async function importParsedCatalogue(
   return counts;
 }
 
-/** The CLI and seed entry point: load a directory, refuse on errors, import. */
-export async function importCatalogue(
-  db: Db,
-  dir: string,
-  opts: { today: string },
-): Promise<ImportCounts> {
+/**
+ * S3-8: places of interest in the database whose (destination, poi_key) is no
+ * longer in pois.csv. Only destinations the files list are looked at, so a
+ * destination outside the files keeps its places (destinations are never
+ * pruned).
+ */
+export async function findStalePois(
+  db: Db | Tx,
+  parsed: Pick<Catalogue, 'destinations' | 'pois'>,
+): Promise<(StalePoi & { id: string })[]> {
+  const slugs = parsed.destinations.map((d) => d.slug);
+  if (slugs.length === 0) return [];
+  const keep = new Set(parsed.pois.map((p) => `${p.destination_slug}/${p.poi_key}`));
+  const rows = await db
+    .select({
+      id: poi.id,
+      destinationSlug: destination.slug,
+      poiKey: poi.poiKey,
+      name: poi.name,
+    })
+    .from(poi)
+    .innerJoin(destination, eq(destination.id, poi.destinationId))
+    .where(inArray(destination.slug, slugs))
+    .orderBy(asc(destination.slug), asc(poi.poiKey));
+  return rows.filter((r) => !keep.has(`${r.destinationSlug}/${r.poiKey}`));
+}
+
+/** Load a directory and refuse on any error-level issue. */
+export function loadCatalogueOrThrow(dir: string, opts: { today: string }): Catalogue {
   const parsed = loadCatalogue(dir, opts);
   const errors = parsed.issues.filter((i) => i.severity === 'error');
   if (errors.length > 0) {
@@ -220,10 +252,41 @@ export async function importCatalogue(
       `Catalogue import refused: ${errors.length} error(s), first: ${errors[0]!.file} ${errors[0]!.message}`,
     );
   }
-  const counts = await db.transaction((tx) => importParsedCatalogue(tx, parsed));
+  return parsed;
+}
+
+/**
+ * The CLI and seed entry point: load a directory, refuse on errors, import.
+ * With `prune`, places of interest that left pois.csv are deleted after the
+ * upsert, in the same transaction; day-plan items that pointed at them keep
+ * their text (itinerary_item.poi_id is ON DELETE SET NULL).
+ */
+export async function importCatalogue(
+  db: Db,
+  dir: string,
+  opts: { today: string; prune?: boolean },
+): Promise<ImportCounts> {
+  const parsed = loadCatalogueOrThrow(dir, opts);
+  const { counts, pruned } = await db.transaction(async (tx) => {
+    const counts = await importParsedCatalogue(tx, parsed);
+    if (!opts.prune) return { counts, pruned: [] };
+    const stale = await findStalePois(tx, parsed);
+    if (stale.length > 0) {
+      await tx.delete(poi).where(
+        inArray(
+          poi.id,
+          stale.map((p) => p.id),
+        ),
+      );
+    }
+    return {
+      counts,
+      pruned: stale.map(({ destinationSlug, poiKey, name }) => ({ destinationSlug, poiKey, name })),
+    };
+  });
   // Keep the CLI's S0-5 meaning: "updated" counts every existing row matched,
   // changed or not. Tables with no rows in the files are left out, as before.
-  const out: ImportCounts = { inserted: {}, updated: {} };
+  const out: ImportCounts = { inserted: {}, updated: {}, pruned };
   for (const table of CATALOGUE_TABLES) {
     const c = counts[table];
     if (c.inserted + c.updated + c.unchanged === 0) continue;
