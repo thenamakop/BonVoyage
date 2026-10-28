@@ -135,8 +135,9 @@ Stop here. This trip does not need a day plan.
    > "You cannot delete an account and leave a group stranded with a trip you are organising."
 3. Click **Diwali weekend**. Under **Organiser actions**, click **Cancel trip**. The confirm reads **"Cancel this trip? Nobody will be able to plan it after this."** Click **Cancel trip**. The dashboard reads **"This trip was cancelled."**
 4. Click **Priya ▾**, **Your profile**, fill in both fields again and click **Delete my account**.
-5. The page shows **"Your trips"** with nothing under it (a known bug: the app does not sign the page out yet). Press **F5**: the **Sign in** page opens. Sign in with Priya's email and password: **"Email or password is incorrect."**
-   > "The account and everything it owned are gone."
+5. The start page opens with **"✓ Your account has been deleted."** above **"Group trips, decided together."**, and the header shows only **Sign in**.
+   > "The account and everything it owned are gone, and the app has signed Priya out."
+6. Optional: click **Sign in** and try Priya's email and password. The page reads **"Email or password is incorrect."**
 
 ## Reset
 

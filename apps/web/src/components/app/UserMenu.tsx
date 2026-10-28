@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import type { MeResponse } from '@bonvoyage/shared';
+import { clearSession } from '../../features/auth/api';
 import { signOutUser } from '../../lib/auth-client';
 import { Alert } from '../ui/Alert';
 
@@ -49,7 +50,7 @@ export function UserMenu({ user }: { user: MeResponse }) {
       if (restoreFocus) buttonRef.current?.focus();
       return;
     }
-    queryClient.clear();
+    clearSession(queryClient);
     void navigate('/');
   }
 
