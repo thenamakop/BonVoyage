@@ -6,10 +6,11 @@ import { createAuth } from '../src/auth/auth';
 import { env } from '../src/env';
 import { runSeed } from '../src/seed/run-seed';
 
-// S0-5: pnpm db:seed [--target preview]. local by default; never production.
+// S0-5: pnpm db:seed [--target preview] [--fresh-demos]. local by default; never
+// production. S3-8: --fresh-demos deletes the demo trips first and builds them again.
 
 const { values } = parseArgs({
-  options: { target: { type: 'string' } },
+  options: { target: { type: 'string' }, 'fresh-demos': { type: 'boolean' } },
   strict: true,
 });
 
@@ -40,7 +41,7 @@ const catalogueDir = resolve(import.meta.dirname, '../../../packages/db/catalogu
 const { db, pool } = createDb(url);
 try {
   const auth = createAuth({ db, secret: env.BETTER_AUTH_SECRET, baseURL: 'http://localhost:4000' });
-  await runSeed({ db, auth, catalogueDir, password });
+  await runSeed({ db, auth, catalogueDir, password, freshDemos: values['fresh-demos'] ?? false });
 } finally {
   await pool.end();
 }
