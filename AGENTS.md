@@ -168,6 +168,8 @@ Migration 0001 (Sprint 2): trip.selected_destination_id, past_trip.place_name nu
 
 Migration 0002 (Sprint 3): trip_package.label, itinerary.summary and reasons, itinerary_item.unverified_reason, package_decision unique (package_id, user_id).
 
+Migration 0004 (Sprint 5): recommendation_run.lambda (R17), NOT NULL DEFAULT 0, so runs from before R17 read as unweighted.
+
 - PostgreSQL 18 reports SQLSTATE `23001` for an `ON DELETE RESTRICT` refusal; an invalid foreign-key reference reports `23503`.
 
 - Change the schema only in `packages/db`, then generate a migration with drizzle-kit and commit the SQL.

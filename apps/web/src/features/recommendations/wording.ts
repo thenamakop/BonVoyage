@@ -175,6 +175,15 @@ export function chooseConfirmText(name: string): string {
 export const ASK_AGAIN_CONFIRM =
   'Ask again? Members can change their answers, and you can ask for new recommendations.';
 
+/** After T21 the page still shows the previous run until the next request (S5-2b-2). */
+export function earlierShortlistText(organiserName: string): string {
+  return `Earlier shortlist. ${organiserName} asked for new recommendations; this list is kept for reference.`;
+}
+
+// R7 with R17: no names and no numbers, only that the order leans this way.
+export const FAIRNESS_NOTE =
+  'This round gives more weight to members whose wishes were met less in earlier rounds.';
+
 // ---------------------------------------------------------------------------
 // Diagnostic
 

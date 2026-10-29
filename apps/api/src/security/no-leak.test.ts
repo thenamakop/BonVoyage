@@ -526,6 +526,134 @@ describe('the "Ask again" response (T21) holds no member data', () => {
   });
 });
 
+// S5-2b-2 (V2, R17): after two shortlists the second is ranked with fairness
+// weights. No body for any caller holds a lambda, a weight or a deficit, and
+// items hold the caller's own score only (plus the group's lowest and highest).
+describe('after two shortlists no body holds a weight, a deficit or lambda (R17)', () => {
+  it('every GET for every caller, and the round 2 POST, as organiser, member and outsider', async () => {
+    await ensureHubAt(db, 'leak-hub', 32, 85);
+    for (const [slug, lat] of [
+      ['leak-dest', 32.2],
+      ['leak-dest2', 32.3],
+      ['leak-dest3', 32.4],
+    ] as const) {
+      await ensureDestination(db, { slug, lat, lng: 85 });
+    }
+    const asha = await createTestUser(app, 'LeakR17 Asha');
+    const rohan = await createTestUser(app, 'LeakR17 Rohan');
+    const meera = await createTestUser(app, 'LeakR17 Meera');
+    const outsider = await createTestUser(app, 'LeakR17 Outsider');
+    const trip = await createTripAs(asha.agent, {
+      originHubSlug: 'leak-hub',
+      radiusKm: 200,
+      budgetTotalInr: 120000,
+      durationNights: 2,
+    });
+    const { token: r17Token } = InvitationResponse.parse(
+      (await asha.agent.post(`/api/trips/${trip.id}/invitations`).set(H).send({})).body,
+    );
+    for (const m of [rohan, meera]) {
+      await m.agent.post(`/api/invitations/${r17Token}/accept`).set(H).send({});
+    }
+    // Rohan wants heritage; the fixture places are mountains, so round 1 serves him least.
+    const tastes = [
+      [asha, 'mountain', 'trekking'],
+      [rohan, 'heritage', 'museums'],
+      [meera, 'mountain', 'trekking'],
+    ] as const;
+    for (const [m, type, activity] of tastes) {
+      const res = await m.agent
+        .put(`/api/trips/${trip.id}/preferences/me`)
+        .set(H)
+        .send({
+          ...prefs(10000, 40000),
+          destinationTypes: [type],
+          activities: [activity],
+          climate: 'mild',
+        });
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+    }
+    const round1 = await asha.agent.post(`/api/trips/${trip.id}/recommendations`).set(H).send({});
+    expect(round1.status, JSON.stringify(round1.body)).toBe(200);
+    const reopened = await asha.agent
+      .post(`/api/trips/${trip.id}/reopen-shortlist`)
+      .set(H)
+      .send({});
+    expect(reopened.status).toBe(200);
+    const round2 = await asha.agent.post(`/api/trips/${trip.id}/recommendations`).set(H).send({});
+    expect(round2.status, JSON.stringify(round2.body)).toBe(200);
+    const body2 = LatestRecommendationResponse.parse(round2.body);
+    expect(body2.run).toMatchObject({ round: 2, kind: 'shortlist', favoursLessServed: true });
+
+    const forbiddenKeys = /"(lambda|weight|deficit|deficits|memberWeights|fairnessWeights)"/;
+    const members = await db.query.tripMember.findMany({
+      where: (t, { eq }) => eq(t.tripId, trip.id),
+    });
+    const memberIds = members.map((m) => m.id);
+    const gets = ENDPOINTS.filter((e) => e.method === 'GET').map((e) =>
+      e.path.replace(':id', trip.id).replace(':token', r17Token),
+    );
+    for (const [who, agent] of [
+      ['Asha', asha.agent],
+      ['Rohan', rohan.agent],
+      ['Meera', meera.agent],
+      ['Outsider', outsider.agent],
+      ['anonymous', null],
+    ] as const) {
+      const responses = [
+        ...(who === 'Asha' ? [{ path: 'POST recommendations', text: round2.text }] : []),
+        ...(await Promise.all(
+          gets.map(async (path) => ({
+            path,
+            text: (await (agent ?? request(app)).get(path).set(H)).text,
+          })),
+        )),
+      ];
+      for (const { path, text } of responses) {
+        expect(text, `${path} as ${who}`).not.toMatch(forbiddenKeys);
+        // Per-member rows stay in the database: no trip_member id, no member list of scores.
+        for (const id of memberIds) expect(text, `${path} as ${who}`).not.toContain(id);
+        expect(text, `${path} as ${who}`).not.toMatch(/"(tripMemberId|memberScores)"/);
+      }
+    }
+    // The run's public GFS weights are the configured alpha, beta and gamma only.
+    expect(Object.keys(body2.run!.weights).sort()).toEqual(['alpha', 'beta', 'gamma']);
+    // Each member's latest view: items carry the caller's own score and the group range only.
+    for (const m of [asha, rohan, meera]) {
+      const res = await m.agent.get(`/api/trips/${trip.id}/recommendations/latest`).set(H);
+      for (const item of (res.body as { items: Record<string, unknown>[] }).items) {
+        expect(Object.keys(item).sort()).toEqual(
+          [
+            'cheapestMode',
+            'destination',
+            'distanceKm',
+            'distanceProvenance',
+            'estimatedCostInr',
+            'gfs',
+            'group',
+            'mean',
+            'min',
+            'mine',
+            'perPersonInr',
+            'rank',
+            'sd',
+          ].sort(),
+        );
+        expect(Object.keys(item.mine as object).sort()).toEqual(
+          [
+            'climateMet',
+            'metActivities',
+            'metTypes',
+            'missedActivities',
+            'missedTypes',
+            'score10',
+          ].sort(),
+        );
+      }
+    }
+  });
+});
+
 // S4-3, D1 (#116): with fewer than 3 contributing members, nothing a member
 // can read carries the budget band's figures, or anything from which the other
 // member's minimum or maximum follows. Budgets are multiples of ₹500, so the

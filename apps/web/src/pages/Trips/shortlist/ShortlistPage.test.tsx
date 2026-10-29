@@ -301,6 +301,72 @@ describe('ask again (T21)', () => {
   });
 });
 
+describe('after ask again (T21, S5-2b-2)', () => {
+  const EARLIER =
+    'Earlier shortlist. Asha asked for new recommendations; this list is kept for reference.';
+  const reopened = (over: Partial<TripDetail> = {}) =>
+    tripDetail({
+      status: 'ready_for_recommendation',
+      members: MEMBERS,
+      latestRecommendation: summaryOf(run()),
+      ...over,
+    });
+
+  it.each([
+    ['the organiser', {}],
+    ['a member', { myRole: 'member' as const }],
+  ])('%s sees the earlier shortlist labelled, with no Choose or Ask again', async (_who, over) => {
+    stubFetch({ trip: reopened(over), response: latest(run(), [item(1), item(2), item(3)]) });
+    renderPage();
+    expect(await screen.findByText(EARLIER)).toBeInTheDocument();
+    expect(cards()).toHaveLength(3);
+    expect(screen.queryByRole('button', { name: 'Choose' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ask again' })).not.toBeInTheDocument();
+  });
+
+  it('hides Choose even if the trip still offered it', async () => {
+    const trip = reopened();
+    stubFetch({
+      trip: { ...trip, availableActions: [{ action: 'chooseDestination', enabled: true }] },
+      response: latest(run(), [item(1)]),
+    });
+    renderPage();
+    expect(await screen.findByText(EARLIER)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Choose' })).not.toBeInTheDocument();
+  });
+
+  it('a current shortlist has no label', async () => {
+    stubFetch({ trip: shortlisted(), response: latest(run(), [item(1)]) });
+    renderPage();
+    await screen.findByRole('heading', { name: '1. Place 1' });
+    expect(screen.queryByText(/Earlier shortlist/)).not.toBeInTheDocument();
+  });
+});
+
+describe('fairness across rounds (R17, R7)', () => {
+  const NOTE =
+    'This round gives more weight to members whose wishes were met less in earlier rounds.';
+
+  it('says so, with no names or numbers, when the run favours members less served', async () => {
+    stubFetch({
+      trip: shortlisted({ myRole: 'member' }),
+      response: latest(run({ round: 2, favoursLessServed: true }), [item(1), item(2), item(3)]),
+    });
+    renderPage();
+    expect(await screen.findByText(NOTE)).toBeInTheDocument();
+  });
+
+  it('says nothing on an unweighted run', async () => {
+    stubFetch({
+      trip: shortlisted(),
+      response: latest(run({ round: 2 }), [item(1), item(2), item(3)]),
+    });
+    renderPage();
+    await screen.findByRole('heading', { name: '1. Place 1' });
+    expect(screen.queryByText(NOTE)).not.toBeInTheDocument();
+  });
+});
+
 describe('diagnostic view', () => {
   it('states the fit, the binding limit, the closest misses and the destinations that fit', async () => {
     const r = diagnosticRun();

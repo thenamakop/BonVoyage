@@ -9,10 +9,12 @@ import {
   recommendationRun,
   trip,
   tripMember,
+  tripPackage,
 } from '@bonvoyage/db/schema';
 import type { CostRules } from '@bonvoyage/engine';
-import { and, asc, desc, eq, gte, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import type { Tx } from '../trips/transition-trip';
+import type { PackageMark, RunMark, TopChoiceCandidate } from './earlier-rounds';
 
 // S2-6: the queries behind recommendation runs. Every list is one query
 // (rule S6 and the R15 speed target): no per-destination or per-member loops.
@@ -181,6 +183,59 @@ export async function findLatestRun(db: Db, tripId: string): Promise<RunRow | un
     .orderBy(desc(recommendationRun.round), desc(recommendationRun.createdAt))
     .limit(1);
   return rows[0];
+}
+
+/**
+ * R17: what earlierRounds needs, in three queries whatever the number of rounds
+ * (rule S6). Items are read only where they can be a top choice: rank 1, or a
+ * destination some package (T9) was built for.
+ */
+export async function readRoundHistory(
+  db: Db,
+  tripId: string,
+): Promise<{ runs: RunMark[]; candidates: TopChoiceCandidate[]; packages: PackageMark[] }> {
+  const [runs, packages] = await Promise.all([
+    db
+      .select({
+        id: recommendationRun.id,
+        round: recommendationRun.round,
+        kind: recommendationRun.kind,
+        createdAt: recommendationRun.createdAt,
+      })
+      .from(recommendationRun)
+      .where(eq(recommendationRun.tripId, tripId))
+      .orderBy(asc(recommendationRun.round)),
+    db
+      .select({ destinationId: tripPackage.destinationId, createdAt: tripPackage.createdAt })
+      .from(tripPackage)
+      .where(eq(tripPackage.tripId, tripId)),
+  ]);
+  const shortlistIds = runs.filter((r) => r.kind === 'shortlist').map((r) => r.id);
+  if (shortlistIds.length === 0) return { runs, candidates: [], packages };
+  const chosenIds = [...new Set(packages.map((p) => p.destinationId))];
+  const rows = await db
+    .select({
+      runId: recommendationItem.runId,
+      destinationId: recommendationItem.destinationId,
+      rank: recommendationItem.rank,
+      reasons: recommendationItem.reasons,
+    })
+    .from(recommendationItem)
+    .where(
+      and(
+        inArray(recommendationItem.runId, shortlistIds),
+        chosenIds.length > 0
+          ? or(eq(recommendationItem.rank, 1), inArray(recommendationItem.destinationId, chosenIds))
+          : eq(recommendationItem.rank, 1),
+      ),
+    );
+  const candidates = rows.map(({ reasons, ...row }) => ({
+    ...row,
+    scores: (reasons as { members: { tripMemberId: string; score: number }[] }).members.map(
+      ({ tripMemberId, score }) => ({ tripMemberId, score }),
+    ),
+  }));
+  return { runs, candidates, packages };
 }
 
 export interface ItemWithDestination {

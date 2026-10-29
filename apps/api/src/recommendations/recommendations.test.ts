@@ -1,18 +1,19 @@
 import { resolve } from 'node:path';
 import { createDb, importCatalogue } from '@bonvoyage/db';
-import { recommendationRun } from '@bonvoyage/db/schema';
-import { estimateRoadKm } from '@bonvoyage/engine';
+import { recommendationItem, recommendationRun } from '@bonvoyage/db/schema';
+import { estimateRoadKm, fairnessWeights, groupFit, memberDeficits } from '@bonvoyage/engine';
 import {
   ActivityResponse,
   GroupProfileResponse,
   InvitationResponse,
   LatestRecommendationResponse,
+  PackagesResponse,
   RequestRecommendationsResponse,
   TripDetail,
   type ErrorEnvelope,
   type PreferenceInput,
 } from '@bonvoyage/shared';
-import { eq } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { pino } from 'pino';
 import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -548,6 +549,250 @@ describe('POST /api/trips/:id/destination', () => {
     const again = await choose(organiser, chosen);
     expect(again.status).toBe(409);
     expect((again.body as ErrorEnvelope).error.code).toBe('ILLEGAL_TRANSITION');
+  });
+});
+
+// S5-2b-2 (R17, decision E1): after T21 the next shortlist is ranked by the
+// fair GFS. The members and destinations are scoring.md section 7's golden
+// data around their own hub (more than 400 km from every other fixture hub),
+// so section 8's worked example gives the orders.
+describe('fairness across rounds (R17)', () => {
+  const FAIR_HUB = 'fair-hub';
+  const GOLDEN: FixtureDestination[] = [
+    {
+      slug: 'fair-d1',
+      lat: 35.2,
+      lng: 95,
+      types: ['spiritual', 'adventure', 'mountain'],
+      activities: ['rafting', 'yoga_wellness', 'temples', 'camping'],
+      climate: 'mild',
+      bestMonths: [11],
+    },
+    {
+      slug: 'fair-d2',
+      lat: 35,
+      lng: 95.2,
+      types: ['heritage', 'city'],
+      activities: ['forts_palaces', 'museums', 'food_trails', 'shopping'],
+      climate: 'warm',
+      bestMonths: [11],
+    },
+    {
+      slug: 'fair-d3',
+      lat: 34.8,
+      lng: 95,
+      types: ['mountain', 'adventure', 'hill_station'],
+      activities: ['trekking', 'paragliding', 'camping', 'skiing'],
+      climate: 'cold',
+      bestMonths: [11],
+    },
+  ];
+  const GOLDEN_PREFS = [
+    prefs({
+      destinationTypes: ['mountain', 'adventure'],
+      activities: ['trekking', 'rafting', 'camping'],
+      climate: 'cold',
+    }),
+    prefs({
+      destinationTypes: ['heritage', 'city'],
+      activities: ['museums', 'food_trails', 'shopping'],
+      climate: 'warm',
+    }),
+    prefs({
+      destinationTypes: ['mountain', 'spiritual'],
+      activities: ['yoga_wellness', 'temples', 'trekking'],
+      climate: 'mild',
+    }),
+  ];
+  const WEIGHTS = { alpha: 0.5, beta: 0.3, gamma: 0.2 };
+  // `app` above takes lambda from scoring.json (1); these two override it.
+  const appWith = (fairnessLambda: number) =>
+    createApp({
+      db,
+      pool,
+      logger: pino({ level: 'silent' }),
+      auth,
+      clock: () => new Date('2026-11-01T06:30:00Z'),
+      scoringWeights: WEIGHTS,
+      fairnessLambda,
+    });
+  const apps = { 0: appWith(0), 1: app, 2: appWith(2) } as const;
+
+  beforeAll(async () => {
+    await ensureHubAt(db, FAIR_HUB, 35, 95);
+    for (const d of GOLDEN) await ensureDestination(db, d);
+  });
+
+  const slugs = (body: { items: { destination: { slug: string } }[] }) =>
+    body.items.map((i) => i.destination.slug.replace('fair-', ''));
+
+  /** The golden trip, shortlisted once: round 1 is d1, d3, d2 at every lambda (M3). */
+  async function goldenRound1(lambda: keyof typeof apps) {
+    const a = apps[lambda];
+    const members: Member[] = [];
+    for (const i of [1, 2, 3]) members.push(await createTestUser(a, `Fair ${lambda} m${i}`));
+    const [organiser] = members as [Member, Member, Member];
+    const { id: tripId } = await createTripAs(organiser.agent, {
+      originHubSlug: FAIR_HUB,
+      radiusKm: 150,
+      budgetTotalInr: 120000,
+      durationNights: 2,
+    });
+    const { token } = InvitationResponse.parse(
+      (await organiser.agent.post(`/api/trips/${tripId}/invitations`).set(H).send({})).body,
+    );
+    for (const m of members.slice(1)) {
+      await m.agent.post(`/api/invitations/${token}/accept`).set(H).send({});
+    }
+    for (const [i, m] of members.entries()) {
+      const res = await m.agent
+        .put(`/api/trips/${tripId}/preferences/me`)
+        .set(H)
+        .send(GOLDEN_PREFS[i]);
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+    }
+    const round1 = RequestRecommendationsResponse.parse((await recommend(organiser, tripId)).body);
+    expect(round1.run).toMatchObject({ round: 1, kind: 'shortlist', favoursLessServed: false });
+    expect(slugs(round1)).toEqual(['d1', 'd3', 'd2']);
+    return { tripId, organiser, members };
+  }
+
+  /** T21, then request again: round 2. */
+  async function askAgain(organiser: Member, tripId: string) {
+    const reopened = await organiser.agent
+      .post(`/api/trips/${tripId}/reopen-shortlist`)
+      .set(H)
+      .send({});
+    expect(reopened.status, JSON.stringify(reopened.body)).toBe(200);
+    const res = await recommend(organiser, tripId);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const round2 = RequestRecommendationsResponse.parse(res.body);
+    expect(round2.run).toMatchObject({ round: 2, kind: 'shortlist' });
+    return round2;
+  }
+
+  /** The stored runs of a trip, oldest first, with each item's per-member scores. */
+  async function storedRuns(tripId: string) {
+    const runs = await db
+      .select()
+      .from(recommendationRun)
+      .where(eq(recommendationRun.tripId, tripId))
+      .orderBy(asc(recommendationRun.round));
+    const items = await db
+      .select()
+      .from(recommendationItem)
+      .where(
+        inArray(
+          recommendationItem.runId,
+          runs.map((r) => r.id),
+        ),
+      )
+      .orderBy(asc(recommendationItem.rank));
+    return runs.map((run) => ({
+      lambda: run.lambda,
+      items: items
+        .filter((item) => item.runId === run.id)
+        .map((item) => ({
+          destinationId: item.destinationId,
+          scores: (item.reasons as { members: { tripMemberId: string; score: number }[] }).members,
+        })),
+    }));
+  }
+
+  it('λ 1: round 2 follows the fair GFS (d1, d2, d3), not λ 0 (d1, d3, d2); items stay unweighted; λ is stored', async () => {
+    const { tripId, organiser, members } = await goldenRound1(1);
+    const round2 = await askAgain(organiser, tripId);
+    expect(slugs(round2)).toEqual(['d1', 'd2', 'd3']);
+    expect(round2.run!.favoursLessServed).toBe(true);
+    // Every member reads the same flag, with no weight in it (V2).
+    expect((await latest(members[1]!, tripId)).run!.favoursLessServed).toBe(true);
+
+    const runs = await storedRuns(tripId);
+    expect(runs.map((r) => r.lambda)).toEqual([1, 1]);
+    // Safe: the run has three items, so rank 1 exists.
+    const d1 = runs[0]!.items[0]!;
+    const run2 = runs[1]!;
+    // The integration trip reproduces the golden scores (scoring.md section 7).
+    expect(d1.scores.map((s) => s.score)).toEqual([
+      expect.closeTo(0.453333, 6),
+      0,
+      expect.closeTo(0.653333, 6),
+    ]);
+
+    // The engine with weights from round 1's top choice (its rank 1, d1) gives
+    // the stored order; the returned figures are the unweighted formula.
+    const weights = fairnessWeights(
+      memberDeficits(
+        [{ topChoiceScores: Object.fromEntries(d1.scores.map((s) => [s.tripMemberId, s.score])) }],
+        d1.scores.map((s) => s.tripMemberId),
+      ),
+      1,
+    );
+    const fair = run2.items.map((item) => ({
+      id: item.destinationId,
+      gfs: groupFit(
+        item.scores.map((s) => s.score),
+        WEIGHTS,
+        item.scores.map((s) => weights[s.tripMemberId]!),
+      ).gfs,
+    }));
+    expect(run2.items.map((i) => i.destinationId)).toEqual(
+      [...fair].sort((a, b) => b.gfs - a.gfs).map((f) => f.id),
+    );
+    for (const [i, item] of run2.items.entries()) {
+      const plain = groupFit(
+        item.scores.map((s) => s.score),
+        WEIGHTS,
+      );
+      const shown = round2.items[i]!;
+      expect(shown.gfs).toBeCloseTo(plain.gfs, 9);
+      expect(shown.mean).toBeCloseTo(plain.mean, 9);
+      expect(shown.min).toBeCloseTo(plain.min, 9);
+      expect(shown.sd).toBeCloseTo(plain.sd, 9);
+    }
+    // Unweighted, d2 would rank below d3: only the order moved.
+    const shownGfs = Object.fromEntries(round2.items.map((i) => [i.destination.slug, i.gfs]));
+    expect(shownGfs['fair-d2']!).toBeLessThan(shownGfs['fair-d3']!);
+  });
+
+  it('λ 0: round 2 keeps the unweighted order and stores λ 0', async () => {
+    const { tripId, organiser } = await goldenRound1(0);
+    const round2 = await askAgain(organiser, tripId);
+    expect(slugs(round2)).toEqual(['d1', 'd3', 'd2']);
+    expect(round2.run!.favoursLessServed).toBe(false);
+    expect((await storedRuns(tripId)).map((r) => r.lambda)).toEqual([0, 0]);
+  });
+
+  // Notes 1 and 2 (29 October): T10 clears selected_destination_id, so the top
+  // choice comes from the packages T9 stored on that run; with no T9 it is rank 1.
+  it('λ 2, never chosen: the top choice is rank 1 (d1), so d2 rises to first', async () => {
+    const { tripId, organiser } = await goldenRound1(2);
+    expect(slugs(await askAgain(organiser, tripId))).toEqual(['d2', 'd1', 'd3']);
+  });
+
+  it('λ 2, d3 chosen then rejected (T9, T10): the top choice is d3, so d1 stays first', async () => {
+    const { tripId, organiser } = await goldenRound1(2);
+    const chosen = await organiser.agent
+      .post(`/api/trips/${tripId}/destination`)
+      .set(H)
+      .send({ destinationSlug: 'fair-d3' });
+    expect(chosen.status, JSON.stringify(chosen.body)).toBe(200);
+    let status = 'packages_proposed';
+    while (status === 'packages_proposed') {
+      const list = PackagesResponse.parse(
+        (await organiser.agent.get(`/api/trips/${tripId}/packages`).set(H)).body,
+      );
+      // Safe: while the trip is packages_proposed at least one package is proposed.
+      const res = await organiser.agent
+        .post(`/api/trips/${tripId}/packages/${list.packages[0]!.id}/remove`)
+        .set(H)
+        .send({});
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+      status = TripDetail.parse(res.body).status;
+    }
+    expect(status).toBe('shortlisted');
+    expect((await tripOf(organiser, tripId)).selectedDestination).toBeNull();
+    expect(slugs(await askAgain(organiser, tripId))).toEqual(['d1', 'd2', 'd3']);
   });
 });
 

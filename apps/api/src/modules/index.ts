@@ -27,6 +27,7 @@ export function createApiRouter(deps: {
   adminEmails: readonly string[];
   routing: Routing;
   scoringWeights: Weights;
+  fairnessLambda: number;
   recommendationHooks?: RecommendationHooks;
   llm?: LlmClient;
   wordingTimeoutMs?: number;

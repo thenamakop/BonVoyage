@@ -18,7 +18,7 @@ import type { Pool } from 'pg';
 import type { Logger } from 'pino';
 import { pinoHttp } from 'pino-http';
 import type { Auth } from './auth/auth';
-import { SCORING_WEIGHTS } from './config/scoring';
+import { FAIRNESS_LAMBDA, SCORING_WEIGHTS } from './config/scoring';
 import { AppError, errorHandler, notFoundHandler } from './http/errors';
 import { requireJson } from './http/json-only';
 import type { SessionUser } from './http/session';
@@ -40,6 +40,8 @@ export interface AppDeps {
   routing?: Routing;
   /** Group-fit weights; defaults to apps/api/config/scoring.json (0004 h). */
   scoringWeights?: Weights;
+  /** R17 fairness lambda; defaults to apps/api/config/scoring.json (decision E1). */
+  fairnessLambda?: number;
   /** Test-only seams around the recommendation request (S2-6 staleness test). */
   recommendationHooks?: RecommendationHooks;
   /** Present when LIVE_APIS=on; tests inject a FixtureLlmClient (S3-6). */
@@ -57,6 +59,7 @@ export function createApp({
   adminEmails = [],
   routing,
   scoringWeights = SCORING_WEIGHTS,
+  fairnessLambda = FAIRNESS_LAMBDA,
   recommendationHooks,
   llm,
   wordingTimeoutMs,
@@ -142,6 +145,7 @@ export function createApp({
       adminEmails,
       routing: appRouting,
       scoringWeights,
+      fairnessLambda,
       ...(recommendationHooks ? { recommendationHooks } : {}),
       ...(llm ? { llm } : {}),
       ...(wordingTimeoutMs !== undefined ? { wordingTimeoutMs } : {}),

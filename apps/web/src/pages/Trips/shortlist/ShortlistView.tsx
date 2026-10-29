@@ -14,10 +14,13 @@ export function ShortlistView({
   trip,
   run,
   items,
+  earlier = false,
 }: {
   trip: TripDetail;
   run: RecommendationRun;
   items: RecommendationItem[];
+  /** The run before T21, kept for reference: nothing on it can be chosen. */
+  earlier?: boolean;
 }) {
   const [all, setAll] = useState(false);
   const listRef = useRef<HTMLOListElement>(null);
@@ -26,12 +29,10 @@ export function ShortlistView({
   useEffect(() => {
     if (all) listRef.current?.querySelectorAll<HTMLElement>('h2')[FIRST]?.focus();
   }, [all]);
-  const canChoose = trip.availableActions.some(
-    (a) => a.action === 'chooseDestination' && a.enabled,
-  );
-  const canAskAgain = trip.availableActions.some(
-    (a) => a.action === 'reopenShortlist' && a.enabled,
-  );
+  const canChoose =
+    !earlier && trip.availableActions.some((a) => a.action === 'chooseDestination' && a.enabled);
+  const canAskAgain =
+    !earlier && trip.availableActions.some((a) => a.action === 'reopenShortlist' && a.enabled);
   const shown = all ? items : items.slice(0, FIRST);
   return (
     <div className="space-y-4">
