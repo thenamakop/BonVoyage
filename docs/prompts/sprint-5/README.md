@@ -36,7 +36,17 @@ Where a prompt below and `docs/sprints/sprint-5-plan.md` disagree, the plan wins
 
 ## Run order
 
-Issue numbers come from `docs/sprints/sprint-5-plan.md` (S5-1 fills them in) or `gh issue list --milestone "Sprint 5 (29 Oct-7 Nov): Could-haves" --state all`, never from `docs/traceability.md`.
+Issue numbers come from `docs/sprints/sprint-5-plan.md` (S5-1 fills them in) or `gh issue list --milestone "Sprint 5 (29 Oct-7 Nov): Could-haves" --state all`, never from `docs/traceability.md`. Created on 29 October 2026:
+
+| Prompt | Issue |
+| --- | --- |
+| S5-1 plan (tracking) | #138 |
+| S5-2 R17 fairness across rounds | #27 |
+| S5-3 in-app notifications and reminders | #139 |
+| S5-4 R18 voting on the shortlist | #28 |
+| S5-5 evaluation harness | #140 |
+| S5-6 evidence and traceability | #141 |
+| S5-7 Sprint 5 review | #142 |
 
 | When | Prompt | Who | Time box | Needs merged first | Tests against |
 | --- | --- | --- | --- | --- | --- |

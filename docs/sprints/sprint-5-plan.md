@@ -1,10 +1,6 @@
 # Sprint 5 plan: Could-haves (29 October to 7 November 2026)
 
-**Status: draft for Maulik's decisions.** Nothing below is built. No Sprint 5 issue, milestone or re-plan exists yet. After approval:
-
-- decisions E1 to E7 are recorded here and in the [prompts README](../prompts/sprint-5/README.md);
-- the milestone "Sprint 5 (29 Oct-7 Nov): Could-haves" and its issues are created, linking #27 and #28 rather than duplicating them;
-- the [re-plan text](#re-plan-text-applied-only-after-approval) is applied.
+**Status: approved 29 October 2026.** Decisions E1 to E7 are recorded [below](#decisions-maulik-29-october-2026) and in the [prompts README](../prompts/sprint-5/README.md). The milestone "Sprint 5 (29 Oct-7 Nov): Could-haves" holds #27, #28 and the [issues created](#issues-created-29-october-2026-milestone-sprint-5-29-oct-7-nov-could-haves) for the other items. The [re-plan](replan-2026-10-29.md) is applied.
 
 Sprint 5 builds four items under Maulik's decisions M1 to M4 (29 October, [prompts README](../prompts/sprint-5/README.md)):
 
@@ -18,13 +14,13 @@ Sprint 4's open items 1, 7, 8, 9 and 12 run beside them. Every finding cites a f
 ## Conflicts to settle first
 
 1. **R17 as worded cannot fire: a trip has exactly one shortlisted run** (finding a). S5-2 counts "earlier shortlisted runs", and its test asks for "a revision (T5) and a second request" after a shortlist. Neither can happen under decision 0001's table. Counting diagnostics as rounds would change a trip's first shortlist, which M3 forbids. There are two ways round it, set out in [design 1](#1-r17-fairness-across-rounds-27); E1 picks one.
-2. **Voting as I6 adds a row** to the table that decision 0001 and RUNBOOK Appendix B fix at I1 to I5. V4 allows a new event if 0001's table is updated in the same PR. AGENTS.md section 12 still asks for approval, which E4 gives.
+2. **Voting as I6 adds a row** to the table that decision 0001 and RUNBOOK Appendix B fix at I1 to I5. V4 allows a #142 event if 0001's table is updated in the same PR. AGENTS.md section 12 still asks for approval, which E4 gives.
 3. **Scope documents still say these items are out:**
    - ADR-010 line 19: "R17, R18, reminders and email, and the user study are not delivered by 10 November";
    - RUNBOOK line 434;
    - the 27 October re-plan ("remain deferred").
 
-   M1 supersedes them. The re-plan text below updates the RUNBOOK, traceability and the README. ADR-010 is a record of its own date and stays as it is; the new re-plan cites M1.
+   M1 supersedes them. The re-plan text below updates the RUNBOOK, traceability and the README. ADR-010 is a record of its own date and stays as it is; the #141 re-plan cites M1.
 4. **Reminders by email.** SRS line 283 says reminder messages go by email. Decision 0000's C4 row says "in-app first, email second", and M4 says in-app only. Decisions win over the SRS. SRS line 184's third kind of reminder ("approaching travel dates") needs a scheduler and is not planned.
 5. **HTTP 429 is not in AGENTS.md section 7's status list** (400, 401, 403, 404, 409, 422, 503). The S5-3 prompt specifies 429 for the Remind limit. Proposal: allow 429 `TOO_MANY_REQUESTS` with a `Retry-After` header, recorded in this plan's decisions. The other option is 422.
 
@@ -44,8 +40,8 @@ Sprint 4's open items 1, 7, 8, 9 and 12 run beside them. Every finding cites a f
 
 ### b. Per-member scores are already stored
 
-- Each item's `reasons` jsonb (`packages/db/src/schema/recommendations.ts:57`) holds `members[]` with `tripMemberId` and `score`. It is typed at `apps/api/src/recommendations/service.ts:140-150` and filled at `543-550`. A later round can compute any deficit from these rows, so E2 needs no new column for per-member scores.
-- Runs store `alpha`, `beta` and `gamma` (`recommendations.ts:27-29`); λ needs one new column.
+- Each item's `reasons` jsonb (`packages/db/src/schema/recommendations.ts:57`) holds `members[]` with `tripMemberId` and `score`. It is typed at `apps/api/src/recommendations/service.ts:140-150` and filled at `543-550`. A later round can compute any deficit from these rows, so E2 needs no #140 column for per-member scores.
+- Runs store `alpha`, `beta` and `gamma` (`recommendations.ts:27-29`); λ needs one #139 column.
 - `groupFit` (`packages/engine/src/scoring/group-fit.ts:3-9`) computes an unweighted mean and population sd. `rankDestinations` (`scoring/rank.ts:20-45`) has no history. `scoring.md` section 7's golden values are asserted to 1e-6 in `scoring/golden.test.ts`.
 - **What members get back.** `toItemView` (`service.ts:318`) returns only the caller's own `mine`. Every item also carries `gfs`, `mean`, `min` and `sd`, which the screen does not show (`docs/security/privacy.md:39`). In 2-member groups these already reveal the other member's score; that is accepted at `privacy.md:43`.
 
@@ -278,7 +274,20 @@ At λ = 1, m2's only good place, d2, rises above d3 without displacing the group
 - `docs/evaluation/README.md`, covering what the harness does and does not measure.
 - The smoke test (`--scenarios 20`, under 20 s, metric A at 100%) runs in the unit project, so CI runs it.
 
-## Decisions for Maulik
+## Decisions (Maulik, 29 October 2026)
+
+Maulik approved the recommended option for every decision:
+
+- **E1, R17 rounds and formula.** Option B: add T21 `shortlistReopened` ("Ask again", `shortlisted` to `ready_for_recommendation`, organiser only). The deficit is measured on each earlier shortlist's top choice (the chosen destination, else rank 1). λ = 1. Returned `gfs`, `mean` and `sd` stay unweighted; only `rank` follows GFS_fair.
+- **E2, per-member scores.** Reuse `reasons.members[].score`. Migration 0004 adds only `recommendation_run.lambda`; weights are recomputed, never stored.
+- **E3, notifications.** The table in design 2: `member_joined` replaces T2, and `shortlist_reopened` covers T21. Remind is limited to a rolling 24 hours per member per trip. 429 `TOO_MANY_REQUESTS` with `Retry-After` is approved (conflict 5); S5-3's API PR adds it to AGENTS.md section 7.
+- **E4, voting.** Option 1: per-destination counts show once both members of a 2-member trip have voted, and `privacy.md` documents that each then knows the other's vote. I6 `voteCast` is approved for decision 0001's table.
+- **E5, evaluation.** 500 scenarios, seed 20261029, metrics A to D, the average-only and least-misery baselines, and a λ sweep of 0, 0.5, 1 and 2.
+- **E6, order and cut order.** As proposed below.
+- **E7, reviews.** Two, both on 7 November: `sprint-4-review.md` (#125) and `sprint-5-review.md` (#142).
+- **Also:** SRS line 283's email delivery is superseded by M4 and decision 0000's C4 row (conflict 4). ADR-010 stays as dated, and the re-plan cites M1 (conflict 3).
+
+The options as they were put to Maulik:
 
 | # | Question | Options | Recommended |
 | --- | --- | --- | --- |
@@ -296,11 +305,13 @@ At λ = 1, m2's only good place, d2, rises above d3 without displacing the group
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | S5-2a | R17 engine: `fairness.ts`, optional weights in `groupFit` and `rankDestinations`, `scoring.md` section 8 | #27 | [S5-2](../prompts/sprint-5/S5-2-fairness.md) | R17 | M | Golden test unchanged to 1e-6; the worked example to 1e-6; 100% branch coverage on `scoring/` | E1 |
 | S5-2b | R17 API: T21 (if B) with 0001's table and the button; λ config; migration 0004; weights from earlier shortlists; the R7 sentence | #27 | S5-2 | R17 | M to L, two PRs (T21, then weights) | Integration: shortlist, T21, request again ranks by GFS_fair (compared with λ 0); returned `gfs` unweighted; the leak test finds no weight; `run-seed.test.ts` first shortlists unchanged (M3) | S5-2a, E1, E2 |
-| S5-3 | Notifications and Remind: module, writes in transitions, 4 endpoints, bell, panel, Remind button, `privacy.md` | new | [S5-3](../prompts/sprint-5/S5-3-reminders.md) | C4 (0000), M4 | M to L, two PRs (API, web) | One test per type with its recipients; 409 and 429; another user's id gives 404; deletion cascade; the inventory and matrix counts pasted; web tests for the count and the panel; 360 px | E3 |
+| S5-3 | Notifications and Remind: module, writes in transitions, 4 endpoints, bell, panel, Remind button, `privacy.md` | #139 | [S5-3](../prompts/sprint-5/S5-3-reminders.md) | C4 (0000), M4 | M to L, two PRs (API, web) | One test per type with its recipients; 409 and 429; another user's id gives 404; deletion cascade; the inventory and matrix counts pasted; web tests for the count and the panel; 360 px | E3 |
 | S5-4 | Voting: I6, migration 0005, PUT and DELETE vote, counts, card button, demo step 2 (Q5) | #28 | [S5-4](../prompts/sprint-5/S5-4-voting.md) | R18 | M to L, two PRs (API, web) | Cast, change and withdraw; a destination outside the run gives 400; after T9, 409; a new run starts empty; T10 keeps votes; no voter identity in any response; the 2-member wait state | S5-2 merged, E4 |
-| S5-5 | Evaluation harness: move the mapping into the engine, then `scripts/eval/`, smoke in the unit project, full run committed | new | [S5-5](../prompts/sprint-5/S5-5-evaluation.md) | Synopsis objective 8, expected result 7 | M to L, two PRs | The same seed gives byte-identical CSVs; smoke under 20 s with A at 100%; API recommendation tests unchanged after the move | S5-2a, E5 |
-| S5-6 | Evidence: close #27, #28 and the new issues with evidence; traceability R16 to R18; `privacy.md` counts (finding c) | new | [S5-6](../prompts/sprint-5/S5-6-evidence.md) | Definition of done | S | Each row cites tests and issues | S5-2 to S5-5 merged or cut |
-| S5-7 | Sprint 5 review | new | [S5-7](../prompts/sprint-5/S5-7-review.md) | Gate before the Buffer | S | `docs/sprints/sprint-5-review.md` with outputs and Cowork's results | All above |
+| S5-5 | Evaluation harness: move the mapping into the engine, then `scripts/eval/`, smoke in the unit project, full run committed | #140 | [S5-5](../prompts/sprint-5/S5-5-evaluation.md) | Synopsis objective 8, expected result 7 | M to L, two PRs | The same seed gives byte-identical CSVs; smoke under 20 s with A at 100%; API recommendation tests unchanged after the move | S5-2a, E5 |
+| S5-6 | Evidence: close #27, #28 and the new issues with evidence; traceability R16 to R18; `privacy.md` counts (finding c) | #141 | [S5-6](../prompts/sprint-5/S5-6-evidence.md) | Definition of done | S | Each row cites tests and issues | S5-2 to S5-5 merged or cut |
+| S5-7 | Sprint 5 review | #142 | [S5-7](../prompts/sprint-5/S5-7-review.md) | Gate before the Buffer | S | `docs/sprints/sprint-5-review.md` with outputs and Cowork's results | All above |
+
+The plan itself is tracked by #138.
 
 Each migration PR lists "After merge (Maulik)": `pnpm db:migrate:remote --target preview --status`, then without `--status`, then the same for `production`.
 
@@ -330,7 +341,7 @@ This follows the README's run order. Per M2, every PR merges when CI is green an
 
 Never cut: S5-2 (R17), S5-5 (the harness), S5-6, S5-7, and Sprint 4's items 1, 9 and 12.
 
-## Re-plan text, applied only after approval
+## Re-plan text (applied 29 October 2026)
 
 **`docs/sprints/replan-2026-10-29.md` (new):**
 
@@ -354,8 +365,16 @@ Never cut: S5-2 (R17), S5-5 (the harness), S5-6, S5-7, and Sprint 4's items 1, 9
 - Point line 276 at the 29 October re-plan.
 - On line 278, "deferred past submission" becomes "planned for Sprint 5".
 
-## Open questions
+## Issues created (29 October 2026, milestone "Sprint 5 (29 Oct-7 Nov): Could-haves")
 
-- **#125 (Sprint 4 review) was closed by mistake.** PR #127's body quoted the S4-12 prompt's "Closes #125", so GitHub closed the issue when #127 merged (28 October, 15:42 UTC). No `sprint-4-review.md` exists. Proposal: reopen #125 after approval.
-- **The tracking issue.** The S5-1 prompt says an issue is "created by this prompt", but also that issues are created only after approval. It is created with the others, so this PR closes nothing yet.
-- **The prompts are untracked.** `docs/prompts/sprint-5/` exists locally but not on `master`, so this plan's links to it resolve only once the prompts are committed. This PR does not add them; that is Maulik's call, as in S4-1 part 2.
+| Issue | Title | Item |
+| --- | --- | --- |
+| #138 | S5-plan: Sprint 5 plan | S5-1 |
+| #27 | [R17] Adjust fairness across recommendation rounds (linked, label `deferred` removed) | S5-2 |
+| #139 | In-app notifications and organiser reminders | S5-3 |
+| #28 | [R18] Let members vote on shortlisted destinations (linked, label `deferred` removed) | S5-4 |
+| #140 | Evaluation harness (pnpm eval) and first results | S5-5 |
+| #141 | S5-evidence: Sprint 5 evidence and traceability | S5-6 |
+| #142 | S5-review: Sprint 5 review | S5-7 |
+
+#125 (Sprint 4 review) was reopened the same day. It had been closed by mistake when #127 merged, because #127's body quoted the S4-12 prompt.
