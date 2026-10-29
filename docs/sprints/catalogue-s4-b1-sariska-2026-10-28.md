@@ -30,7 +30,7 @@ The same as [catalogue-b1-costs-2026-10-26.md, Method](catalogue-b1-costs-2026-1
 **Row after the change (option L, chosen 29 October 2026):**
 
 ```text
-cost_source_url  = the Booking.com sorted-list URL above (unchanged)
+cost_source_url  = the Booking.com default-list URL (unchanged; the sorted list is the budget-tier evidence link in the table)
 cost_collected_on = 2026-10-28
 cost_review_status = verified
 stay_budget_inr 4700, stay_mid_inr 12300, stay_premium_inr 17800, food_per_day_inr 750, local_per_day_inr 350
