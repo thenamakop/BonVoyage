@@ -63,6 +63,7 @@ function actionsFor(t: Omit<TripDetail, 'availableActions'>): TripAction[] {
   if (hasRecommendation) out.push({ action: 'viewRecommendations', enabled: true });
   if (organiser && t.status === 'shortlisted') {
     out.push({ action: 'chooseDestination', enabled: true });
+    out.push({ action: 'reopenShortlist', enabled: true });
   }
   const planning = !['finalised', 'in_progress', 'completed', 'cancelled'].includes(t.status);
   if (organiser && planning) out.push({ action: 'cancelTrip', enabled: true });

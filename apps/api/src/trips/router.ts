@@ -58,6 +58,7 @@ import {
   getHubs,
   getMyTrips,
   getTrip,
+  reopenShortlist,
   updateTrip,
 } from './service';
 
@@ -211,6 +212,14 @@ export function createRouter({
         userId,
       ),
     );
+  });
+
+  // S5-2b-1: T21 "Ask again", back to ready_for_recommendation for a new round.
+  router.post('/trips/:id/reopen-shortlist', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    parseOrThrow(z.strictObject({}), req.body ?? {});
+    const { userId } = getSessionUser(res);
+    res.json(await reopenShortlist({ db, logger: req.log, clock }, tripId, userId));
   });
 
   router.get('/trips/:id/recommendations/latest', requireSession(auth), async (req, res) => {

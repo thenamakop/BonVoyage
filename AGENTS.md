@@ -127,7 +127,7 @@ These come from the SRS and the runbook. Breaking one is a bug, even if tests pa
    - Every call falls back to the curated catalogue when the provider fails.
    - Every figure returned carries a provenance: `live`, `cached`, `curated` or `estimated`.
 5. **Every price shown to a user** displays the group total, the per-person figure and an "estimate" label (SRS 3.1.1).
-6. **Trip status changes only through `transitionTrip()`** in `apps/api/src/trips/transition-trip.ts`, which uses `nextState()` in `packages/engine/src/trip-state.ts`: 18 external rows (T1 to T18 with T3b, T6 split into T6>T7 and T6>T8), 5 internal transitions (I1 to I5) and two terminal states (T19, T20); see `docs/decisions/0001`. Rejected events return 409; never update `trip.status` directly.
+6. **Trip status changes only through `transitionTrip()`** in `apps/api/src/trips/transition-trip.ts`, which uses `nextState()` in `packages/engine/src/trip-state.ts`: 19 external rows (T1 to T18 with T3b, T6 split into T6>T7 and T6>T8, plus T21 from decision 0001 g), 5 internal transitions (I1 to I5) and two terminal states (T19, T20); see `docs/decisions/0001`. Rejected events return 409; never update `trip.status` directly.
 7. **Privacy.** A preference profile is readable only by its owner. The rest of the trip group sees aggregates only. Enforce this in API queries and test it.
 8. **Empty results are not errors.** Fewer than 3 feasible destinations returns `{kind: 'diagnostic', bindingConstraint, alternatives}`, not an exception.
 

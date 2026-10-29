@@ -171,6 +171,10 @@ export function chooseConfirmText(name: string): string {
   return `Choose ${name}? The group moves on to packages.`;
 }
 
+// T21 (S5-2b-1): the organiser's "Ask again" confirm.
+export const ASK_AGAIN_CONFIRM =
+  'Ask again? Members can change their answers, and you can ask for new recommendations.';
+
 // ---------------------------------------------------------------------------
 // Diagnostic
 

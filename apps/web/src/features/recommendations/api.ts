@@ -102,3 +102,17 @@ export function useChooseDestination(id: string) {
     onError: refetchOnConflict(queryClient, id),
   });
 }
+
+/** T21 "Ask again": the trip returns to ready_for_recommendation (decision E1). */
+export function useReopenShortlist(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => fetchJson(`/api/trips/${id}/reopen-shortlist`, TripDetail, json({})),
+    onSuccess: (detail) => {
+      queryClient.setQueryData(['trip', id], detail);
+      void queryClient.invalidateQueries({ queryKey: ['trip', id] });
+      void queryClient.invalidateQueries({ queryKey: ['trips'] });
+    },
+    onError: refetchOnConflict(queryClient, id),
+  });
+}

@@ -418,6 +418,22 @@ const CASES: Case[] = [
       '404 NOT_FOUND',
     ],
   },
+  // T21: the fixture trip is collecting preferences, so the organiser's
+  // "Ask again" is an illegal event.
+  {
+    method: 'POST',
+    path: '/api/trips/:id/reopen-shortlist',
+    url: (f) => `/api/trips/${f.tripId}/reopen-shortlist`,
+    body: {},
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '403 FORBIDDEN',
+      '403 FORBIDDEN',
+      '409 ILLEGAL_TRANSITION',
+      '404 NOT_FOUND',
+    ],
+  },
 
   // Collecting preferences: details are editable until the shortlist (0004 j),
   // and 1 submission is too few to close.
