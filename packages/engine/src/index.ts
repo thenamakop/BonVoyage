@@ -3,6 +3,8 @@ export { jaccard, memberTypeWeights, weightedJaccard } from './scoring/similarit
 export { memberScore } from './scoring/member-score';
 export { groupFit } from './scoring/group-fit';
 export { sortRankedDestinations, rankDestinations } from './scoring/rank';
+export { fairnessWeights, memberDeficits } from './scoring/fairness';
+export type { FairnessRound } from './scoring/fairness';
 export { explainMatch, groupSummary } from './scoring/explain';
 export { groupProfile } from './group/profile';
 export type { GroupConflict, GroupProfile } from './group/profile';

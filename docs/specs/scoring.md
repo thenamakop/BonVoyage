@@ -1,6 +1,6 @@
 # Scoring specification
 
-Status: Accepted
+Status: Accepted · R17 added 29 October 2026
 
 Accepted rules: [decision 0004](../decisions/0004-recommendation-rules.md). `n` counts active trip members with a submitted preference; excluded members never count. The group profile is computed on read, not stored.
 
@@ -101,3 +101,29 @@ Ranking by GFS: d1, d3, d2. Ranking by mean alone would be d1, d2, d3: the disag
 ```
 
 Verified: recomputed independently on 2026-10-10; every value matches to 6 decimal places.
+
+## 8. Fairness across rounds (R17)
+
+Decisions E1 and E2 (29 October 2026, [Sprint 5 plan](../sprints/sprint-5-plan.md)). Under decision 0001, a trip's earlier rounds are its earlier recommendation runs of kind `shortlist`, oldest first; T21 "Ask again" makes a second shortlist possible. Diagnostics never count. A trip's first shortlist has no earlier round, so section 4's GFS ranks it unchanged.
+
+- Top choice o_r of an earlier round r: the destination chosen from that run (T9), else its rank 1.
+- deficit_i = (1/R) x sum_r max(0, mean_j s_j(o_r) - s_i(o_r)), over the R earlier rounds. mean_j is over every member that run scored. A member that run did not score (joined later) adds 0 for it. With no earlier round every deficit is 0. The scores come from each item's stored `reasons.members[].score`.
+- w_i = 1 + lambda x deficit_i, then w_i <- w_i / mean_k w_k, so the mean weight is 1. lambda is 1 in `apps/api/config/scoring.json` (allowed 0 to 5), validated at start-up and stored on every run.
+- mean_w = (1/n) x sum_i w_i x s_i(d); sd_w = sqrt((1/n) x sum_i w_i x (s_i(d) - mean_w)^2).
+- GFS_fair(d) = alpha x mean_w + beta x min_i s_i(d) - gamma x sd_w. min stays unweighted. With every w_i = 1 this is section 4's GFS.
+- Order by GFS_fair descending, then the unweighted mean descending, then slug ascending.
+- Each item keeps section 4's unweighted `gfs`, `mean`, `min` and `sd`; only its rank follows GFS_fair. Weights and deficits are recomputed per run and never stored, returned or logged: in a small group a weighted figure would let a member solve for another member's weight.
+
+Worked example (golden test data). Round 1 is section 7's example and chose d1, whose member scores are (0.453333, 0, 0.653333) with mean 0.368889. The deficits are therefore m1 0, m2 0.368889, m3 0. Round 2 ranks the same three destinations:
+
+| Round | lambda | Weights (m1, m2, m3) | d1 GFS_fair | d2 GFS_fair | d3 GFS_fair | Order |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | any | 1, 1, 1 | 0.129780 | 0.066957 | 0.082828 | d1, d3, d2 |
+| 2 | 0 | 1, 1, 1 | 0.129780 | 0.066957 | 0.082828 | d1, d3, d2 |
+| 2 | 0.5 | 0.942080, 1.115841, 0.942080 | 0.117974 | 0.082610 | 0.074925 | d1, d2, d3 |
+| 2 | 1 | 0.890501, 1.218997, 0.890501 | 0.107752 | 0.097066 | 0.068044 | d1, d2, d3 |
+| 2 | 2 | 0.802616, 1.394768, 0.802616 | 0.090935 | 0.122755 | 0.056665 | d2, d1, d3 |
+
+At lambda 1, d2, the only place m2 likes, rises above d3 without displacing the group's clear favourite. The returned `gfs` values stay section 7's in every row. `packages/engine/src/scoring/fairness-golden.test.ts` asserts every value to within 1e-6.
+
+Verified: recomputed independently on 2026-10-29; every value matches to 6 decimal places.
