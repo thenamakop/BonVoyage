@@ -429,9 +429,10 @@ The next phase starts only when its gate holds. Features freeze on 8 November; a
 | S2 | 24 to 27 Oct | Group profile and conflicts, feasibility filter with distance estimate, group-fit ranking, reasons, diagnostic; G1 group flow works | R4, R5, R6, R7, R16 |
 | S3 | 27 Oct to 2 Nov | Three or more costed packages, provenance labels, package decisions, grounded day plan and its decisions, account deletion (#54); G2 MVP accepted; full-journey demo on 2 Nov | R8, R10, R12, R13, R14 |
 | S4 | 3 to 7 Nov | Hardening: demo fixes, production checks (#94), catalogue fee pass 2, anything cut under decision 0005 k | — |
+| S5 | 29 Oct to 7 Nov | Could-haves beside S4: fairness across rounds, in-app reminders, voting on the shortlist, offline evaluation harness | R17, R18 |
 | Buffer | 8 to 10 Nov | Feature freeze; fixes, response-time check, demo data, report, submission | R15 |
 
-Out of scope for 10 November: R17 fairness rounds, R18 voting, reminders (C4), email and the user study. R16 is met by the integrations module with the straight-line distance estimate; live routing (Google or openrouteservice) is added only if a key is ready by S2. If S3 slips, the cut order is decision 0005 k: itinerary Modify (I5), then package Change (I3), then live model wording. A Must Have is never cut.
+Out of scope for 10 November: email, travel-date reminders and the user study. R17, R18 and in-app reminders (C4) moved into Sprint 5 by the [29 October re-plan](sprints/replan-2026-10-29.md). R16 is met by the integrations module with the straight-line distance estimate; live routing (Google or openrouteservice) is added only if a key is ready by S2. If S3 slips, the cut order is decision 0005 k: itinerary Modify (I5), then package Change (I3), then live model wording. A Must Have is never cut.
 
 ## Appendix A: Agent prompts
 
