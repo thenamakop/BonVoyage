@@ -30,8 +30,8 @@ amritsar,jallianwala-bagh,Jallianwala Bagh,sight,60,06:30,19:30,,0,31.6206,74.88
 amritsar,partition-museum,Partition Museum,museum,120,10:00,18:00,1,10,31.6257,74.8790,https://maps.google.com/?cid=1274687439784118564,2026-10-26,verified
 amritsar,wagah-border,Attari-Wagah border ceremony,sight,180,09:00,18:00,0,0,31.6048,74.5741,https://maps.google.com/?cid=12397751683196655754,2026-10-26,verified
 amritsar,durgiana-temple,Durgiana Temple,temple,45,06:00,22:00,,0,31.6272,74.8674,https://maps.google.com/?cid=15056206055196281224,2026-10-26,verified
-amritsar,gobindgarh-fort,Gobindgarh Fort,fort_palace,150,10:00,22:00,,0,31.6269,74.8601,https://maps.google.com/?cid=2321002060647950827,2026-10-26,draft
-amritsar,ranjit-singh-panorama,Maharaja Ranjit Singh Panorama,museum,60,09:30,17:30,1,0,31.6402,74.8785,https://maps.google.com/?cid=1650843097073922321,2026-10-26,draft
+amritsar,gobindgarh-fort,Gobindgarh Fort,fort_palace,150,10:00,22:00,,380,31.6269,74.8601,https://maps.google.com/?cid=2321002060647950827,2026-10-29,verified
+amritsar,ranjit-singh-panorama,Maharaja Ranjit Singh Panorama,museum,60,09:30,17:30,1,10,31.6402,74.8785,https://maps.google.com/?cid=1650843097073922321,2026-10-29,verified
 auli,auli-ski-slopes,Auli ski slopes,adventure,180,,,,0,30.5309,79.5615,https://maps.google.com/?cid=7949463914179556927,2026-10-26,verified
 auli,gorson-bugyal,Gorson Bugyal meadow trek,nature,240,06:30,15:00,,0,30.5115,79.5631,https://maps.google.com/?cid=14678288536092439355,2026-10-26,verified
 auli,auli-artificial-lake,Auli artificial lake,sight,30,06:00,18:00,,0,30.5284,79.5636,https://maps.google.com/?cid=8709735059752525943,2026-10-26,verified
@@ -107,12 +107,12 @@ dharamshala,naddi-view-point,Naddi viewpoint,viewpoint,45,,,,0,32.2531,76.3029,h
 dharamshala,norbulingka-institute,Norbulingka Institute,sight,90,09:00,17:00,0,50,32.1972,76.3585,https://maps.google.com/?cid=12011561571307396052,2026-10-26,draft
 dharamshala,st-john-in-the-wilderness,St John in the Wilderness church,sight,30,09:00,17:00,,0,32.2425,76.3183,https://maps.google.com/?cid=2029794885724304407,2026-10-26,verified
 dharamshala,kangra-fort,Kangra Fort,fort_palace,120,09:00,17:00,,25,32.0875,76.2542,https://maps.google.com/?cid=16851190628607852354,2026-10-26,draft
-gwalior,gwalior-fort,Gwalior Fort,fort_palace,180,06:00,17:30,,75,26.2313,78.1695,https://maps.google.com/?cid=17005383382359182388,2026-10-26,draft
+gwalior,gwalior-fort,Gwalior Fort,fort_palace,180,06:00,17:30,,20,26.2313,78.1695,https://maps.google.com/?cid=17005383382359182388,2026-10-29,verified
 gwalior,jai-vilas-palace,Jai Vilas Palace Museum,museum,120,10:00,18:00,,300,26.2042,78.1685,https://maps.google.com/?cid=12278093318906565567,2026-10-26,verified
-gwalior,teli-ka-mandir,Teli Ka Mandir,temple,45,06:00,17:30,,0,26.2204,78.1657,https://maps.google.com/?cid=17005383382359182388,2026-10-26,draft
-gwalior,sas-bahu-temple,Sas-Bahu (Sahastrabahu) temples,temple,45,06:00,17:30,,0,26.2237,78.1703,https://maps.google.com/?cid=17005383382359182388,2026-10-26,draft
+gwalior,teli-ka-mandir,Teli Ka Mandir,temple,45,06:00,17:30,,0,26.2204,78.1657,https://maps.google.com/?cid=17005383382359182388,2026-10-29,verified
+gwalior,sas-bahu-temple,Sas-Bahu (Sahastrabahu) temples,temple,45,06:00,17:30,,0,26.2237,78.1703,https://maps.google.com/?cid=17005383382359182388,2026-10-29,verified
 gwalior,tansen-tomb,Tomb of Tansen,sight,45,09:00,18:00,,0,26.2315,78.1791,https://maps.google.com/?cid=16442441222037774508,2026-10-26,verified
-gwalior,gujari-mahal-museum,Gujari Mahal Archaeological Museum,museum,75,10:00,17:00,1,10,26.2340,78.1706,https://maps.google.com/?cid=17677470921172992599,2026-10-26,draft
+gwalior,gujari-mahal-museum,Gujari Mahal Archaeological Museum,museum,75,10:00,17:00,1,20,26.2340,78.1706,https://maps.google.com/?cid=17677470921172992599,2026-10-29,verified
 gwalior,sun-temple,"Sun Temple, Gwalior",temple,45,06:30,18:00,,0,26.2363,78.2186,https://maps.google.com/?cid=11764661072419603067,2026-10-26,verified
 haridwar,har-ki-pauri,Har Ki Pauri,temple,90,,,,0,29.9574,78.1750,https://maps.google.com/?cid=9746789011900184291,2026-10-26,verified
 haridwar,mansa-devi-temple,Mansa Devi Temple,temple,90,05:00,21:00,,0,29.9579,78.1654,https://maps.google.com/?cid=8815929307996062555,2026-10-26,verified
@@ -160,7 +160,7 @@ kasol,manikaran-shiv-temple,Manikaran Shiv Temple and hot spring,temple,45,04:00
 kasol,tosh-village,Tosh village,nature,240,,,,0,32.0154,77.4537,https://maps.google.com/?cid=14157637408260347330,2026-10-26,verified
 kurukshetra,brahma-sarovar,Brahma Sarovar,temple,60,,,,0,29.9614,76.8286,https://maps.google.com/?cid=12139097485375092014,2026-10-26,verified
 kurukshetra,jyotisar,Jyotisar,temple,60,,,,0,29.9616,76.7697,https://maps.google.com/?cid=469031830559037096,2026-10-26,verified
-kurukshetra,krishna-museum,Sri Krishna Museum,museum,90,10:00,17:00,1,0,29.9651,76.8332,https://maps.google.com/?cid=4636683594244472594,2026-10-26,draft
+kurukshetra,krishna-museum,Sri Krishna Museum,museum,90,10:00,17:00,1,30,29.9651,76.8332,https://maps.google.com/?cid=4636683594244472594,2026-10-29,verified
 kurukshetra,panorama-science-centre,Kurukshetra Panorama and Science Centre,museum,120,09:30,18:00,,50,29.9660,76.8339,https://maps.google.com/?cid=594980687706160408,2026-10-26,verified
 kurukshetra,sannihit-sarovar,Sannihit Sarovar,temple,45,,,,0,29.9667,76.8359,https://maps.google.com/?cid=813961980756368276,2026-10-26,verified
 kurukshetra,bhadrakali-temple,Bhadrakali Shaktipeeth,temple,45,05:30,20:30,,0,29.9792,76.8320,https://maps.google.com/?cid=10371573686207978274,2026-10-26,verified
@@ -173,8 +173,8 @@ lansdowne,bhim-pakora,Bheem Pakora,sight,30,,,,0,29.8390,78.6703,https://maps.go
 lucknow,bara-imambara,Bara Imambara and Bhool Bhulaiya,sight,150,06:00,18:00,,50,26.8685,80.9127,https://maps.google.com/?cid=3832067487070426943,2026-10-26,verified
 lucknow,chota-imambara,Chota Imambara,sight,60,07:00,18:00,,20,26.8734,80.9042,https://maps.google.com/?cid=2606937481108120312,2026-10-26,verified
 lucknow,rumi-darwaza,Rumi Darwaza,sight,20,,,,0,26.8712,80.9121,https://maps.google.com/?cid=12841745038091676899,2026-10-26,verified
-lucknow,residency,The Residency,sight,90,10:00,17:00,,25,26.8606,80.9268,https://maps.google.com/?cid=6391775294808710346,2026-10-26,draft
-lucknow,ambedkar-park,Ambedkar Memorial Park,nature,90,11:00,21:00,,0,26.8494,80.9768,https://maps.google.com/?cid=7109179806645517341,2026-10-26,draft
+lucknow,residency,The Residency,sight,90,10:00,17:00,,20,26.8606,80.9268,https://maps.google.com/?cid=6391775294808710346,2026-10-29,verified
+lucknow,ambedkar-park,Ambedkar Memorial Park,nature,90,11:00,21:00,,15,26.8494,80.9768,https://maps.google.com/?cid=7109179806645517341,2026-10-29,verified
 lucknow,hazratganj,Hazratganj,market,120,,,,0,26.8478,80.9454,https://maps.google.com/?cid=16243472739184013086,2026-10-26,verified
 manali,hadimba-temple,Hadimba Devi Temple,temple,45,08:00,18:00,,0,32.2484,77.1816,https://maps.google.com/?cid=3290482383344535452,2026-10-26,verified
 manali,solang-valley,Solang Valley,adventure,240,,,,0,32.3162,77.1569,https://maps.google.com/?cid=10737879570819143749,2026-10-26,verified
@@ -218,7 +218,7 @@ narkanda,narkanda-temple,Narkanda temple,temple,20,,,,0,31.2560,77.4591,https://
 neemrana,neemrana-fort-palace,Neemrana Fort-Palace (day visit),fort_palace,180,11:00,14:00,,2000,27.9940,76.3883,https://maps.google.com/?cid=16933625691406768208,2026-10-26,draft
 neemrana,neemrana-baori,Neemrana stepwell (baori),sight,30,10:00,20:00,,0,27.9998,76.3828,https://maps.google.com/?cid=15474409987826452480,2026-10-26,draft
 neemrana,gs-waterpark,G S Waterpark,adventure,240,08:00,19:00,,0,27.9621,76.3731,https://maps.google.com/?cid=10616291137223951952,2026-10-26,draft
-orchha,orchha-fort,Orchha Fort (Jahangir Mahal and Raja Mahal),fort_palace,150,08:00,17:00,,0,25.3506,78.6443,https://maps.google.com/?cid=6470886179592656485,2026-10-26,draft
+orchha,orchha-fort,Orchha Fort (Jahangir Mahal and Raja Mahal),fort_palace,150,08:00,17:00,,10,25.3506,78.6443,https://maps.google.com/?cid=6470886179592656485,2026-10-29,verified
 orchha,ram-raja-temple,Ram Raja Temple,temple,45,08:00,22:00,,0,25.3509,78.6392,https://maps.google.com/?cid=5888170169475081679,2026-10-26,verified
 orchha,chaturbhuj-temple,Chaturbhuj Temple,temple,45,08:00,18:00,,0,25.3501,78.6401,https://maps.google.com/?cid=14404601648347905144,2026-10-26,verified
 orchha,laxmi-narayan-temple,Laxmi Narayan Temple,temple,45,09:00,17:00,,0,25.3528,78.6308,https://maps.google.com/?cid=2184286577754617697,2026-10-26,draft
