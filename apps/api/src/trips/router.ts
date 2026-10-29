@@ -23,6 +23,7 @@ import {
   removeMember,
   revokeInvitations,
 } from '../invitations/service';
+import { remindMember } from '../notifications/service';
 import { getMyPreference, saveMyPreference } from '../preferences/service';
 import {
   chooseDestination,
@@ -177,6 +178,15 @@ export function createRouter({
     const { userId } = getSessionUser(res);
     await removeMember({ db, logger: req.log, clock }, tripId, userId, target.userId);
     res.status(204).end();
+  });
+
+  // S5-3 (E3): the organiser reminds a member who has not submitted. The logic
+  // and the 24-hour limit live in ../notifications.
+  router.post('/trips/:id/members/:userId/remind', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const target = parseOrThrow(MemberParams, req.params);
+    const { userId } = getSessionUser(res);
+    res.status(201).json(await remindMember({ db, clock }, tripId, userId, target.userId));
   });
 
   // S1-4: the caller's own preference. The logic lives in ../preferences;

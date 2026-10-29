@@ -16,6 +16,7 @@ This note covers the personal data BonVoyage keeps and who can see each part of 
 | A log of what happened to each trip (the event, who did it, when) | `trip_transition` | The dashboard's "Recent activity" and the audit trail |
 | Recommendation runs: the weights, the group profile the run was computed from, and the diagnostic | `recommendation_run` | Each ranking can be checked and reproduced later |
 | Each recommended destination's scores and every member's own match explanation (what it meets and misses for them) | `recommendation_item` | Showing each member why a destination suits them |
+| In-app notifications (type, trip, a payload of the trip title and who acted, read or unread) | `notification` | Telling members what needs them without leaving the app (see Notifications) |
 
 ## Who sees what
 
@@ -54,6 +55,16 @@ An invitation link (`/join/<token>`) is the only thing that lets someone outside
 
 Because a link can be forwarded, the web app sends `Referrer-Policy: same-origin` (a `<meta>` tag in `index.html`, and a header on every page served from Vercel). Following a link from the join page to another site therefore never sends the token along. The API's own responses carry helmet's stricter `no-referrer`.
 
+## Notifications
+
+In-app notifications (S5-3, decisions E3 and M4) are rows in the `notification` table, read only inside the app. There is no email, push message or outside service.
+
+- **What is stored:** the person who gets it, the trip, the type, the time, whether it has been read, and a payload of the trip's id and title plus the type's own fields. Those are the name of the person who acted, as the group already sees it (for example "Asha asked for new recommendations"), and, for "not included", a flag. The payload never holds a preference, budget, date, score, vote or email. Nine types: a member joined (to the organiser), a reminder (to the one member reminded), preferences closed, shortlist ready, shortlist reopened, package chosen, plan ready, trip finalised and trip cancelled (to the trip's active members, the person who acted left out; preferences closed goes to all of them, and tells a member who was left out that they were not included).
+- **Who sees it:** only its owner. `GET /api/notifications` returns your own, newest 30 first, with the count of unread ones. Marking one read with someone else's id is a 404, the same as an id that does not exist.
+- **Reminders:** the organiser can remind a member who has not submitted, once per member per rolling 24 hours (429 `TOO_MANY_REQUESTS` with `Retry-After` after that). Whether a member has submitted is already visible to the whole group.
+- **Written with the event:** a notification is written in the same database transaction as the transition or the join, so an event that fails writes none.
+- **Deleted with:** your account (all notifications you received) or the trip (all notifications about it). A notification that names you, such as "Rohan joined the trip", stays in the organiser's list after you delete your account, because it holds your name as text; it is deleted with the trip.
+
 ## Language-model prompts
 
 The itinerary text from Sprint 4 is written by Gemini on its free tier, which may use prompts to improve Google's products. So a prompt contains destination facts only. It never contains names, emails, user ids, member identities or anyone's personal budget (AGENTS.md section 11).
@@ -81,6 +92,7 @@ Every change to your data goes through a JSON request (`Content-Type: applicatio
 | `apps/api/src/security/no-leak.test.ts` | No response to any caller contains another user's budget, past trips or email; your own email appears only on `/api/me`; the invitation preview holds no budgets, dates, emails or member names; the group profile and recommendations hold none of another member's own choices or exact budget figures, including the F5 diagnostic when members' maxima set the cap, and name a value only when two or more members chose it; with 2 members no GET a member can call, the packages included, carries the other member's minimum, maximum or the cap they set, and no closest miss rebuilds the cap (D1, #116) |
 | `apps/api/src/recommendations/recommendations.test.ts` | Each member's explanation is their own; budgets are rounded inwards; a trip-set cap stays exact; groups of 2 get no score range, no budget band, no per-person cap, no member-set group cap and no F5 amounts against a member-set cap (D1, #116) |
 | `apps/api/src/packages/packages.test.ts` | With 2 members an over-budget package against a member-set cap carries no amount; against a trip-set cap it does (D1, #116) |
+| `apps/api/src/notifications/notifications.test.ts` | Each of the nine types is written to the right people and nobody else; the reminder is limited to once per member per rolling 24 hours, also under two simultaneous clicks; someone else's notification id is a 404; no notification holds a budget, email, score or answer; deleting the account or the trip deletes the notifications |
 | `apps/api/src/security/logs.test.ts` | Logs from signing up, signing in and saving a preference hold no password, cookie, email or budget |
 | `apps/api/src/security/json-only.test.ts` | Non-JSON writes are refused with 415 |
 | `apps/api/src/preferences/preferences.test.ts` | A member only ever reads their own preference |

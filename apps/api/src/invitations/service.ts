@@ -11,6 +11,7 @@ import {
 } from '@bonvoyage/shared';
 import type { Logger } from 'pino';
 import { AppError } from '../http/errors';
+import { notifyMemberJoined } from '../notifications/notify';
 import {
   loadTripForMember,
   requireActiveMember,
@@ -200,6 +201,8 @@ export async function acceptInvitation(
       );
     }
     await insertMember(tx, trip.id, userId);
+    // E3: the organiser hears of a join, in this transaction (replaces T2's trip_opened).
+    await notifyMemberJoined(tx, { tripId: trip.id, joinerUserId: userId, now: clock() });
     return { tripId: trip.id };
   });
 }

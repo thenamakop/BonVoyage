@@ -8,6 +8,23 @@ export function indiaDate(date: Date): string {
   return indiaFormat.format(date);
 }
 
+const indiaClock = new Intl.DateTimeFormat('en-IN', {
+  timeZone: 'Asia/Kolkata',
+  day: 'numeric',
+  month: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+});
+
+/** An instant in India time for a sentence: "2 Nov, 3:40 pm". */
+export function indiaDateTime(date: Date): string {
+  return indiaClock
+    .format(date)
+    .replace(/\bam\b/i, 'am')
+    .replace(/\bpm\b/i, 'pm');
+}
+
 /** Whole nights between two YYYY-MM-DD dates (end minus start; negative if reversed). */
 export function nightsBetween(start: string, end: string): number {
   return Math.round(

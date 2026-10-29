@@ -68,6 +68,6 @@ describe('registered routes', () => {
     expect(new Set(actual).size).toBe(actual.length);
     // Better Auth is mounted (Express 5's app.all registers each method).
     expect(registered).toContain('POST /api/auth/*splat');
-    expect(actual).toHaveLength(43);
+    expect(actual).toHaveLength(47);
   });
 });
