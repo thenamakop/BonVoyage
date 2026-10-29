@@ -271,11 +271,12 @@ CI runs on every pull request: format check, lint, type-check, tests against a P
 | S2 | 24&nbsp;to&nbsp;27&nbsp;Oct | Group profile, feasibility filter, group-fit ranking with reasons, diagnostic | R4 to R7, R16 | In progress · gate G1: group flow works |
 | S3 | 27&nbsp;Oct&nbsp;to 2&nbsp;Nov | Costed packages, provenance, package decisions, grounded day plan, accept/reject/adjust, account deletion; full-journey demo on 2 Nov | R8, R10, R12, R13, R14 | In progress · gate G2: MVP accepted |
 | S4 | 3&nbsp;to&nbsp;7&nbsp;Nov | Hardening: demo fixes, production checks, catalogue fee pass 2, cut work | — | Planned |
+| S5 | 29&nbsp;Oct&nbsp;to 7&nbsp;Nov | Could-haves: fairness across rounds, in-app reminders, voting, evaluation harness | R17, R18 | Planned |
 | Buffer | 8&nbsp;to&nbsp;10&nbsp;Nov | Feature freeze, response-time checks, demo data, report | R15 | Planned · submission on 10 Nov |
 
-Dates follow the [27 October re-plan](docs/sprints/replan-2026-10-27.md); feature freeze on 8 November and submission on 10 November stay fixed.
+Dates follow the [27 October re-plan](docs/sprints/replan-2026-10-27.md) and the [29 October re-plan](docs/sprints/replan-2026-10-29.md); feature freeze on 8 November and submission on 10 November stay fixed.
 
-The requirements follow the project's MoSCoW prioritisation: **R1 to R11** are Must have, **R12 to R16** Should have, **R17** (fairness across rounds) and **R18** (voting) are Could have and deferred past submission, and **R19** (payments and booking) and **R20** (nationwide live inventory) are out of scope. [`docs/traceability.md`](docs/traceability.md) links each requirement to its SRS section, issues and tests.
+The requirements follow the project's MoSCoW prioritisation: **R1 to R11** are Must have, **R12 to R16** Should have, **R17** (fairness across rounds) and **R18** (voting) are Could have and planned for Sprint 5, and **R19** (payments and booking) and **R20** (nationwide live inventory) are out of scope. [`docs/traceability.md`](docs/traceability.md) links each requirement to its SRS section, issues and tests.
 
 ## Documentation
 
