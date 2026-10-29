@@ -10,7 +10,7 @@ import {
   type TripEvent,
 } from './trip-state';
 
-// S0-6: one test per transition row, a hand-written 216-pair matrix, and the
+// S0-6: one test per transition row, a hand-written 228-pair matrix, and the
 // guard edges. The legal-pairs list is written by hand, not derived from
 // TRANSITIONS, so the test proves the table rather than restating it.
 
@@ -137,6 +137,17 @@ describe('external transitions', () => {
   it('T17', () => E('T17', 'finalised', 'tripStarted', 'in_progress', []));
   it('T18', () =>
     E('T18', 'in_progress', 'tripEnded', 'completed', ['requestRatings', 'archiveToTripHistory']));
+  it('T21', () =>
+    E('T21', 'shortlisted', 'shortlistReopened', 'ready_for_recommendation', [
+      'computeGroupProfile',
+    ]));
+  it('T21 is rejected from every other status with the existing error shape', () => {
+    for (const s of SOURCES.filter((x) => x !== 'shortlisted')) {
+      const r = nextState(s, 'shortlistReopened', ctx());
+      const reason = s === 'completed' || s === 'cancelled' ? 'TERMINAL_STATE' : 'ILLEGAL_EVENT';
+      expect(r, s).toMatchObject({ ok: false, reason });
+    }
+  });
 });
 
 describe('internal transitions', () => {
@@ -174,6 +185,7 @@ const ALL_EVENTS: TripEvent[] = [
   'cancelTrip',
   'tripStarted',
   'tripEnded',
+  'shortlistReopened',
 ];
 
 // Hand-written legal pairs (source, event) for the permissive context.
@@ -191,6 +203,7 @@ const LEGAL: [TripStatus | 'initial', TripEvent][] = [
   ['ready_for_recommendation', 'cancelTrip'],
   ['shortlisted', 'destinationSelected'],
   ['shortlisted', 'cancelTrip'],
+  ['shortlisted', 'shortlistReopened'],
   ['packages_proposed', 'packageRejected'],
   ['packages_proposed', 'packageAccepted'],
   ['packages_proposed', 'packageModified'],
@@ -221,7 +234,7 @@ const SOURCES: (TripStatus | 'initial')[] = [
   'cancelled',
 ];
 
-describe('matrix (216 pairs)', () => {
+describe('matrix (228 pairs)', () => {
   it('matches the hand-written legal list', () => {
     const legal = new Set(LEGAL.map(([s, e]) => `${s}|${e}`));
     for (const from of SOURCES) {
@@ -331,6 +344,9 @@ describe('legalEvents and do-activities', () => {
     expect(legalEvents('initial')).toEqual(['createTrip']);
     expect(legalEvents('collecting_preferences').sort()).toEqual(
       ['cancelTrip', 'closeSubmissions', 'preferenceRevised', 'preferenceSubmitted'].sort(),
+    );
+    expect(legalEvents('shortlisted').sort()).toEqual(
+      ['cancelTrip', 'destinationSelected', 'shortlistReopened'].sort(),
     );
     expect(legalEvents('completed')).toEqual([]);
     expect(legalEvents('cancelled')).toEqual([]);

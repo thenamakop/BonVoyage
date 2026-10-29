@@ -616,7 +616,7 @@ These three tables are the contract between the documents and the code: every re
 | R19 | Online payment and booking | Won't | none | 1.2 | none | none |
 | R20 | Nationwide real-time inventory | Won't | none | 2.4 | none | none |
 
-**B2. Trip transitions** (state transition diagram, plus T3b from C1)
+**B2. Trip transitions** (state transition diagram, plus T3b from C1 and T21 from decision 0001 g)
 
 | # | From | Event \[guard\] / action | To |
 | --- | --- | --- | --- |
@@ -639,6 +639,7 @@ These three tables are the contract between the documents and the code: every re
 | T16 | Finalised | cancelTrip \[now < startDate\] | Cancelled |
 | T17 | Finalised | at(startDate) | In Progress |
 | T18 | In Progress | at(endDate) / requestRatings | Completed |
+| T21 | Shortlisted | shortlistReopened (organiser's "Ask again"; decision E1, 29 October 2026) | Ready for Recommendation |
 | T19 | Completed | completion | final state |
 | T20 | Cancelled | completion | final state |
 
@@ -661,6 +662,7 @@ Internal transitions keep the state unchanged: preferenceSubmitted \[pending > 0
 | `POST /api/trips/:id/recommendations` | Recommend destinations | T4, T6 to T8 |
 | `GET /api/trips/:id/recommendations/latest` | Read the newest run with the caller's own explanation | none |
 | `POST /api/trips/:id/destination` | Select a destination; entry generates packages | T9 |
+| `POST /api/trips/:id/reopen-shortlist` | Ask again: back to Ready for Recommendation for a new round | T21 |
 | `GET /api/trips/:id/transport` | Compare transport options | none |
 | `GET /api/trips/:id/packages` | View packages and cost breakdowns | none |
 | `POST /api/packages/:id/decision` | Accept, modify or reject a package | T10, T11 |

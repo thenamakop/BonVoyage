@@ -85,6 +85,8 @@ describe('EVENT_SUMMARIES', () => {
     expect(summarizeEvent('preferenceRevised', 'Rohan')).toBe('Rohan updated preferences');
     expect(summarizeEvent('closeSubmissions', 'Asha')).toBe('Asha closed submissions');
     expect(summarizeEvent('cancelTrip', null)).toBe('Someone cancelled the trip');
+    // T21 (S5-2b-1)
+    expect(summarizeEvent('shortlistReopened', 'Asha')).toBe('Asha asked for new recommendations');
     expect(summarizeEvent('somethingNew', 'Asha')).toBe('Asha changed the trip');
   });
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { RecommendationItem, RecommendationRun, TripDetail } from '@bonvoyage/shared';
 import { Alert } from '../../../components/ui/Alert';
 import { Button } from '../../../components/ui/Button';
+import { AskAgain } from './AskAgain';
 import { DestinationCard } from './DestinationCard';
 
 // Wireframe 07 (R6, R7): every feasible destination is stored ranked; the page
@@ -28,6 +29,9 @@ export function ShortlistView({
   const canChoose = trip.availableActions.some(
     (a) => a.action === 'chooseDestination' && a.enabled,
   );
+  const canAskAgain = trip.availableActions.some(
+    (a) => a.action === 'reopenShortlist' && a.enabled,
+  );
   const shown = all ? items : items.slice(0, FIRST);
   return (
     <div className="space-y-4">
@@ -52,6 +56,7 @@ export function ShortlistView({
       <p role="status" className="sr-only">
         {all ? `Showing all ${items.length} destinations` : ''}
       </p>
+      {canAskAgain ? <AskAgain tripId={trip.id} /> : null}
     </div>
   );
 }

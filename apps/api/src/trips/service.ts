@@ -332,6 +332,23 @@ export async function closeSubmissions(
   return getTrip(deps.db, tripId, userId);
 }
 
+// POST /api/trips/:id/reopen-shortlist: T21 "Ask again" (decision E1). The
+// trip_transition row transitionTrip writes is the activity line. Nothing from
+// the earlier run is cleared: selected_destination_id is already null in
+// shortlisted (T10 clears it), the next T9 reads only the newest run, and
+// earlier packages are all hidden, which the package reads skip.
+export async function reopenShortlist(
+  deps: { db: Db; logger: Logger; clock: () => Date },
+  tripId: string,
+  userId: string,
+): Promise<TripDetail> {
+  const { membership } = await loadTripForMember(deps.db, tripId, userId);
+  requireActiveMember(membership);
+  requireOrganiser(membership);
+  await transitionTrip(deps, { tripId, event: 'shortlistReopened', actorUserId: userId });
+  return getTrip(deps.db, tripId, userId);
+}
+
 const ACTIVITY_LIMIT = 20;
 
 // GET /api/trips/:id/activity: any member, excluded included (they can read).

@@ -92,6 +92,10 @@ export function tripActions({
   if (organiser && status === 'shortlisted' && legal.has('destinationSelected')) {
     actions.push({ action: 'chooseDestination', enabled: true });
   }
+  // T21 "Ask again" (decision E1): organiser only, from the shortlist.
+  if (organiser && status === 'shortlisted' && legal.has('shortlistReopened')) {
+    actions.push({ action: 'reopenShortlist', enabled: true });
+  }
 
   // S3-3: members view and vote on packages; the organiser chooses, removes
   // or changes them while the packages are proposed.

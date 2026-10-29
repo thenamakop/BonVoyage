@@ -464,6 +464,68 @@ describe('package responses hold opinion counts and only the caller’s own vote
   });
 });
 
+// S5-2b-1 (V2): T21's response is a TripDetail, so it holds names, roles and
+// statuses only; neither the organiser's 200 nor a member's 403 carries the
+// other member's budget, email or per-member score.
+describe('the "Ask again" response (T21) holds no member data', () => {
+  it("neither the organiser's 200 nor the member's 403 carries the other's values", async () => {
+    await ensureHubAt(db, 'leak-hub', 32, 85);
+    for (const [slug, lat] of [
+      ['leak-dest', 32.2],
+      ['leak-dest2', 32.3],
+      ['leak-dest3', 32.4],
+    ] as const) {
+      await ensureDestination(db, { slug, lat, lng: 85 });
+    }
+    const asha = await createTestUser(app, 'LeakT21 Asha');
+    const rohan = await createTestUser(app, 'LeakT21 Rohan');
+    const trip = await createTripAs(asha.agent, {
+      originHubSlug: 'leak-hub',
+      radiusKm: 200,
+      budgetTotalInr: 120000,
+      durationNights: 2,
+    });
+    const { token: t21Token } = InvitationResponse.parse(
+      (await asha.agent.post(`/api/trips/${trip.id}/invitations`).set(H).send({})).body,
+    );
+    await rohan.agent.post(`/api/invitations/${t21Token}/accept`).set(H).send({});
+    const budgets = { asha: [10007, 40009], rohan: [10013, 40031] } as const;
+    for (const [m, [min, max]] of [
+      [asha, budgets.asha],
+      [rohan, budgets.rohan],
+    ] as const) {
+      const res = await m.agent
+        .put(`/api/trips/${trip.id}/preferences/me`)
+        .set(H)
+        .send(prefs(min, max));
+      expect(res.status).toBe(200);
+    }
+    const run = await asha.agent.post(`/api/trips/${trip.id}/recommendations`).set(H).send({});
+    expect(run.status, JSON.stringify(run.body)).toBe(200);
+    expect(
+      TripDetail.parse((await asha.agent.get(`/api/trips/${trip.id}`).set(H)).body).status,
+    ).toBe('shortlisted');
+
+    const denied = await rohan.agent.post(`/api/trips/${trip.id}/reopen-shortlist`).set(H).send({});
+    expect(denied.status).toBe(403);
+    const reopened = await asha.agent
+      .post(`/api/trips/${trip.id}/reopen-shortlist`)
+      .set(H)
+      .send({});
+    expect(reopened.status, JSON.stringify(reopened.body)).toBe(200);
+    expect(TripDetail.parse(reopened.body).status).toBe('ready_for_recommendation');
+
+    // No member's budget (not even the caller's own), no email, no score keys.
+    for (const res of [reopened, denied]) {
+      for (const n of [...budgets.asha, ...budgets.rohan]) {
+        expect(res.text).not.toContain(String(n));
+      }
+      expect(res.text).not.toContain('@');
+      expect(res.text).not.toMatch(/"(score|lambda|weight|weights|deficit|deficits)"/);
+    }
+  });
+});
+
 // S4-3, D1 (#116): with fewer than 3 contributing members, nothing a member
 // can read carries the budget band's figures, or anything from which the other
 // member's minimum or maximum follows. Budgets are multiples of ₹500, so the

@@ -39,6 +39,7 @@ export const TripEventName = z.enum([
   'cancelTrip',
   'tripStarted',
   'tripEnded',
+  'shortlistReopened',
 ]);
 export type TripEventName = z.infer<typeof TripEventName>;
 
@@ -114,6 +115,7 @@ export const TripActionName = z.enum([
   'acceptItinerary',
   'rejectItinerary',
   'modifyItinerary',
+  'reopenShortlist',
 ]);
 export type TripActionName = z.infer<typeof TripActionName>;
 
@@ -267,6 +269,7 @@ export const EVENT_SUMMARIES: Record<TripEventName, (actor: string, detail?: str
   cancelTrip: (a) => `${a} cancelled the trip`,
   tripStarted: (a) => `${a} marked the trip as started`,
   tripEnded: (a) => `${a} marked the trip as finished`,
+  shortlistReopened: (a) => `${a} asked for new recommendations`,
 };
 
 /** The activity sentence for a stored event; a missing actor reads "Someone". */

@@ -22,6 +22,7 @@ export const TRIP_EVENTS = [
   'cancelTrip',
   'tripStarted',
   'tripEnded',
+  'shortlistReopened',
 ] as const;
 export type TripEvent = (typeof TRIP_EVENTS)[number];
 
@@ -220,6 +221,16 @@ export const TRANSITIONS: readonly TransitionRow[] = [
     guardText: '',
     to: 'completed',
     actions: ['requestRatings'],
+  },
+  // T21 "Ask again" (decision E1, 29 October 2026): a new round, so R17 has
+  // earlier shortlists to weigh. The organiser-only rule lives in the API.
+  {
+    id: 'T21',
+    from: 'shortlisted',
+    event: 'shortlistReopened',
+    guardText: '',
+    to: 'ready_for_recommendation',
+    actions: [],
   },
 ];
 

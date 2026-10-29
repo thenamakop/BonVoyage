@@ -35,9 +35,10 @@ interface Stub {
   response: LatestRecommendationResponse;
   patch?: Response;
   choose?: Response;
+  reopen?: Response;
 }
 
-function stubFetch({ trip, response, patch, choose }: Stub) {
+function stubFetch({ trip, response, patch, choose, reopen }: Stub) {
   fetchMock.mockImplementation((url, init) => {
     if (url === TRIP_URL && !init?.method) return Promise.resolve(Response.json(trip));
     if (url === TRIP_URL && init?.method === 'PATCH') {
@@ -48,6 +49,11 @@ function stubFetch({ trip, response, patch, choose }: Stub) {
     }
     if (url === `${TRIP_URL}/destination` && init?.method === 'POST') {
       return Promise.resolve(choose ?? Response.json(trip));
+    }
+    if (url === `${TRIP_URL}/reopen-shortlist` && init?.method === 'POST') {
+      return Promise.resolve(
+        reopen ?? Response.json({ ...trip, status: 'ready_for_recommendation' }),
+      );
     }
     if (url === '/api/destinations') {
       return Promise.resolve(
@@ -228,6 +234,70 @@ describe('shortlist view', () => {
     await user.click(await screen.findByRole('button', { name: 'Choose' }));
     await user.click(screen.getByRole('button', { name: 'Choose Place 1' }));
     expect(await screen.findByText('Choose a destination from the shortlist.')).toBeInTheDocument();
+  });
+});
+
+describe('ask again (T21)', () => {
+  const ASK =
+    'Ask again? Members can change their answers, and you can ask for new recommendations.';
+
+  it('a member has no Ask again button', async () => {
+    stubFetch({
+      trip: shortlisted({ myRole: 'member' }),
+      response: latest(run(), [item(1), item(2), item(3)]),
+    });
+    renderPage();
+    await screen.findByRole('heading', { name: '1. Place 1' });
+    expect(screen.queryByRole('button', { name: 'Ask again' })).not.toBeInTheDocument();
+  });
+
+  it('the organiser confirms by keyboard, posts an empty body and goes to the dashboard', async () => {
+    stubFetch({ trip: shortlisted(), response: latest(run(), [item(1), item(2), item(3)]) });
+    const user = userEvent.setup();
+    renderPage();
+    const button = await screen.findByRole('button', { name: 'Ask again' });
+    // Keep this shortlist closes the confirm without a request.
+    await user.click(button);
+    expect(screen.getByText(ASK)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Keep this shortlist' }));
+    expect(screen.queryByText(ASK)).not.toBeInTheDocument();
+
+    screen.getByRole('button', { name: 'Ask again' }).focus();
+    await user.keyboard('{Enter}');
+    expect(screen.getByText(ASK)).toBeInTheDocument();
+    screen.getByRole('button', { name: 'Ask again' }).focus();
+    await user.keyboard('{Enter}');
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${TRIP_URL}/reopen-shortlist`,
+      expect.objectContaining({ method: 'POST', body: '{}' }),
+    );
+    expect(await screen.findByText('Dashboard page')).toBeInTheDocument();
+  });
+
+  it('a refused ask shows the server message', async () => {
+    stubFetch({
+      trip: shortlisted(),
+      response: latest(run(), [item(1), item(2), item(3)]),
+      reopen: Response.json(
+        {
+          error: {
+            code: 'ILLEGAL_TRANSITION',
+            message:
+              'The event "shortlistReopened" is not allowed while the trip is packages_proposed.',
+          },
+        },
+        { status: 409 },
+      ),
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Ask again' }));
+    await user.click(screen.getByRole('button', { name: 'Ask again' }));
+    expect(
+      await screen.findByText(
+        'The event "shortlistReopened" is not allowed while the trip is packages_proposed.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 

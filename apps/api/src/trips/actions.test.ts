@@ -95,11 +95,12 @@ describe('tripActions', () => {
     expect(names(tripActions(member('ready_for_recommendation', 3)))).toEqual(['editPreferences']);
   });
 
-  it('shortlisted: organiser can view, choose and cancel; member can view', () => {
+  it('shortlisted: organiser can view, choose, ask again (T21) and cancel; member can view', () => {
     const run = { hasRecommendation: true };
     expect(names(tripActions({ ...organiser('shortlisted', 3), ...run }))).toEqual([
       'viewRecommendations',
       'chooseDestination',
+      'reopenShortlist',
       'cancelTrip',
     ]);
     expect(names(tripActions({ ...member('shortlisted', 3), ...run }))).toEqual([
