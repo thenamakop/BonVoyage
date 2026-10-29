@@ -70,6 +70,7 @@ export function createRouter({
   clock = () => new Date(),
   routing,
   scoringWeights,
+  fairnessLambda,
   recommendationHooks,
   llm,
   wordingTimeoutMs,
@@ -79,6 +80,7 @@ export function createRouter({
   clock?: () => Date;
   routing: Routing;
   scoringWeights: Weights;
+  fairnessLambda: number;
   recommendationHooks?: RecommendationHooks;
   llm?: LlmClient;
   wordingTimeoutMs?: number;
@@ -206,6 +208,7 @@ export function createRouter({
           clock,
           routing,
           weights: scoringWeights,
+          lambda: fairnessLambda,
           ...(recommendationHooks ? { hooks: recommendationHooks } : {}),
         },
         tripId,

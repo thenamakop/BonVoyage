@@ -85,6 +85,7 @@ export function run(over: Partial<RecommendationRun> = {}): RecommendationRun {
     feasibleCount: 3,
     bindingConstraint: null,
     weakMatch: false,
+    favoursLessServed: false,
     incomplete: [],
     diagnostic: null,
     groupProfile: profileReady(),

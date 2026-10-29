@@ -129,6 +129,11 @@ export const RecommendationRun = z.object({
   bindingConstraint: ConstraintId.nullable(),
   /** The best mean score is below 0.25: the shortlist fits the hard limits but not the tastes. */
   weakMatch: z.boolean(),
+  /**
+   * R17: the order gives more weight to members whose wishes earlier shortlists met
+   * less. Only this flag is sent; never who, a weight, a deficit or lambda (E1).
+   */
+  favoursLessServed: z.boolean(),
   /** 0004 e: active destinations left out because their costs are missing, on every run. */
   incomplete: z.array(z.string()),
   diagnostic: RecommendationDiagnostic.nullable(),

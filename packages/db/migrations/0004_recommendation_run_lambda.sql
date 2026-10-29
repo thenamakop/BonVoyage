@@ -1,0 +1,1 @@
+ALTER TABLE "recommendation_run" ADD COLUMN "lambda" double precision DEFAULT 0 NOT NULL;

@@ -5,6 +5,7 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { PageHeader } from '../../../components/ui/PageHeader';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { useLatestRecommendation } from '../../../features/recommendations/api';
+import { FAIRNESS_NOTE, earlierShortlistText } from '../../../features/recommendations/wording';
 import { useTrip } from '../../../features/trips/api';
 import { ApiError } from '../../../lib/api';
 import { useDocumentTitle } from '../../../lib/use-document-title';
@@ -76,6 +77,9 @@ export function ShortlistPage() {
 
   const t = trip.data;
   const { run, items } = latest.data;
+  // T21 is the only way from shortlisted back to ready_for_recommendation, and
+  // T4 and T6 both store a new run, so a shortlist here is the earlier one.
+  const earlier = run?.kind === 'shortlist' && t.status === 'ready_for_recommendation';
   return (
     <>
       <PageHeader title="Shortlist" actions={back} />
@@ -90,8 +94,10 @@ export function ShortlistPage() {
           {run.round > 1 ? (
             <p className="text-sm font-semibold text-slate-900">Round {run.round}</p>
           ) : null}
+          {earlier ? <Alert tone="info">{earlierShortlistText(t.organiser.name)}</Alert> : null}
+          {run.favoursLessServed ? <p className="text-sm text-slate-900">{FAIRNESS_NOTE}</p> : null}
           {run.kind === 'shortlist' ? (
-            <ShortlistView trip={t} run={run} items={items} />
+            <ShortlistView trip={t} run={run} items={items} earlier={earlier} />
           ) : (
             // Keyed on the run: a saved suggestion belongs to the run it came from.
             <DiagnosticView key={run.id} trip={t} run={run} items={items} />

@@ -25,7 +25,7 @@ import { createRouting, curatedProvider, estimateProvider } from '@bonvoyage/int
 import { pino } from 'pino';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createAuth } from '../auth/auth';
-import { SCORING_WEIGHTS } from '../config/scoring';
+import { FAIRNESS_LAMBDA, SCORING_WEIGHTS } from '../config/scoring';
 import {
   acceptItinerary,
   getItinerary,
@@ -143,6 +143,7 @@ describe('Sprint 2 demo trips', () => {
     clock: () => new Date(),
     routing,
     weights: SCORING_WEIGHTS,
+    lambda: FAIRNESS_LAMBDA,
   };
   const tripOf = async (title: string) => {
     const [row] = await db.select().from(trip).where(eq(trip.title, title));
@@ -214,6 +215,13 @@ describe('Sprint 2 demo trips', () => {
     const round2 = await requestRecommendations(deps, row.id, row.organiserId);
     expect(round2.run).toMatchObject({ kind: 'shortlist', round: 2 });
     expect(round2.items.map((i) => i.destination.slug)).toContain('bikaner');
+    // M3 (plan finding f): round 2 is this trip's first shortlist, so R17 never
+    // reorders it. Any change to a first shortlist's order fails here.
+    expect(round2.items.map((i) => i.destination.slug)).toEqual([
+      'vrindavan',
+      'mathura',
+      'bikaner',
+    ]);
 
     await chooseDestination(deps, row.id, row.organiserId, { destinationSlug: 'bikaner' });
     const { packages } = await listTripPackages(db, row.id, row.organiserId);
@@ -286,6 +294,7 @@ describe('Long weekend in the hills: the full journey through the services', () 
     clock: () => new Date(),
     routing,
     weights: SCORING_WEIGHTS,
+    lambda: FAIRNESS_LAMBDA,
   };
 
   it('Meera submits, then shortlist, Saver package, day plan, Remove, Swap, accept: finalised', async () => {

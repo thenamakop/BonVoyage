@@ -27,6 +27,9 @@ export const recommendationRun = pgTable(
     alpha: doublePrecision('alpha').notNull(),
     beta: doublePrecision('beta').notNull(),
     gamma: doublePrecision('gamma').notNull(),
+    // R17 (decision E1, migration 0004): the fairness lambda the run was ranked
+    // with. Runs from before R17 read 0 (unweighted); new runs always write it.
+    lambda: doublePrecision('lambda').default(0).notNull(),
     feasibleCount: integer('feasible_count').notNull(),
     bindingConstraint: text('binding_constraint'),
     diagnostic: jsonb('diagnostic'),

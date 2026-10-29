@@ -106,7 +106,8 @@ Verified: recomputed independently on 2026-10-10; every value matches to 6 decim
 
 Decisions E1 and E2 (29 October 2026, [Sprint 5 plan](../sprints/sprint-5-plan.md)). Under decision 0001, a trip's earlier rounds are its earlier recommendation runs of kind `shortlist`, oldest first; T21 "Ask again" makes a second shortlist possible. Diagnostics never count. A trip's first shortlist has no earlier round, so section 4's GFS ranks it unchanged.
 
-- Top choice o_r of an earlier round r: the destination chosen from that run (T9), else its rank 1.
+- Top choice o_r of an earlier round r: the destination chosen from that run (T9), else its rank 1. T10 clears the trip's selected destination, so the API reads the choice from the packages T9 stored while run r was the latest run; the latest such T9 wins (`apps/api/src/recommendations/earlier-rounds.ts`).
+- Weights go to the members the new run scores. A member excluded (T3b) or gone since round r gets no weight, but still counts in round r's mean_j.
 - deficit_i = (1/R) x sum_r max(0, mean_j s_j(o_r) - s_i(o_r)), over the R earlier rounds. mean_j is over every member that run scored. A member that run did not score (joined later) adds 0 for it. With no earlier round every deficit is 0. The scores come from each item's stored `reasons.members[].score`.
 - w_i = 1 + lambda x deficit_i, then w_i <- w_i / mean_k w_k, so the mean weight is 1. lambda is 1 in `apps/api/config/scoring.json` (allowed 0 to 5), validated at start-up and stored on every run.
 - mean_w = (1/n) x sum_i w_i x s_i(d); sd_w = sqrt((1/n) x sum_i w_i x (s_i(d) - mean_w)^2).

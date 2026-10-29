@@ -59,6 +59,7 @@ import {
   listRunItems,
   nextRound,
   readCostRules,
+  readRoundHistory,
   readStalenessStamp,
   setSelectedDestination,
   type DestinationRow,
@@ -66,6 +67,7 @@ import {
   type Participant,
   type RunRow,
 } from './repository';
+import { earlierRounds, roundWeights } from './earlier-rounds';
 
 // S2-6: recommendation runs (T4, T6>T7, T6>T8) and the destination choice (T9).
 // Everything slow (profile, distances, F1 to F5, scores, diagnostic) is computed
@@ -86,6 +88,8 @@ interface Deps {
 interface RequestDeps extends Deps {
   routing: Routing;
   weights: Weights;
+  /** R17 fairness lambda from scoring.json, stored on every run. */
+  lambda: number;
   hooks?: RecommendationHooks;
 }
 
@@ -282,7 +286,7 @@ function sourceOf(doc: RunDocument): CapSource {
   return p.groupCapInr < p.memberCount * p.perPersonCapInr ? 'trip' : 'members';
 }
 
-function toRunView(run: RunRow, doc: RunDocument): RecommendationRun {
+function toRunView(run: RunRow, doc: RunDocument, favoursLessServed: boolean): RecommendationRun {
   const source = sourceOf(doc);
   const shownCap = shownGroupCap(doc.groupProfile, source);
   const evaluationView = (e: StoredEvaluation) => ({
@@ -309,6 +313,7 @@ function toRunView(run: RunRow, doc: RunDocument): RecommendationRun {
     feasibleCount: run.feasibleCount,
     bindingConstraint: run.bindingConstraint as RecommendationRun['bindingConstraint'],
     weakMatch: doc.weakMatch,
+    favoursLessServed,
     incomplete: doc.incomplete ?? doc.diagnostic?.incomplete ?? [],
     diagnostic,
     groupProfile: groupProfileView(doc.groupProfile, source),
@@ -371,9 +376,28 @@ export async function getLatestRecommendation(
   const doc = run.diagnostic as RunDocument;
   const rows = await listRunItems(db, run.id);
   return {
-    run: toRunView(run, doc),
+    run: toRunView(run, doc, await favoursLessServed(db, tripId, run, rows)),
     items: rows.map((row) => toItemView(row, doc.memberCount, membership.id)),
   };
+}
+
+/**
+ * R7's fairness sentence shows when this run was ranked with weights that are not
+ * all 1. They are recomputed from the stored scores and the run's own lambda,
+ * exactly as planRun computed them, because they are never stored (E2).
+ */
+async function favoursLessServed(
+  db: Db,
+  tripId: string,
+  run: RunRow,
+  rows: readonly ItemWithDestination[],
+): Promise<boolean> {
+  const first = rows[0];
+  if (run.lambda === 0 || run.round === 1 || !first) return false;
+  const history = await readRoundHistory(db, tripId);
+  const rounds = earlierRounds(history.runs, history.candidates, history.packages, run.round);
+  const memberIds = (first.item.reasons as ItemReasons).members.map((m) => m.tripMemberId);
+  return roundWeights(rounds, memberIds, run.lambda) !== undefined;
 }
 
 // GET /api/trips/:id/group-profile: any member; computed on read (0004 b).
@@ -426,6 +450,7 @@ const storeEvaluation = (e: Evaluation): StoredEvaluation => ({
 async function planRun(
   deps: RequestDeps,
   tripRow: {
+    id: string;
     originHubId: string;
     durationNights: number;
     budgetTotalInr: number;
@@ -433,7 +458,7 @@ async function planRun(
   },
   members: MemberInput[],
 ): Promise<Plan> {
-  const { db, routing, weights } = deps;
+  const { db, routing, weights, lambda } = deps;
   const profile = groupProfile(members, tripRow);
   const n = members.length;
   const source = capSource(tripRow.budgetTotalInr, n, profile.perPersonCapInr);
@@ -466,10 +491,11 @@ async function planRun(
     };
   }
 
-  const [rows, hubRows, costRules] = await Promise.all([
+  const [rows, hubRows, costRules, history] = await Promise.all([
     listActiveDestinationRows(db),
     db.select().from(hub).where(eq(hub.id, tripRow.originHubId)).limit(1),
     readCostRules(db),
+    readRoundHistory(db, tripRow.id),
   ]);
   const origin = hubRows[0];
   if (!origin || !costRules) {
@@ -523,10 +549,18 @@ async function planRun(
   });
 
   const feasible = evaluated.filter((e) => e.evaluation.feasible);
+  // R17: every existing run is earlier than this one. Only the order follows the
+  // weights; items keep the unweighted gfs, mean, min and sd (E1).
+  const memberWeights = roundWeights(
+    earlierRounds(history.runs, history.candidates, history.packages, Infinity),
+    members.map((m) => m.memberId),
+    lambda,
+  );
   const ranked = rankDestinations(
     members,
     feasible.map((e) => e.destination),
     weights,
+    memberWeights,
   );
   const diagnostic = buildDiagnostic({
     evaluations: evaluated.map((e) => e.evaluation),
@@ -603,7 +637,7 @@ export async function requestRecommendations(
   userId: string,
 ): Promise<RequestRecommendationsResponse> {
   const started = performance.now();
-  const { db, logger, clock, weights } = deps;
+  const { db, logger, clock, weights, lambda } = deps;
   const { trip: tripRow, membership } = await loadTripForMember(db, tripId, userId);
   requireActiveMember(membership);
   requireOrganiser(membership);
@@ -642,6 +676,7 @@ export async function requestRecommendations(
           alpha: weights.alpha,
           beta: weights.beta,
           gamma: weights.gamma,
+          lambda,
           feasibleCount: plan.feasibleCount,
           bindingConstraint: plan.bindingConstraint,
           diagnostic: plan.doc,
