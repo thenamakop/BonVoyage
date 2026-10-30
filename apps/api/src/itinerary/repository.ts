@@ -22,7 +22,11 @@ export async function listActivePois(db: Reader, destinationId: string) {
 
 export async function latestItineraryForTrip(db: Reader, tripId: string) {
   const rows = await db
-    .select({ itinerary, packageLabel: tripPackage.label })
+    .select({
+      itinerary,
+      packageLabel: tripPackage.label,
+      packageStartDate: tripPackage.startDate,
+    })
     .from(itinerary)
     .innerJoin(tripPackage, eq(tripPackage.id, itinerary.packageId))
     .where(eq(tripPackage.tripId, tripId))

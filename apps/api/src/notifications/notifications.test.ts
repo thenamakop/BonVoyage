@@ -382,10 +382,6 @@ describe('a trip from joining to cancelled', () => {
       message: 'The trip is finalised',
     });
 
-    // T16's guard (today < startDate) reads trip.start_date, which nothing in the
-    // app sets yet, so cancelling a finalised trip is a 500 today. Out of scope
-    // here (it touches the state machine); the test arranges the date directly.
-    await db.update(trip).set({ startDate: '2026-11-13' }).where(eq(trip.id, tripId));
     tick();
     const cancelled = await asha.agent.post(`/api/trips/${tripId}/cancel`).set(H).send({});
     expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);

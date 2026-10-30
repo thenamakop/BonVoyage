@@ -12,7 +12,7 @@ import {
   TripDetail,
   type TripActionName,
 } from '@bonvoyage/shared';
-import { asc, eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -241,5 +241,17 @@ describe('full journey, end to end', () => {
       'I5',
       'T14',
     ]);
+
+    // T16: the group calls it off before the first day. Only T14 set the date here.
+    const cancelled = await asha.post(`/api/trips/${tripId}/cancel`).set(H).send({});
+    expect(cancelled.status, JSON.stringify(cancelled.body)).toBe(200);
+    expect(cancelled.body).toEqual({ id: tripId, status: 'cancelled' });
+    const last = await db
+      .select({ id: tripTransition.transitionId })
+      .from(tripTransition)
+      .where(eq(tripTransition.tripId, tripId))
+      .orderBy(desc(tripTransition.createdAt), desc(tripTransition.id))
+      .limit(1);
+    expect(last.map((t) => t.id)).toEqual(['T16']);
   });
 });
