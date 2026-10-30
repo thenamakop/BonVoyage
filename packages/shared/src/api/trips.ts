@@ -81,6 +81,11 @@ export const TripMember = z.object({
   status: MemberStatus,
   submitted: z.boolean(),
   joinedAt: z.string(),
+  /**
+   * S5-3: only for the organiser, and only on a member they could remind. Null when
+   * reminding is allowed now, else when it next is. Omitted for everyone else.
+   */
+  canRemindAt: z.string().nullable().optional(),
 });
 export type TripMember = z.infer<typeof TripMember>;
 

@@ -1,6 +1,7 @@
 import { Link, Outlet } from 'react-router';
 import { useMe } from '../../features/auth/api';
 import { HealthIndicator } from './HealthIndicator';
+import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
 
 export function AppShell() {
@@ -15,25 +16,29 @@ export function AppShell() {
       >
         Skip to content
       </a>
-      <header className="bg-brand-700 text-white">
+      {/* relative: the notification panel spans this header on narrow screens. */}
+      <header className="relative bg-brand-700 text-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-2">
           <Link
             to={signedIn ? '/trips' : '/'}
-            className="flex min-h-11 items-center text-lg font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="flex min-h-11 shrink-0 items-center text-lg font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             BonVoyage
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex min-w-0 items-center gap-1">
             {signedIn ? (
               <Link
                 to="/trips"
-                className="flex min-h-11 items-center rounded-md px-3 text-sm font-medium hover:bg-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="flex min-h-11 shrink-0 items-center rounded-md px-3 text-sm font-medium hover:bg-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               >
                 Trips
               </Link>
             ) : null}
             {me ? (
-              <UserMenu user={me} />
+              <>
+                <NotificationBell />
+                <UserMenu user={me} />
+              </>
             ) : (
               <Link
                 to="/sign-in"

@@ -44,6 +44,7 @@ import {
   type MemberWithName,
   type Tx,
 } from './repository';
+import { nextReminderTimes } from '../notifications/service';
 import { findLatestRun } from '../recommendations/repository';
 import { latestItinerarySummary } from '../itinerary/repository';
 import { tripActions } from './actions';
@@ -75,6 +76,10 @@ function progressOf(members: MemberWithName[]): TripProgress {
   };
 }
 
+/** The members Remind accepts (notifications/service.ts): active, not submitted, not the organiser. */
+const isRemindable = ({ member }: MemberWithName) =>
+  member.status === 'active' && member.submittedAt === null && member.role !== 'organiser';
+
 function toDetail(
   row: TripRow,
   hubRow: HubRow,
@@ -85,6 +90,7 @@ function toDetail(
   latestRecommendation: TripDetail['latestRecommendation'],
   selectedPackage: TripDetail['selectedPackage'],
   latestItinerary: TripDetail['latestItinerary'],
+  reminders: ReadonlyMap<string, string> | null,
 ): TripDetail {
   const organiser = members.find((m) => m.member.role === 'organiser');
   const progress = progressOf(members);
@@ -110,6 +116,9 @@ function toDetail(
       status: m.member.status,
       submitted: m.member.submittedAt !== null,
       joinedAt: iso(m.member.joinedAt),
+      ...(reminders && isRemindable(m)
+        ? { canRemindAt: reminders.get(m.member.userId) ?? null }
+        : {}),
     })),
     myRole: caller.role,
     myStatus: caller.status,
@@ -133,7 +142,12 @@ function toDetail(
   };
 }
 
-async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<TripDetail> {
+async function detailFor(
+  db: Db,
+  row: TripRow,
+  caller: MembershipRow,
+  now: Date,
+): Promise<TripDetail> {
   const [
     hubRow,
     members,
@@ -152,6 +166,14 @@ async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<T
     latestItinerarySummary(db, row.id),
   ]);
   if (!hubRow) throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
+  // S5-3: only an acting organiser, while preferences are open, ever gets this;
+  // it stays out of every other caller's response (V2).
+  const reminders =
+    caller.role === 'organiser' &&
+    caller.status === 'active' &&
+    row.status === 'collecting_preferences'
+      ? await nextReminderTimes(db, row.id, now)
+      : null;
   const latestRecommendation = latestRun
     ? {
         round: latestRun.round,
@@ -170,6 +192,7 @@ async function detailFor(db: Db, row: TripRow, caller: MembershipRow): Promise<T
     latestRecommendation,
     selectedPackage,
     latestItinerary,
+    reminders,
   );
 }
 
@@ -232,7 +255,7 @@ export async function createTrip(
   });
 
   const { trip: row, membership } = await loadTripForMember(db, created.id, userId);
-  return detailFor(db, row, membership);
+  return detailFor(db, row, membership, clock());
 }
 
 export async function getMyTrips(db: Db, userId: string): Promise<TripsResponse> {
@@ -256,15 +279,20 @@ export async function getMyTrips(db: Db, userId: string): Promise<TripsResponse>
   };
 }
 
-export async function getTrip(db: Db, tripId: string, userId: string): Promise<TripDetail> {
+export async function getTrip(
+  db: Db,
+  tripId: string,
+  userId: string,
+  clock: () => Date,
+): Promise<TripDetail> {
   const { trip: row, membership } = await loadTripForMember(db, tripId, userId);
-  return detailFor(db, row, membership);
+  return detailFor(db, row, membership, clock());
 }
 
 // PATCH /api/trips/:id — organiser only, until the shortlist is made (0004 j).
 // The status is re-read under FOR UPDATE so an edit cannot race a transition.
 export async function updateTrip(
-  { db }: Deps,
+  { db, clock }: Deps,
   tripId: string,
   userId: string,
   input: UpdateTripInput,
@@ -301,7 +329,7 @@ export async function updateTrip(
   });
 
   const { trip: row, membership: fresh } = await loadTripForMember(db, tripId, userId);
-  return detailFor(db, row, fresh);
+  return detailFor(db, row, fresh, clock());
 }
 
 // RUNBOOK B3: T15/T16. loadTripForMember returns the same 404 for a missing
@@ -342,7 +370,7 @@ export async function closeSubmissions(
   requireActiveMember(membership);
   requireOrganiser(membership);
   await transitionTrip(deps, { tripId, event: 'closeSubmissions', actorUserId: userId });
-  return getTrip(deps.db, tripId, userId);
+  return getTrip(deps.db, tripId, userId, deps.clock);
 }
 
 // POST /api/trips/:id/reopen-shortlist: T21 "Ask again" (decision E1). The
@@ -359,7 +387,7 @@ export async function reopenShortlist(
   requireActiveMember(membership);
   requireOrganiser(membership);
   await transitionTrip(deps, { tripId, event: 'shortlistReopened', actorUserId: userId });
-  return getTrip(deps.db, tripId, userId);
+  return getTrip(deps.db, tripId, userId, deps.clock);
 }
 
 const ACTIVITY_LIMIT = 20;

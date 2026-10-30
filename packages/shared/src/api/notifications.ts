@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { indiaDateTime } from '../time';
 
 // S5-3 (decision E3, M4): in-app notifications and the organiser's reminder.
 // A payload holds the trip id, the trip's title and the type's own fields
@@ -93,6 +94,12 @@ export type NotificationsResponse = z.infer<typeof NotificationsResponse>;
 
 /** A reminder may go to the same member once in this many hours (E3, a rolling window). */
 export const REMIND_WINDOW_HOURS = 24;
+
+/** The 429's message and the disabled Remind button's reason: one sentence, both places. */
+export function remindAgainText(memberName: string, at: Date): string {
+  const firstName = memberName.trim().split(/\s+/)[0] || 'this member';
+  return `You can remind ${firstName} again after ${indiaDateTime(at)}`;
+}
 
 export const RemindResponse = z.object({
   remindedAt: z.string(),

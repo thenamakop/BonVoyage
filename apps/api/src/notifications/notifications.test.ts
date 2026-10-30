@@ -8,6 +8,7 @@ import {
   NotificationsResponse,
   PackagesResponse,
   RemindResponse,
+  TripDetail,
   type ErrorEnvelope,
   type NotificationType,
   type PreferenceInput,
@@ -145,6 +146,7 @@ const submit = async (p: Person, tripId: string, min: number, max: number) => {
   const res = await p.agent.put(`/api/trips/${tripId}/preferences/me`).set(H).send(prefs(min, max));
   expect(res.status, JSON.stringify(res.body)).toBe(200);
 };
+const post = (p: Person, path: string) => p.agent.post(path).set(H).send({});
 const remind = (organiser: Person, tripId: string, target: Person) =>
   organiser.agent.post(`/api/trips/${tripId}/members/${target.userId}/remind`).set(H).send({});
 
@@ -546,6 +548,64 @@ describe('two quick clicks on Remind (advisory lock)', () => {
     expect(await typesOf(meera)).toEqual(['preferences_reminder']);
     // A reminder to Rohan is a separate limit.
     expect((await remind(asha, tripId, rohan)).status).toBe(201);
+  });
+});
+
+describe('canRemindAt on the trip detail', () => {
+  const rows = async (viewer: Person, tripId: string) =>
+    TripDetail.parse((await viewer.agent.get(`/api/trips/${tripId}`).set(H)).body).members;
+  const forMember = async (viewer: Person, tripId: string, target: Person) =>
+    (await rows(viewer, tripId)).find((m) => m.userId === target.userId);
+
+  it('the organiser reads null, then the next allowed time, then null again after 24 hours', async () => {
+    const asha = await person('Asha');
+    const rohan = await person('Rohan');
+    const { tripId } = await collectingTrip(asha, [rohan]);
+    expect((await forMember(asha, tripId, rohan))?.canRemindAt).toBeNull();
+
+    tick();
+    const sent = RemindResponse.parse((await remind(asha, tripId, rohan)).body);
+    expect((await forMember(asha, tripId, rohan))?.canRemindAt).toBe(sent.canRemindAgainAt);
+
+    // One second short it still holds the time; exactly 24 hours on, reminding is allowed.
+    now = new Date(Date.parse(sent.canRemindAgainAt) - 1000);
+    expect((await forMember(asha, tripId, rohan))?.canRemindAt).toBe(sent.canRemindAgainAt);
+    now = new Date(sent.canRemindAgainAt);
+    expect((await forMember(asha, tripId, rohan))?.canRemindAt).toBeNull();
+    expect((await remind(asha, tripId, rohan)).status).toBe(201);
+  });
+
+  it('is only on members Remind accepts, and only while preferences are open', async () => {
+    const asha = await person('Asha');
+    const rohan = await person('Rohan');
+    const meera = await person('Meera');
+    const kabir = await person('Kabir');
+    const { tripId } = await collectingTrip(asha, [rohan, meera, kabir]);
+    await submit(rohan, tripId, 10000, 40000);
+    expect(
+      (await asha.agent.delete(`/api/trips/${tripId}/members/${kabir.userId}`).set(H)).status,
+    ).toBe(204);
+
+    const seen = await rows(asha, tripId);
+    const has = (p: Person) =>
+      Object.keys(seen.find((m) => m.userId === p.userId) ?? {}).includes('canRemindAt');
+    // Not the organiser, not a member who submitted, not a removed member.
+    expect([asha, rohan, meera, kabir].map(has)).toEqual([false, false, true, false]);
+
+    // T3b moves the trip on; nobody can be reminded, so the field is gone.
+    await submit(asha, tripId, 10000, 40000);
+    expect((await post(asha, `/api/trips/${tripId}/close-submissions`)).status).toBe(200);
+    expect((await rows(asha, tripId)).every((m) => !('canRemindAt' in m))).toBe(true);
+  });
+
+  it('every response that returns the trip carries it for the organiser', async () => {
+    const asha = await person('Asha');
+    const rohan = await person('Rohan');
+    const { tripId } = await collectingTrip(asha, [rohan]);
+    const res = await asha.agent.patch(`/api/trips/${tripId}`).set(H).send({ title: 'Renamed' });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const edited = TripDetail.parse(res.body).members.find((m) => m.userId === rohan.userId);
+    expect(edited?.canRemindAt).toBeNull();
   });
 });
 
