@@ -81,6 +81,22 @@ export async function findAcceptedPackage(db: Db, tripId: string) {
   return rows[0] ?? null;
 }
 
+/**
+ * T16 for a trip finalised before T14 stored its first day: copies the accepted
+ * package's start date onto the trip. False when there is no such package.
+ */
+export async function restoreStartDate(db: Db, tripId: string): Promise<boolean> {
+  const rows = await db
+    .select({ startDate: tripPackage.startDate })
+    .from(tripPackage)
+    .where(and(eq(tripPackage.tripId, tripId), eq(tripPackage.status, 'accepted')))
+    .limit(1);
+  const startDate = rows[0]?.startDate;
+  if (!startDate) return false;
+  await db.update(trip).set({ startDate }).where(eq(trip.id, tripId));
+  return true;
+}
+
 export async function listMembersWithNames(db: Db, tripId: string): Promise<MemberWithName[]> {
   const rows = await db
     .select({ member: tripMember, name: user.name })

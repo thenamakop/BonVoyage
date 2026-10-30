@@ -38,6 +38,7 @@ import {
   listMembershipTrips,
   lockTripStatus,
   newestTransitionAt,
+  restoreStartDate,
   updateTripFields,
   type HubRow,
   type MemberWithName,
@@ -310,9 +311,21 @@ export async function cancelTrip(
   tripId: string,
   userId: string,
 ): Promise<{ id: string; status: string }> {
-  const { membership } = await loadTripForMember(deps.db, tripId, userId);
+  const { trip: row, membership } = await loadTripForMember(deps.db, tripId, userId);
   requireActiveMember(membership);
   requireOrganiser(membership);
+  // T16's guard needs the first day, which T14 stores. A trip finalised before it
+  // did gets the date from its accepted package; with none, it is refused, never
+  // allowed by default. The date is right whether or not T16 then passes.
+  if (row.status === 'finalised' && row.startDate === null) {
+    if (!(await restoreStartDate(deps.db, tripId))) {
+      throw new AppError(
+        409,
+        ERROR_CODES.GUARD_FAILED,
+        'This trip has no start date, so it cannot be cancelled.',
+      );
+    }
+  }
   const outcome = await transitionTrip(deps, { tripId, event: 'cancelTrip', actorUserId: userId });
   return { id: tripId, status: outcome.to };
 }
