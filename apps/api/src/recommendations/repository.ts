@@ -12,7 +12,7 @@ import {
   tripPackage,
   vote,
 } from '@bonvoyage/db/schema';
-import type { CostRules } from '@bonvoyage/engine';
+import { toCostRules, toPublicFares, type CostRules } from '@bonvoyage/engine';
 import { and, asc, desc, eq, gte, inArray, isNotNull, or, sql } from 'drizzle-orm';
 import type { Tx } from '../trips/transition-trip';
 import type { PackageMark, RunMark, TopChoiceCandidate } from './earlier-rounds';
@@ -120,35 +120,12 @@ export async function listPublicFares(
     .where(
       and(eq(fareFallback.originHubId, originHubId), inArray(fareFallback.mode, ['bus', 'train'])),
     );
-  const out = new Map<string, { busInr: number | null; trainInr: number | null }>();
-  for (const row of rows) {
-    const fares = out.get(row.destinationId) ?? { busInr: null, trainInr: null };
-    if (row.mode === 'bus') fares.busInr = row.fare;
-    if (row.mode === 'train') fares.trainInr = row.fare;
-    out.set(row.destinationId, fares);
-  }
-  return out;
+  return toPublicFares(rows);
 }
-
-const COST_RULE_KEYS = {
-  fuelPriceInrPerLitre: 'fuel_price_inr_per_litre',
-  carKmPerLitre: 'car_km_per_litre',
-  tollInrPerKm: 'toll_inr_per_km',
-  personsPerCar: 'persons_per_car',
-  carRentalInrPerDay: 'car_rental_inr_per_day',
-} as const satisfies Record<keyof CostRules, string>;
 
 /** The five car-cost inputs, or null when the catalogue has not been imported. */
 export async function readCostRules(db: Db): Promise<CostRules | null> {
-  const rows = await db.select({ key: costRule.key, value: costRule.value }).from(costRule);
-  const byKey = new Map(rows.map((r) => [r.key, r.value]));
-  const out: Partial<CostRules> = {};
-  for (const [field, key] of Object.entries(COST_RULE_KEYS) as [keyof CostRules, string][]) {
-    const value = byKey.get(key);
-    if (value === undefined) return null;
-    out[field] = value;
-  }
-  return out as CostRules;
+  return toCostRules(await db.select({ key: costRule.key, value: costRule.value }).from(costRule));
 }
 
 export async function nextRound(tx: Tx, tripId: string): Promise<number> {
