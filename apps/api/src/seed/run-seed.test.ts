@@ -17,6 +17,7 @@ import {
   tripMember,
   tripPackage,
   tripTransition,
+  vote,
 } from '@bonvoyage/db/schema';
 import { account, user } from '@bonvoyage/db/schema/auth';
 import { indiaDate } from '@bonvoyage/shared';
@@ -530,6 +531,8 @@ describe('runSeed with freshDemos', () => {
             where m.id is null)
         + (select count(*) from ${recommendationRun} c left join ${trip} t on t.id = c.trip_id where t.id is null)
         + (select count(*) from ${recommendationItem} c left join ${recommendationRun} r on r.id = c.run_id
+            where r.id is null)
+        + (select count(*) from ${vote} c left join ${recommendationRun} r on r.id = c.run_id
             where r.id is null)
         + (select count(*) from ${tripPackage} c left join ${trip} t on t.id = c.trip_id where t.id is null)
         + (select count(*) from ${costItem} c left join ${tripPackage} p on p.id = c.package_id where p.id is null)

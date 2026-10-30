@@ -643,7 +643,7 @@ These three tables are the contract between the documents and the code: every re
 | T19 | Completed | completion | final state |
 | T20 | Cancelled | completion | final state |
 
-Internal transitions keep the state unchanged: preferenceSubmitted \[pending > 0\] / updateProgress; packageModified / recomputeCost; packageRejected \[alternatives left\] / hidePackage; itineraryModified / revalidate.
+Internal transitions keep the state unchanged: preferenceSubmitted \[pending > 0\] / updateProgress; packageModified / recomputeCost; packageRejected \[alternatives left\] / hidePackage; itineraryModified / revalidate; voteCast \[member is active\] (I6, in Shortlisted, decision 0001 h).
 
 **B3. API surface, version 0** (use case diagram and sequence diagram)
 
@@ -663,6 +663,7 @@ Internal transitions keep the state unchanged: preferenceSubmitted \[pending > 0
 | `GET /api/trips/:id/recommendations/latest` | Read the newest run with the caller's own explanation | none |
 | `POST /api/trips/:id/destination` | Select a destination; entry generates packages | T9 |
 | `POST /api/trips/:id/reopen-shortlist` | Ask again: back to Ready for Recommendation for a new round | T21 |
+| `PUT /api/trips/:id/vote`, `DELETE /api/trips/:id/vote` | Cast, change or withdraw a vote on the shortlist | I6 |
 | `GET /api/trips/:id/transport` | Compare transport options | none |
 | `GET /api/trips/:id/packages` | View packages and cost breakdowns | none |
 | `POST /api/packages/:id/decision` | Accept, modify or reject a package | T10, T11 |

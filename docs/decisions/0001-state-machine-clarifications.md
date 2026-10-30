@@ -1,6 +1,6 @@
 # 0001: Trip state machine clarifications
 
-Status: Accepted · Date: 2026-10-10, amended 2026-10-29 (g) · Supersedes: none
+Status: Accepted · Date: 2026-10-10, amended 2026-10-29 (g) and 2026-10-30 (h) · Supersedes: none
 
 ## Context
 
@@ -23,6 +23,13 @@ The trip state machine follows the diagram and Appendix B with these clarificati
   | T21 | `shortlisted` | `shortlistReopened` ("Ask again", organiser only, no guard, no action) | `ready_for_recommendation` |
 
   The entry behaviour of `ready_for_recommendation` (`computeGroupProfile`) runs, as e) requires. From there members may revise (T5), the organiser may edit the trip (0004 j), and the next `recommendationRequested` stores a new run (round + 1). `shortlistReopened` from any other state is rejected like every other illegal event. The external rows are now 19 (T1 to T18 with T3b, T6 split, plus T21). No status is added. The diagram in `docs/design/` predates T21 and is not edited.
+- h) I6, approved under decision E4, 29 October 2026 (`docs/sprints/sprint-5-plan.md`), added 30 October 2026. A new internal row:
+
+  | # | State | Event \[guard\] / action |
+  | --- | --- | --- |
+  | I6 | `shortlisted` | `voteCast` \[member is active\] / no action |
+
+  `voteCast` covers casting, changing and withdrawing a vote (R18). It changes no state and the organiser's choice (T9) never reads it (0005 h). The guard is enforced in the API, like T21's organiser-only rule, so `GuardContext` is unchanged. `voteCast` from any other state is rejected like every other illegal event, and the API words that 409 "Voting has closed." The internal rows are now I1 to I6. Each vote writes a `trip_transition` row, as every transition does, but the activity list and `lastActivityAt` leave I6 out: a name beside a count that just moved would say who voted for what. The diagram in `docs/design/` predates I6 and is not edited.
 
 ## Consequences
 

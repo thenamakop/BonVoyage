@@ -114,7 +114,7 @@ export const invitation = pgTable(
 );
 
 // Audit trail written by transitionTrip (S0-6); transition_id is text holding
-// T1 to T18, T3b or I1 to I5.
+// T1 to T18, T3b, T21 or I1 to I6.
 export const tripTransition = pgTable(
   'trip_transition',
   {

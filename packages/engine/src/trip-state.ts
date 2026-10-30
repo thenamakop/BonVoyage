@@ -23,6 +23,7 @@ export const TRIP_EVENTS = [
   'tripStarted',
   'tripEnded',
   'shortlistReopened',
+  'voteCast',
 ] as const;
 export type TripEvent = (typeof TRIP_EVENTS)[number];
 
@@ -281,6 +282,16 @@ export const INTERNAL_TRANSITIONS: readonly InternalRow[] = [
     event: 'itineraryModified',
     guardText: '',
     actions: ['revalidate'],
+  },
+  // I6 (R18, decision E4, 29 October 2026): a member casts, changes or withdraws a
+  // vote. "Member is active" is enforced in the API, like T21's organiser-only rule:
+  // a real guard would put the caller's membership in every GuardContext.
+  {
+    id: 'I6',
+    from: 'shortlisted',
+    event: 'voteCast',
+    guardText: 'member is active',
+    actions: [],
   },
 ];
 

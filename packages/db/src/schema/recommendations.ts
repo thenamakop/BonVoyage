@@ -1,5 +1,6 @@
 import {
   doublePrecision,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -12,7 +13,8 @@ import {
 } from 'drizzle-orm/pg-core';
 import { destination } from './catalogue';
 import { provenanceEnum, recommendationKindEnum } from './enums';
-import { trip } from './trips';
+import { timestamps } from './helpers';
+import { trip, tripMember } from './trips';
 
 export const recommendationRun = pgTable(
   'recommendation_run',
@@ -64,5 +66,33 @@ export const recommendationItem = pgTable(
     uniqueIndex('recommendation_item_destination').on(t.runId, t.destinationId),
     index('recommendation_item_run_idx').on(t.runId),
     index('recommendation_item_destination_idx').on(t.destinationId),
+  ],
+);
+
+// R18 (decision E4): one vote per member per run. Votes belong to the run, so a new
+// run starts empty. The composite key makes the database refuse a destination that
+// is not in the run.
+export const vote = pgTable(
+  'vote',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => recommendationRun.id, { onDelete: 'cascade' }),
+    tripMemberId: uuid('trip_member_id')
+      .notNull()
+      .references(() => tripMember.id, { onDelete: 'cascade' }),
+    destinationId: uuid('destination_id').notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('vote_one_per_member').on(t.runId, t.tripMemberId),
+    index('vote_trip_member_idx').on(t.tripMemberId),
+    index('vote_run_destination_idx').on(t.runId, t.destinationId),
+    foreignKey({
+      name: 'vote_run_item_fk',
+      columns: [t.runId, t.destinationId],
+      foreignColumns: [recommendationItem.runId, recommendationItem.destinationId],
+    }).onDelete('cascade'),
   ],
 );

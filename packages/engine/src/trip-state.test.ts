@@ -10,7 +10,7 @@ import {
   type TripEvent,
 } from './trip-state';
 
-// S0-6: one test per transition row, a hand-written 228-pair matrix, and the
+// S0-6: one test per transition row, a hand-written 240-pair matrix, and the
 // guard edges. The legal-pairs list is written by hand, not derived from
 // TRANSITIONS, so the test proves the table rather than restating it.
 
@@ -164,6 +164,14 @@ describe('internal transitions', () => {
   it('I4', () =>
     I('I4', 'packages_proposed', 'packageRejected', ['hidePackage'], ctx({ alternativesLeft: 1 })));
   it('I5', () => I('I5', 'itinerary_proposed', 'itineraryModified', ['revalidate']));
+  it('I6', () => I('I6', 'shortlisted', 'voteCast', []));
+  it('I6 is rejected from every other status with the existing error shape', () => {
+    for (const s of SOURCES.filter((x) => x !== 'shortlisted')) {
+      const r = nextState(s, 'voteCast', ctx());
+      const reason = s === 'completed' || s === 'cancelled' ? 'TERMINAL_STATE' : 'ILLEGAL_EVENT';
+      expect(r, s).toMatchObject({ ok: false, reason });
+    }
+  });
 });
 
 const ALL_EVENTS: TripEvent[] = [
@@ -186,6 +194,7 @@ const ALL_EVENTS: TripEvent[] = [
   'tripStarted',
   'tripEnded',
   'shortlistReopened',
+  'voteCast',
 ];
 
 // Hand-written legal pairs (source, event) for the permissive context.
@@ -204,6 +213,7 @@ const LEGAL: [TripStatus | 'initial', TripEvent][] = [
   ['shortlisted', 'destinationSelected'],
   ['shortlisted', 'cancelTrip'],
   ['shortlisted', 'shortlistReopened'],
+  ['shortlisted', 'voteCast'],
   ['packages_proposed', 'packageRejected'],
   ['packages_proposed', 'packageAccepted'],
   ['packages_proposed', 'packageModified'],
@@ -234,7 +244,7 @@ const SOURCES: (TripStatus | 'initial')[] = [
   'cancelled',
 ];
 
-describe('matrix (228 pairs)', () => {
+describe('matrix (240 pairs)', () => {
   it('matches the hand-written legal list', () => {
     const legal = new Set(LEGAL.map(([s, e]) => `${s}|${e}`));
     for (const from of SOURCES) {
@@ -346,7 +356,7 @@ describe('legalEvents and do-activities', () => {
       ['cancelTrip', 'closeSubmissions', 'preferenceRevised', 'preferenceSubmitted'].sort(),
     );
     expect(legalEvents('shortlisted').sort()).toEqual(
-      ['cancelTrip', 'destinationSelected', 'shortlistReopened'].sort(),
+      ['cancelTrip', 'destinationSelected', 'shortlistReopened', 'voteCast'].sort(),
     );
     expect(legalEvents('completed')).toEqual([]);
     expect(legalEvents('cancelled')).toEqual([]);

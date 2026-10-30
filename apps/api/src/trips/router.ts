@@ -12,6 +12,7 @@ import {
   PreferenceInput,
   RequestRecommendationsInput,
   UpdateTripInput,
+  VoteInput,
 } from '@bonvoyage/shared';
 import express from 'express';
 import { z } from 'zod';
@@ -32,6 +33,7 @@ import {
   requestRecommendations,
   type RecommendationHooks,
 } from '../recommendations/service';
+import { castVote, withdrawVote } from '../recommendations/votes';
 import {
   acceptItinerary,
   itineraryAlternatives,
@@ -233,6 +235,20 @@ export function createRouter({
     parseOrThrow(z.strictObject({}), req.body ?? {});
     const { userId } = getSessionUser(res);
     res.json(await reopenShortlist({ db, logger: req.log, clock }, tripId, userId));
+  });
+
+  // S5-4 (R18): a member's vote on the shortlist, I6. The logic lives in ../recommendations.
+  router.put('/trips/:id/vote', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const input = parseOrThrow(VoteInput, req.body);
+    const { userId } = getSessionUser(res);
+    res.json(await castVote({ db, logger: req.log, clock }, tripId, userId, input));
+  });
+
+  router.delete('/trips/:id/vote', requireSession(auth), async (req, res) => {
+    const tripId = parseTripId(req.params.id);
+    const { userId } = getSessionUser(res);
+    res.json(await withdrawVote({ db, logger: req.log, clock }, tripId, userId));
   });
 
   router.get('/trips/:id/recommendations/latest', requireSession(auth), async (req, res) => {

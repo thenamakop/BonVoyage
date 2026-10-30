@@ -68,6 +68,7 @@ import {
   type RunRow,
 } from './repository';
 import { earlierRounds, roundWeights } from './earlier-rounds';
+import { readRunVotes } from './votes';
 
 // S2-6: recommendation runs (T4, T6>T7, T6>T8) and the destination choice (T9).
 // Everything slow (profile, distances, F1 to F5, scores, diagnostic) is computed
@@ -375,9 +376,20 @@ export async function getLatestRecommendation(
   if (!run) return { run: null, items: [] };
   const doc = run.diagnostic as RunDocument;
   const rows = await listRunItems(db, run.id);
+  const votes =
+    run.kind === 'shortlist'
+      ? await readRunVotes(
+          db,
+          tripId,
+          run.id,
+          rows.map((row) => row.destination.slug),
+          membership.id,
+        )
+      : undefined;
   return {
     run: toRunView(run, doc, await favoursLessServed(db, tripId, run, rows)),
     items: rows.map((row) => toItemView(row, doc.memberCount, membership.id)),
+    ...(votes ? { votes } : {}),
   };
 }
 
