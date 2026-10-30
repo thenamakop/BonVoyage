@@ -41,7 +41,7 @@ import {
   getLatestRecommendation,
   requestRecommendations,
 } from '../recommendations/service';
-import { closeSubmissions, updateTrip } from '../trips/service';
+import { closeSubmissions, getTrip, updateTrip } from '../trips/service';
 import {
   DATE_CLASH_DEMO,
   DATE_CLASH_GAP_DAYS,
@@ -393,6 +393,12 @@ describe('Long weekend in the hills: the full journey through the services', () 
     await acceptItinerary(deps, row.id, asha);
     const [done] = await db.select({ status: trip.status }).from(trip).where(eq(trip.id, row.id));
     expect(done!.status).toBe('finalised');
+    // Script step 4.9: the finalised dashboard shows Dates and a Cancel trip button.
+    const dashboard = await getTrip(db, row.id, asha, deps.clock);
+    const [accepted] = packages.filter((p) => p.label === 'Saver');
+    expect(dashboard.startDate).toBe(accepted!.startDate);
+    expect(dashboard.endDate).toBe(accepted!.endDate);
+    expect(dashboard.availableActions).toContainEqual({ action: 'cancelTrip', enabled: true });
     const transitions = await db
       .select({ id: tripTransition.transitionId })
       .from(tripTransition)

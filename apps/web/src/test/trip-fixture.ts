@@ -66,7 +66,9 @@ function actionsFor(t: Omit<TripDetail, 'availableActions'>): TripAction[] {
     out.push({ action: 'reopenShortlist', enabled: true });
   }
   const planning = !['finalised', 'in_progress', 'completed', 'cancelled'].includes(t.status);
-  if (organiser && planning) out.push({ action: 'cancelTrip', enabled: true });
+  // T16: the API also checks the date is ahead; a test states a finalised trip's dates.
+  const beforeStart = t.status === 'finalised' && t.startDate !== null;
+  if (organiser && (planning || beforeStart)) out.push({ action: 'cancelTrip', enabled: true });
   if (!organiser && open) out.push({ action: 'leaveTrip', enabled: true });
   return out;
 }

@@ -97,7 +97,11 @@ function CancelTrip({ trip }: { trip: TripDetail }) {
       {cancel.error ? <Alert tone="error">{errorText(cancel.error)}</Alert> : null}
       {confirming ? (
         <Confirm
-          text="Cancel this trip? Nobody will be able to plan it after this."
+          text={
+            trip.status === 'finalised'
+              ? 'Cancel this trip? It is finalised; everyone will be told.'
+              : 'Cancel this trip? Nobody will be able to plan it after this.'
+          }
           confirmLabel="Cancel trip"
           keepLabel="Keep the trip"
           busy={cancel.isPending}

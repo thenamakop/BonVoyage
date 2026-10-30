@@ -106,7 +106,8 @@ Leave this window open for step 6.
    > "Swap only offers places that are not already in the plan and that fit the slot's time and opening hours. We swapped an unverified visit for a verified one."
 7. **Meera:** click **Back to the trip**, then **See the day plan**. She sees the same plan with no Remove or Swap buttons, and **"Waiting for Asha (demo) to accept the plan."**
 8. **Asha:** click **Accept this plan**. The confirm reads **"Accept this plan? The trip is finalised."** Click **Accept plan**.
-9. The dashboard reads **"Step 7 of 7: Finalised"**, **"Planning is complete."** and **"Trip finalised: Chakrata, 28 Nov 2026 – 30 Nov 2026, Saver package, ₹29,566 for the group, about ₹9,856 each (estimate)."**
+9. The dashboard reads **"Step 7 of 7: Finalised"**, **"Planning is complete."** and **"Trip finalised: Chakrata, 28 Nov 2026 – 30 Nov 2026, Saver package, ₹29,566 for the group, about ₹9,856 each (estimate)."** Under **Trip parameters**, **Dates** now reads **"28 Nov 2026 to 30 Nov 2026"**. Under **Organiser actions** there is a **Cancel trip** button; leave it alone, because a cancelled trip can't be reopened.
+   > "Finalised isn't a dead end. Until the first day, the organiser can still call the trip off, and everyone is told. From the first day on, the app refuses."
 10. Click **Trips**. **Long weekend in the hills** now sits under **"Past and finalised trips"**, marked **Finalised**.
 
 ## 5. Transport comparison: Tight budget demo (1 minute)

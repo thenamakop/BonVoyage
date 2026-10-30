@@ -1,4 +1,4 @@
-import { legalEvents } from '@bonvoyage/engine';
+import { legalEvents, nextState } from '@bonvoyage/engine';
 import {
   PLANNING_STATUSES,
   type MemberRole,
@@ -22,6 +22,9 @@ export interface ActionInput {
   hasRecommendation: boolean;
   /** An itinerary version exists for this trip (S3-6). */
   hasItinerary: boolean;
+  /** The trip's first day, and today in India: T16's guard compares them. */
+  startDate: string | null;
+  today: string;
 }
 
 const PLANNING = PLANNING_STATUSES as readonly TripStatus[];
@@ -43,6 +46,8 @@ export function tripActions({
   progress,
   hasRecommendation,
   hasItinerary,
+  startDate,
+  today,
 }: ActionInput): TripAction[] {
   // Removed members can read the trip but not act (conventions rule 4); reading
   // the recommendations is not acting.
@@ -125,7 +130,22 @@ export function tripActions({
     actions.push({ action: 'modifyItinerary', enabled: true });
   }
 
-  if (organiser && PLANNING.includes(status) && legal.has('cancelTrip')) {
+  // T15 while planning; T16 once finalised, only while its guard holds. The state
+  // machine answers, so the button can never disagree with the 409. With no date
+  // there is no answer, and nothing is offered.
+  const cancellable =
+    PLANNING.includes(status) ||
+    (status === 'finalised' &&
+      startDate !== null &&
+      nextState(status, 'cancelTrip', {
+        pendingCount: progress.pendingCount,
+        submittedCount: progress.submittedCount,
+        feasibleCount: null,
+        alternativesLeft: null,
+        today,
+        startDate,
+      }).ok);
+  if (organiser && cancellable && legal.has('cancelTrip')) {
     actions.push({ action: 'cancelTrip', enabled: true });
   }
 

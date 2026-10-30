@@ -1,6 +1,7 @@
 import type { Db } from '@bonvoyage/db';
 import { itinerary, itineraryItem, trip, tripPackage } from '@bonvoyage/db/schema';
 import {
+  addDaysUtc,
   buildFactSheet,
   durationMinutes,
   farePerPerson,
@@ -459,11 +460,15 @@ async function decide(
         .set({ status: event === 'itineraryAccepted' ? 'accepted' : 'rejected' })
         .where(eq(itinerary.id, latest.itinerary.id));
       // T14: the plan's day 1 is its package's start date (items hold day numbers
-      // only), and T16's guard needs it to tell whether the trip has begun.
+      // only). T16's guard needs it to tell whether the trip has begun, and the
+      // dashboard's Dates row needs both ends.
       if (event === 'itineraryAccepted') {
         await tx
           .update(trip)
-          .set({ startDate: latest.packageStartDate })
+          .set({
+            startDate: latest.packageStartDate,
+            endDate: addDaysUtc(latest.packageStartDate, tripRow.durationNights),
+          })
           .where(eq(trip.id, tripId));
       }
     },

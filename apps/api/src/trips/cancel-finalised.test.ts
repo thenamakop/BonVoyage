@@ -1,5 +1,5 @@
 import { createDb } from '@bonvoyage/db';
-import { fareFallback, poi, trip, tripTransition } from '@bonvoyage/db/schema';
+import { fareFallback, poi, trip, tripPackage, tripTransition } from '@bonvoyage/db/schema';
 import {
   InvitationResponse,
   ItineraryResponse,
@@ -9,7 +9,7 @@ import {
   type ErrorEnvelope,
   type PreferenceInput,
 } from '@bonvoyage/shared';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import type request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -38,6 +38,8 @@ const auth = createAuth({
 });
 const PLANNING_DAY = new Date('2026-11-01T06:30:00Z');
 const FIRST_DAY = '2026-11-13';
+const LAST_DAY = '2026-11-15'; // two nights on
+const STARTED = "This trip has already started, so it can't be cancelled.";
 let now = PLANNING_DAY;
 const app = createApp({
   db,
@@ -121,7 +123,7 @@ const cancel = (agent: Agent, tripId: string) => post(agent, `/api/trips/${tripI
 
 const statusOf = async (tripId: string) => {
   const [row] = await db
-    .select({ status: trip.status, startDate: trip.startDate })
+    .select({ status: trip.status, startDate: trip.startDate, endDate: trip.endDate })
     .from(trip)
     .where(eq(trip.id, tripId));
   return row;
@@ -196,20 +198,34 @@ async function finalisedTrip() {
 describe('T14 stores the trip’s first day', () => {
   it('trip.start_date is the accepted day plan’s first day; planning alone sets nothing', async () => {
     const { tripId, organiser } = await plannedTrip();
-    expect((await statusOf(tripId))?.startDate).toBeNull();
+    expect(await statusOf(tripId)).toMatchObject({ startDate: null, endDate: null });
     const accepted = await post(organiser.agent, `/api/trips/${tripId}/itinerary/accept`);
     expect(accepted.status, JSON.stringify(accepted.body)).toBe(200);
-    expect(TripDetail.parse(accepted.body).startDate).toBe(FIRST_DAY);
+    expect(TripDetail.parse(accepted.body)).toMatchObject({
+      startDate: FIRST_DAY,
+      endDate: LAST_DAY,
+    });
     const { itinerary } = ItineraryResponse.parse(
       (await organiser.agent.get(`/api/trips/${tripId}/itinerary`).set(H)).body,
     );
     expect(itinerary?.days[0]?.date).toBe(FIRST_DAY);
+    expect(itinerary?.days.at(-1)?.date).toBe(LAST_DAY);
+    // The same dates the group was shown on the accepted package.
+    const [accepted_] = await db
+      .select({ startDate: tripPackage.startDate, endDate: tripPackage.endDate })
+      .from(tripPackage)
+      .where(and(eq(tripPackage.tripId, tripId), eq(tripPackage.status, 'accepted')));
+    expect(accepted_).toEqual({ startDate: FIRST_DAY, endDate: LAST_DAY });
   });
 
   it('turning the plan down (T13) sets no date', async () => {
     const { tripId, organiser } = await plannedTrip();
     expect((await post(organiser.agent, `/api/trips/${tripId}/itinerary/reject`)).status).toBe(200);
-    expect(await statusOf(tripId)).toEqual({ status: 'package_selected', startDate: null });
+    expect(await statusOf(tripId)).toEqual({
+      status: 'package_selected',
+      startDate: null,
+      endDate: null,
+    });
   });
 });
 
@@ -241,10 +257,29 @@ describe('T16: cancelling a finalised trip', () => {
     const { tripId, organiser, rohan } = await finalisedTrip();
     now = new Date(at);
     const res = await cancel(organiser.agent, tripId);
-    expect([res.status, code(res)]).toEqual([409, 'GUARD_FAILED']);
+    expect((res.body as ErrorEnvelope).error).toEqual({
+      code: 'GUARD_FAILED',
+      message: STARTED,
+    });
+    expect(res.status).toBe(409);
     expect((await statusOf(tripId))?.status).toBe('finalised');
     expect((await transitionsOf(tripId)).at(-1)).toBe('T14');
     expect(await cancelNoticesFor(rohan.agent)).toEqual([]);
+  });
+
+  it('the dashboard offers Cancel to the organiser only, and only before the first day', async () => {
+    const { tripId, organiser, rohan } = await finalisedTrip();
+    const offered = async (agent: Agent) =>
+      TripDetail.parse((await agent.get(`/api/trips/${tripId}`).set(H)).body)
+        .availableActions.filter((a) => a.enabled)
+        .map((a) => a.action)
+        .includes('cancelTrip');
+    expect(await offered(organiser.agent)).toBe(true);
+    expect(await offered(rohan.agent)).toBe(false);
+    now = new Date('2026-11-12T18:29:00Z'); // 23:59 on 12 November in India
+    expect(await offered(organiser.agent)).toBe(true);
+    now = new Date('2026-11-12T18:31:00Z'); // 00:01 on the first day
+    expect(await offered(organiser.agent)).toBe(false);
   });
 
   it('a member cannot cancel it (403)', async () => {
@@ -254,16 +289,43 @@ describe('T16: cancelling a finalised trip', () => {
   });
 });
 
-// Trips finalised before T14 stored the date: the accepted package still knows it.
-describe('a trip finalised with no stored date', () => {
+// Trips finalised before T14 stored both dates: the accepted package still knows.
+describe('a trip finalised with no stored dates', () => {
   const clearDate = (tripId: string) =>
-    db.update(trip).set({ startDate: null }).where(eq(trip.id, tripId));
+    db.update(trip).set({ startDate: null, endDate: null }).where(eq(trip.id, tripId));
+  const detailOf = async (agent: Agent, tripId: string) =>
+    TripDetail.parse((await agent.get(`/api/trips/${tripId}`).set(H)).body);
+
+  it('reads its dates and is offered Cancel, and a GET stores nothing', async () => {
+    const { tripId, organiser } = await finalisedTrip();
+    await clearDate(tripId);
+    const detail = await detailOf(organiser.agent, tripId);
+    expect(detail).toMatchObject({ startDate: FIRST_DAY, endDate: LAST_DAY });
+    expect(detail.availableActions.map((a) => a.action)).toContain('cancelTrip');
+    expect(await statusOf(tripId)).toMatchObject({ startDate: null, endDate: null });
+  });
+
+  it('a trip with a start date but no end date (finalised under #149) gets the end date', async () => {
+    const { tripId, organiser } = await finalisedTrip();
+    await db.update(trip).set({ endDate: null }).where(eq(trip.id, tripId));
+    expect((await detailOf(organiser.agent, tripId)).endDate).toBe(LAST_DAY);
+    expect((await cancel(organiser.agent, tripId)).status).toBe(200);
+    expect(await statusOf(tripId)).toEqual({
+      status: 'cancelled',
+      startDate: FIRST_DAY,
+      endDate: LAST_DAY,
+    });
+  });
 
   it('takes the date from its accepted package: 200 before the first day', async () => {
     const { tripId, organiser } = await finalisedTrip();
     await clearDate(tripId);
     expect((await cancel(organiser.agent, tripId)).status).toBe(200);
-    expect(await statusOf(tripId)).toEqual({ status: 'cancelled', startDate: FIRST_DAY });
+    expect(await statusOf(tripId)).toEqual({
+      status: 'cancelled',
+      startDate: FIRST_DAY,
+      endDate: LAST_DAY,
+    });
     expect((await transitionsOf(tripId)).at(-1)).toBe('T16');
   });
 
@@ -271,9 +333,16 @@ describe('a trip finalised with no stored date', () => {
     const { tripId, organiser } = await finalisedTrip();
     await clearDate(tripId);
     now = new Date('2026-11-13T06:30:00Z');
+    expect(
+      (await detailOf(organiser.agent, tripId)).availableActions.map((a) => a.action),
+    ).not.toContain('cancelTrip');
     const res = await cancel(organiser.agent, tripId);
-    expect([res.status, code(res)]).toEqual([409, 'GUARD_FAILED']);
-    expect(await statusOf(tripId)).toEqual({ status: 'finalised', startDate: FIRST_DAY });
+    expect((res.body as ErrorEnvelope).error).toEqual({ code: 'GUARD_FAILED', message: STARTED });
+    expect(await statusOf(tripId)).toEqual({
+      status: 'finalised',
+      startDate: FIRST_DAY,
+      endDate: LAST_DAY,
+    });
   });
 
   it('with no accepted package either: 409 with a clear message, never allowed silently', async () => {
@@ -294,7 +363,7 @@ describe('T15 is unchanged', () => {
   it('a trip with a proposed plan cancels through T15 and gets no date', async () => {
     const { tripId, organiser, rohan } = await plannedTrip();
     expect((await cancel(organiser.agent, tripId)).status).toBe(200);
-    expect(await statusOf(tripId)).toEqual({ status: 'cancelled', startDate: null });
+    expect(await statusOf(tripId)).toEqual({ status: 'cancelled', startDate: null, endDate: null });
     expect((await transitionsOf(tripId)).at(-1)).toBe('T15');
     expect((await cancelNoticesFor(rohan.agent)).map((n) => n.message)).toEqual([
       'Asha cancelled the trip',
