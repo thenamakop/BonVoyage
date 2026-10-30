@@ -37,3 +37,28 @@ export function estimateRoadKm(
 ): { distanceKm: number; provenance: Provenance } {
   return { distanceKm: Math.ceil(haversineKm(a, b) * ROAD_FACTOR), provenance: 'estimated' };
 }
+
+export interface CarFareDistance {
+  distanceKm: number;
+  reviewStatus: string;
+}
+
+/** ADR-007: a car fare row's road distance. Only a verified row counts as curated. */
+export function curatedRoadKm(row: CarFareDistance): {
+  distanceKm: number;
+  provenance: Provenance;
+} {
+  return {
+    distanceKm: Math.ceil(row.distanceKm),
+    provenance: row.reviewStatus === 'verified' ? 'curated' : 'estimated',
+  };
+}
+
+/** ADR-007's order with no live provider: the car fare row's distance, else the estimate. */
+export function offlineRoadKm(
+  carFare: CarFareDistance | undefined,
+  origin: LatLng,
+  destination: LatLng,
+): { distanceKm: number; provenance: Provenance } {
+  return carFare ? curatedRoadKm(carFare) : estimateRoadKm(origin, destination);
+}

@@ -1,4 +1,4 @@
-export { ROAD_FACTOR, estimateRoadKm, haversineKm } from './geo';
+export { ROAD_FACTOR, curatedRoadKm, estimateRoadKm, haversineKm, offlineRoadKm } from './geo';
 export { jaccard, memberTypeWeights, weightedJaccard } from './scoring/similarity';
 export { memberScore } from './scoring/member-score';
 export { groupFit } from './scoring/group-fit';
@@ -16,6 +16,16 @@ export {
 } from './costs/costs';
 export type { CheapestOneWay, CostRules, OneWayFares } from './costs/costs';
 export { capSource, windowDays } from './feasibility/context';
+export {
+  feasibilityContext,
+  splitByCosts,
+  toCosted,
+  toCostRules,
+  toDestinationInput,
+  toMemberInput,
+  toPublicFares,
+} from './feasibility/inputs';
+export type { DestinationFields, PreferenceFields } from './feasibility/inputs';
 export { evaluateCandidate, monthShift, windowMonths } from './feasibility/evaluate';
 export { buildDiagnostic } from './feasibility/diagnostic';
 export type {
@@ -70,7 +80,7 @@ export {
   generatePackages,
   packagesNote,
 } from './packages/generate';
-export type { LatLng } from './geo';
+export type { CarFareDistance, LatLng } from './geo';
 export {
   ACTION_NAMES,
   DO_ACTIVITIES,

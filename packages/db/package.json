@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
     "./schema/*": "./src/schema/*.ts",
+    "./catalogue": "./src/catalogue/load.ts",
     "./remote-target": "./scripts/lib/remote-target.ts"
   },
   "scripts": {

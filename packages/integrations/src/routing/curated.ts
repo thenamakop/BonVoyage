@@ -1,5 +1,6 @@
 import type { Db } from '@bonvoyage/db';
 import { fareFallback, hub } from '@bonvoyage/db/schema';
+import { curatedRoadKm } from '@bonvoyage/engine';
 import { and, eq, inArray } from 'drizzle-orm';
 import type { DistanceResult, RoutingProvider } from '../types';
 
@@ -30,17 +31,23 @@ export function curatedProvider(db: Db): RoutingProvider {
           ),
         );
       return new Map(
-        rows.map((row): [string, DistanceResult] => [
-          row.destinationId,
-          {
-            destinationId: row.destinationId,
-            km: Math.ceil(row.km),
-            durationMin: row.durationMin,
-            provenance: row.reviewStatus === 'verified' ? 'curated' : 'estimated',
-            provider: 'curated',
-            fromCache: false,
-          },
-        ]),
+        rows.map((row): [string, DistanceResult] => {
+          const { distanceKm, provenance } = curatedRoadKm({
+            distanceKm: row.km,
+            reviewStatus: row.reviewStatus,
+          });
+          return [
+            row.destinationId,
+            {
+              destinationId: row.destinationId,
+              km: distanceKm,
+              durationMin: row.durationMin,
+              provenance,
+              provider: 'curated',
+              fromCache: false,
+            },
+          ];
+        }),
       );
     },
   };
