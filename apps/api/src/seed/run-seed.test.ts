@@ -525,6 +525,29 @@ describe('runSeed with freshDemos', () => {
       )::int as n`);
     expect(orphans.rows[0]?.n).toBe(0);
 
+    // The script's bell counts (setup and steps 1 and 2) hold after this reset, and
+    // Long weekend in the hills is not among them: its members are seeded directly,
+    // while the other three demo trips join through the invitation service.
+    const bellOf = async (name: string) => {
+      const [row] = await db
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.email, `${name}${DEMO_EMAIL_DOMAIN}`));
+      if (!row) throw new Error(`${name} was not seeded`);
+      return getNotifications(db, row.id);
+    };
+    const asha = await bellOf('asha');
+    expect(asha.unreadCount).toBe(5);
+    expect(asha.items.map((n) => `${n.tripTitle}: ${n.message}`).sort()).toEqual([
+      'Date clash demo: Rohan (demo) joined the trip',
+      'Hills shortlist demo: Meera (demo) joined the trip',
+      'Hills shortlist demo: Rohan (demo) joined the trip',
+      'Tight budget demo: Meera (demo) joined the trip',
+      'Tight budget demo: Rohan (demo) joined the trip',
+    ]);
+    expect((await bellOf('meera')).unreadCount).toBe(0);
+    expect((await bellOf('rohan')).unreadCount).toBe(0);
+
     // Demo users kept their accounts, and their password still signs in.
     const usersAfter = await demoUsers();
     expect(usersAfter).toEqual(usersBefore);
