@@ -1,5 +1,5 @@
 import type { Db } from '@bonvoyage/db';
-import { trip, tripMember } from '@bonvoyage/db/schema';
+import { notification, trip, tripMember } from '@bonvoyage/db/schema';
 import { user } from '@bonvoyage/db/schema/auth';
 import type { TripStatus } from '@bonvoyage/shared';
 import { and, asc, eq, inArray, like, notLike } from 'drizzle-orm';
@@ -47,4 +47,26 @@ export async function deleteDemoTrips(db: Db): Promise<DeletedTrip[]> {
     await tx.delete(trip).where(inArray(trip.id, ids));
     return demoTrips.map(({ title, status }) => ({ title, status }));
   });
+}
+
+/**
+ * A fresh demo starts with every bell at 0 (Maulik, 30 October 2026). Rebuilding a
+ * demo trip through the invitation service notifies its organiser of each join,
+ * so this removes what the rebuild wrote: only these users' rows, only on the
+ * trips it just built, so nothing anyone received elsewhere is touched. One
+ * statement, so all of it or none; the rebuild's own writes commit one by one
+ * in their services, so a reset that dies first leaves trips the next one deletes.
+ */
+export async function clearRebuildNotifications(
+  db: Db,
+  userIds: readonly string[],
+  tripIds: readonly string[],
+): Promise<number> {
+  const rows = await db
+    .delete(notification)
+    .where(
+      and(inArray(notification.userId, [...userIds]), inArray(notification.tripId, [...tripIds])),
+    )
+    .returning({ id: notification.id });
+  return rows.length;
 }

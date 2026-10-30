@@ -20,6 +20,8 @@ const organiser = (status: TripStatus, submitted = 0): ActionInput => ({
   progress: progress(submitted),
   hasRecommendation: false,
   hasItinerary: false,
+  startDate: null,
+  today: '2026-11-01',
 });
 const member = (status: TripStatus, submitted = 0): ActionInput => ({
   ...organiser(status, submitted),
@@ -129,6 +131,39 @@ describe('tripActions', () => {
     expect(
       tripActions({ ...member('shortlisted'), myStatus: 'excluded', hasRecommendation: true }),
     ).toEqual([{ action: 'viewRecommendations', enabled: true }]);
+  });
+
+  describe('T16: Cancel on a finalised trip', () => {
+    const finalised = (startDate: string | null): ActionInput => ({
+      ...organiser('finalised', 3),
+      hasItinerary: true,
+      startDate,
+    });
+
+    it('is offered to the organiser before the first day', () => {
+      expect(names(tripActions(finalised('2026-11-02')))).toEqual(['viewItinerary', 'cancelTrip']);
+    });
+
+    it.each([
+      ['on the first day', '2026-11-01'],
+      ['after it', '2026-10-31'],
+      ['with no date to compare', null],
+    ])('is not offered %s', (_when, startDate) => {
+      expect(names(tripActions(finalised(startDate)))).toEqual(['viewItinerary']);
+    });
+
+    it('is never offered to a member or an excluded organiser', () => {
+      const trip = finalised('2026-11-02');
+      expect(names(tripActions({ ...trip, myRole: 'member' }))).toEqual(['viewItinerary']);
+      expect(names(tripActions({ ...trip, myStatus: 'excluded' }))).toEqual(['viewItinerary']);
+    });
+
+    it('in_progress and completed trips are unaffected by the date', () => {
+      for (const status of ['in_progress', 'completed'] as const) {
+        const actions = tripActions({ ...finalised('2026-11-02'), status });
+        expect(names(actions)).not.toContain('cancelTrip');
+      }
+    });
   });
 
   it('cancelled: nobody has an action', () => {

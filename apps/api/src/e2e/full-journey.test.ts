@@ -221,6 +221,9 @@ describe('full journey, end to end', () => {
     expect(done.status).toBe('finalised');
     expect(done.actions).not.toContain('acceptItinerary');
     expect(done.actions).not.toContain('modifyItinerary');
+    // The first day is ahead, so the organiser may still call it off (T16); a member may not.
+    expect(done.actions).toContain('cancelTrip');
+    expect((await dashboard(members[0]!.agent, tripId)).actions).not.toContain('cancelTrip');
 
     const transitions = await db
       .select({ id: tripTransition.transitionId })

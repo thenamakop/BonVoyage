@@ -1,7 +1,7 @@
 import type { Db } from '@bonvoyage/db';
 import { itinerary, tripPackage, tripTransition } from '@bonvoyage/db/schema';
 import { asc, eq } from 'drizzle-orm';
-import { legalEvents, nextState } from '@bonvoyage/engine';
+import { addDaysUtc, legalEvents, nextState } from '@bonvoyage/engine';
 import {
   MAX_MEMBERS,
   summarizeEvent,
@@ -27,6 +27,7 @@ import {
 import {
   countActiveMembers,
   findAcceptedPackage,
+  findAcceptedStartDate,
   findHubBySlug,
   findSelectedDestination,
   insertOrganiserMember,
@@ -38,7 +39,7 @@ import {
   listMembershipTrips,
   lockTripStatus,
   newestTransitionAt,
-  restoreStartDate,
+  setTripDates,
   updateTripFields,
   type HubRow,
   type MemberWithName,
@@ -91,6 +92,7 @@ function toDetail(
   selectedPackage: TripDetail['selectedPackage'],
   latestItinerary: TripDetail['latestItinerary'],
   reminders: ReadonlyMap<string, string> | null,
+  today: string,
 ): TripDetail {
   const organiser = members.find((m) => m.member.role === 'organiser');
   const progress = progressOf(members);
@@ -132,6 +134,8 @@ function toDetail(
       progress,
       hasRecommendation: latestRecommendation !== null,
       hasItinerary: latestItinerary !== null,
+      startDate: row.startDate,
+      today,
     }),
     lastActivityAt: lastActivityAt ? iso(lastActivityAt) : null,
     latestRecommendation,
@@ -142,12 +146,33 @@ function toDetail(
   };
 }
 
-async function detailFor(
+const lacksDates = (row: TripRow) => row.startDate === null || row.endDate === null;
+
+/**
+ * T14 stores a finalised trip's dates. For one finalised before it stored both,
+ * they follow from its accepted package (the plan's day 1) and its nights, which
+ * is also how a package gets its own end date. Null when there is no date to find.
+ */
+async function finalisedDates(
   db: Db,
   row: TripRow,
+): Promise<{ startDate: string; endDate: string } | null> {
+  const startDate = row.startDate ?? (await findAcceptedStartDate(db, row.id));
+  if (!startDate) return null;
+  return { startDate, endDate: row.endDate ?? addDaysUtc(startDate, row.durationNights) };
+}
+
+async function detailFor(
+  db: Db,
+  stored: TripRow,
   caller: MembershipRow,
   now: Date,
 ): Promise<TripDetail> {
+  // Read only: a GET never writes. Cancelling is what stores them (cancelTrip).
+  const row: TripRow =
+    stored.status === 'finalised' && lacksDates(stored)
+      ? { ...stored, ...(await finalisedDates(db, stored)) }
+      : stored;
   const [
     hubRow,
     members,
@@ -193,6 +218,7 @@ async function detailFor(
     selectedPackage,
     latestItinerary,
     reminders,
+    indiaDate(now),
   );
 }
 
@@ -332,6 +358,8 @@ export async function updateTrip(
   return detailFor(db, row, fresh, clock());
 }
 
+const ALREADY_STARTED = "This trip has already started, so it can't be cancelled.";
+
 // RUNBOOK B3: T15/T16. loadTripForMember returns the same 404 for a missing
 // trip and a non-member, so a trip's existence is never revealed.
 export async function cancelTrip(
@@ -343,19 +371,34 @@ export async function cancelTrip(
   requireActiveMember(membership);
   requireOrganiser(membership);
   // T16's guard needs the first day, which T14 stores. A trip finalised before it
-  // did gets the date from its accepted package; with none, it is refused, never
-  // allowed by default. The date is right whether or not T16 then passes.
-  if (row.status === 'finalised' && row.startDate === null) {
-    if (!(await restoreStartDate(deps.db, tripId))) {
+  // did gets its dates from its accepted package; with none, it is refused, never
+  // allowed by default. The dates are right whether or not T16 then passes.
+  if (row.status === 'finalised' && lacksDates(row)) {
+    const dates = await finalisedDates(deps.db, row);
+    if (!dates) {
       throw new AppError(
         409,
         ERROR_CODES.GUARD_FAILED,
         'This trip has no start date, so it cannot be cancelled.',
       );
     }
+    await setTripDates(deps.db, tripId, dates);
   }
-  const outcome = await transitionTrip(deps, { tripId, event: 'cancelTrip', actorUserId: userId });
-  return { id: tripId, status: outcome.to };
+  try {
+    const outcome = await transitionTrip(deps, {
+      tripId,
+      event: 'cancelTrip',
+      actorUserId: userId,
+    });
+    return { id: tripId, status: outcome.to };
+  } catch (err) {
+    // T15 has no guard, so a failed guard on this event can only be T16's. The
+    // table's generic text stays for every other caller of nextState.
+    if (err instanceof AppError && err.code === ERROR_CODES.GUARD_FAILED) {
+      throw new AppError(409, ERROR_CODES.GUARD_FAILED, ALREADY_STARTED);
+    }
+    throw err;
+  }
 }
 
 // POST /api/trips/:id/close-submissions: T3b. transitionTrip's

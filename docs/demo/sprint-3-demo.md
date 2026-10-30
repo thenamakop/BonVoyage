@@ -17,6 +17,8 @@ Every price in the app is an estimate, and the screens say "estimate" next to ea
    | Tight budget demo | Asha, Rohan, Meera | Ready for recommendations | Step 5 |
    | Date clash demo | Asha, Rohan | Ready for recommendations | Not used (see the Sprint 2 script) |
 
+   The bell counts in this script are only right after `pnpm db:seed --target preview --fresh-demos`: every run of the demo adds to them, and the reset deletes them with the trips.
+
 2. Open three browser windows:
    - **Asha:** a normal window signed in as **asha@demo.bonvoyage.test** (the organiser).
    - **Meera:** a private window signed in as **meera@demo.bonvoyage.test** (a member).
@@ -52,6 +54,8 @@ Leave this window open for step 6.
 4. Click **Submit preferences**. The page reads **"Saved. Everyone has submitted, so the trip is ready for recommendations."**
 5. **Asha:** open **Long weekend in the hills**. Within 8 seconds the dashboard reads **"Step 3 of 7: Ready for recommendations"** and **"Get recommendations when you are ready."**
    > "The last submission moved the trip on by itself. Nobody had to press anything."
+
+   Optional: Asha's bell shows no number after a fresh reset.
 
 ## 2. Recommendations (2 minutes)
 
@@ -106,7 +110,8 @@ Leave this window open for step 6.
    > "Swap only offers places that are not already in the plan and that fit the slot's time and opening hours. We swapped an unverified visit for a verified one."
 7. **Meera:** click **Back to the trip**, then **See the day plan**. She sees the same plan with no Remove or Swap buttons, and **"Waiting for Asha (demo) to accept the plan."**
 8. **Asha:** click **Accept this plan**. The confirm reads **"Accept this plan? The trip is finalised."** Click **Accept plan**.
-9. The dashboard reads **"Step 7 of 7: Finalised"**, **"Planning is complete."** and **"Trip finalised: Chakrata, 28 Nov 2026 – 30 Nov 2026, Saver package, ₹29,566 for the group, about ₹9,856 each (estimate)."**
+9. The dashboard reads **"Step 7 of 7: Finalised"**, **"Planning is complete."** and **"Trip finalised: Chakrata, 28 Nov 2026 – 30 Nov 2026, Saver package, ₹29,566 for the group, about ₹9,856 each (estimate)."** Under **Trip parameters**, **Dates** now reads **"28 Nov 2026 to 30 Nov 2026"**. Under **Organiser actions** there is a **Cancel trip** button; leave it alone, because a cancelled trip can't be reopened.
+   > "Finalised isn't a dead end. Until the first day, the organiser can still call the trip off, and everyone is told. From the first day on, the app refuses."
 10. Click **Trips**. **Long weekend in the hills** now sits under **"Past and finalised trips"**, marked **Finalised**.
 
 ## 5. Transport comparison: Tight budget demo (1 minute)

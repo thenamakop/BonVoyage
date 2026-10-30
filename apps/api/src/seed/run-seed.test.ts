@@ -2,6 +2,7 @@ import { createDb } from '@bonvoyage/db';
 import {
   costItem,
   destination,
+  hub,
   invitation,
   itinerary,
   itineraryDecision,
@@ -41,7 +42,7 @@ import {
   getLatestRecommendation,
   requestRecommendations,
 } from '../recommendations/service';
-import { closeSubmissions, updateTrip } from '../trips/service';
+import { closeSubmissions, getTrip, updateTrip } from '../trips/service';
 import {
   DATE_CLASH_DEMO,
   DATE_CLASH_GAP_DAYS,
@@ -177,6 +178,14 @@ describe('Sprint 2 demo trips', () => {
       .where(eq(user.email, `meera${DEMO_EMAIL_DOMAIN}`));
     if (!meera) throw new Error('Meera was not seeded');
     expect((await getNotifications(db, meera.id)).unreadCount).toBe(0);
+    // A plain seed keeps the joins it wrote; only --fresh-demos clears them, which is
+    // why the script's setup section asks for that reset.
+    const [ashaRow] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, `asha${DEMO_EMAIL_DOMAIN}`));
+    if (!ashaRow) throw new Error('Asha was not seeded');
+    expect((await getNotifications(db, ashaRow.id)).unreadCount).toBe(5);
   });
 
   it('hills: a shortlist with at least 8 feasible destinations', async () => {
@@ -393,6 +402,12 @@ describe('Long weekend in the hills: the full journey through the services', () 
     await acceptItinerary(deps, row.id, asha);
     const [done] = await db.select({ status: trip.status }).from(trip).where(eq(trip.id, row.id));
     expect(done!.status).toBe('finalised');
+    // Script step 4.9: the finalised dashboard shows Dates and a Cancel trip button.
+    const dashboard = await getTrip(db, row.id, asha, deps.clock);
+    const [accepted] = packages.filter((p) => p.label === 'Saver');
+    expect(dashboard.startDate).toBe(accepted!.startDate);
+    expect(dashboard.endDate).toBe(accepted!.endDate);
+    expect(dashboard.availableActions).toContainEqual({ action: 'cancelTrip', enabled: true });
     const transitions = await db
       .select({ id: tripTransition.transitionId })
       .from(tripTransition)
@@ -431,6 +446,15 @@ describe('runSeed with freshDemos', () => {
       .where(like(user.email, `%${DEMO_EMAIL_DOMAIN}`))
       .orderBy(asc(user.email));
   const AUTH_HEADERS = { host: 'localhost:4000', origin: 'http://localhost:4000' };
+  const idOf = async (name: string) => {
+    const [row] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, `${name}${DEMO_EMAIL_DOMAIN}`));
+    if (!row) throw new Error(`${name} was not seeded`);
+    return row.id;
+  };
+  const bellOf = async (name: string) => getNotifications(db, await idOf(name));
 
   it('refuses, deleting nothing, when a non-demo user belongs to a demo trip', async () => {
     const signedUp = await auth.api.signUpEmail({
@@ -519,6 +543,14 @@ describe('runSeed with freshDemos', () => {
       )::int as n`);
     expect(orphans.rows[0]?.n).toBe(0);
 
+    // A fresh demo starts with every bell at 0 (script: setup and step 1), though
+    // the rebuild's joins wrote five for Asha.
+    expect(printed).toContain('Fresh demos: cleared 5 notifications from the rebuild.');
+    for (const name of ['asha', 'rohan', 'meera']) {
+      const bell = await bellOf(name);
+      expect(bell, name).toEqual({ items: [], unreadCount: 0 });
+    }
+
     // Demo users kept their accounts, and their password still signs in.
     const usersAfter = await demoUsers();
     expect(usersAfter).toEqual(usersBefore);
@@ -553,5 +585,92 @@ describe('runSeed with freshDemos', () => {
       { title: 'Long weekend in the hills', status: 'collecting_preferences' },
       { title: 'Tight budget demo', status: 'ready_for_recommendation' },
     ]);
+  });
+
+  it('clears only what the rebuild wrote: a real user and a demo user on a real trip keep theirs', async () => {
+    const signedUp = await auth.api.signUpEmail({
+      body: { email: 'fresh-real@test.bv', password: PASSWORD, name: 'Real Person' },
+      headers: AUTH_HEADERS,
+    });
+    const realId = (signedUp as { user: { id: string } }).user.id;
+    const meeraId = await idOf('meera');
+    const [realHub] = await db.select({ id: hub.id }).from(hub).limit(1);
+    const [realTrip] = await db
+      .insert(trip)
+      .values({
+        title: 'A real trip',
+        organiserId: realId,
+        originHubId: realHub!.id,
+        durationNights: 2,
+        budgetTotalInr: 10000,
+        radiusKm: 400,
+      })
+      .returning({ id: trip.id });
+    const payload = { tripId: realTrip!.id, tripTitle: 'A real trip' };
+    const received = await db
+      .insert(notification)
+      .values([
+        { userId: realId, tripId: realTrip!.id, type: 'shortlist_ready', payload },
+        { userId: meeraId, tripId: realTrip!.id, type: 'shortlist_ready', payload },
+      ])
+      .returning({ id: notification.id });
+    try {
+      await runSeed({
+        db,
+        auth,
+        catalogueDir,
+        password: PASSWORD,
+        freshDemos: true,
+        log: () => {},
+      });
+      const left = await db
+        .select({ id: notification.id })
+        .from(notification)
+        .where(
+          inArray(
+            notification.id,
+            received.map((r) => r.id),
+          ),
+        );
+      expect(left).toHaveLength(2);
+      expect((await bellOf('asha')).unreadCount).toBe(0);
+    } finally {
+      // Its organised trip and those notifications go with the account.
+      await db.delete(user).where(eq(user.id, realId));
+    }
+    expect((await bellOf('meera')).unreadCount).toBe(0);
+  });
+
+  // The script's bells, from a fresh reset. It ends the file, so it can use the trip.
+  it('after the shortlist, Meera has exactly the one line, and Asha still none', async () => {
+    const deps = {
+      db,
+      logger: pino({ level: 'silent' }),
+      clock: () => new Date(),
+      routing: createRouting({
+        db,
+        providers: [curatedProvider(db), estimateProvider()],
+        clock: () => new Date(),
+        ttlDays: 30,
+        logger: { warn: () => {} },
+      }),
+      weights: SCORING_WEIGHTS,
+      lambda: FAIRNESS_LAMBDA,
+    };
+    const [row] = await db.select().from(trip).where(eq(trip.title, 'Long weekend in the hills'));
+    if (!row) throw new Error('Long weekend in the hills was not seeded');
+    const inDays = (n: number) => indiaDate(new Date(Date.now() + n * 86_400_000));
+    await saveMyPreference(deps, row.id, await idOf('meera'), MEERA_PREFERENCE(inDays));
+    expect((await bellOf('asha')).unreadCount).toBe(0);
+
+    const rec = await requestRecommendations(deps, row.id, row.organiserId);
+    expect(rec.transition).toEqual({ transitionId: 'T6>T7', to: 'shortlisted' });
+
+    const meera = await bellOf('meera');
+    expect(meera.unreadCount).toBe(1);
+    expect(meera.items.map((n) => [n.type, n.tripTitle, n.message])).toEqual([
+      ['shortlist_ready', 'Long weekend in the hills', 'A shortlist of destinations is ready'],
+    ]);
+    expect((await bellOf('asha')).unreadCount).toBe(0);
   });
 });

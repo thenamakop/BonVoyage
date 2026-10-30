@@ -237,6 +237,87 @@ describe('Trip dashboard', () => {
     expect(callsTo(TRIP_URL)).toBe(2);
   });
 
+  describe('a finalised trip', () => {
+    const CONFIRM = 'Cancel this trip? It is finalised; everyone will be told.';
+    const finalised = (over: Partial<TripDetail> = {}) =>
+      tripDetail({
+        status: 'finalised',
+        startDate: '2026-11-13',
+        endDate: '2026-11-15',
+        ...over,
+      });
+    const stubCancel = (response: Response) => {
+      const base = fetchMock.getMockImplementation()!;
+      fetchMock.mockImplementation((url, init) =>
+        url === `/api/trips/${TRIP_ID}/cancel` && init?.method === 'POST'
+          ? Promise.resolve(response)
+          : base(url, init),
+      );
+    };
+
+    it('shows its dates once it has both', async () => {
+      stubFetch([finalised()]);
+      renderPage();
+      expect(await screen.findByText('13 Nov 2026 to 15 Nov 2026')).toBeInTheDocument();
+      expect(screen.getByText('Dates')).toBeInTheDocument();
+    });
+
+    it('shows no Dates row with only one of them', async () => {
+      stubFetch([finalised({ endDate: null })]);
+      renderPage();
+      await screen.findByText('Step 7 of 7: Finalised');
+      expect(screen.queryByText('Dates')).not.toBeInTheDocument();
+    });
+
+    it('the organiser confirms with the finalised wording, then cancels', async () => {
+      stubFetch([finalised()]);
+      stubCancel(Response.json({ id: TRIP_ID, status: 'cancelled' }));
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Cancel trip' }));
+      expect(screen.getByText(CONFIRM)).toBeInTheDocument();
+      // Keep the trip closes it without a request.
+      await user.click(screen.getByRole('button', { name: 'Keep the trip' }));
+      expect(screen.queryByText(CONFIRM)).not.toBeInTheDocument();
+      expect(callsTo(`/api/trips/${TRIP_ID}/cancel`)).toBe(0);
+
+      await user.click(screen.getByRole('button', { name: 'Cancel trip' }));
+      await user.click(screen.getByRole('button', { name: 'Cancel trip' }));
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/trips/${TRIP_ID}/cancel`,
+        expect.objectContaining({ method: 'POST', body: '{}' }),
+      );
+    });
+
+    it('a trip still being planned keeps its own wording', async () => {
+      stubFetch([tripDetail()]);
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Cancel trip' }));
+      expect(
+        screen.getByText('Cancel this trip? Nobody will be able to plan it after this.'),
+      ).toBeInTheDocument();
+    });
+
+    it('a refusal shows the server message as sent', async () => {
+      const message = "This trip has already started, so it can't be cancelled.";
+      stubFetch([finalised()]);
+      stubCancel(Response.json({ error: { code: 'GUARD_FAILED', message } }, { status: 409 }));
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Cancel trip' }));
+      await user.click(screen.getByRole('button', { name: 'Cancel trip' }));
+      expect(await screen.findByText(message)).toBeInTheDocument();
+    });
+
+    it('with no cancelTrip action there is no button, and a member never sees one', async () => {
+      stubFetch([finalised({ availableActions: [] })]);
+      renderPage();
+      await screen.findByText('Step 7 of 7: Finalised');
+      expect(screen.queryByRole('button', { name: 'Cancel trip' })).not.toBeInTheDocument();
+    });
+  });
+
   it('the footer ticks "Updated ... ago" every 5 s', async () => {
     stubFetch([tripDetail({ status: 'cancelled' })]);
     renderPage();
