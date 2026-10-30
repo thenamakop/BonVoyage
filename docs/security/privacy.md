@@ -16,7 +16,7 @@ This note covers the personal data BonVoyage keeps and who can see each part of 
 | A log of what happened to each trip (the event, who did it, when) | `trip_transition` | The dashboard's "Recent activity" and the audit trail |
 | Recommendation runs: the weights, the group profile the run was computed from, and the diagnostic | `recommendation_run` | Each ranking can be checked and reproduced later |
 | Each recommended destination's scores and every member's own match explanation (what it meets and misses for them) | `recommendation_item` | Showing each member why a destination suits them |
-| In-app notifications (type, trip, a payload of the trip title and who acted, read or unread) | `notification` | Telling members what needs them without leaving the app (see Notifications) |
+| In-app notifications (type, trip, a payload of the trip title and the user id of who acted, read or unread) | `notification` | Telling members what needs them without leaving the app (see Notifications) |
 
 ## Who sees what
 
@@ -59,11 +59,11 @@ Because a link can be forwarded, the web app sends `Referrer-Policy: same-origin
 
 In-app notifications (S5-3, decisions E3 and M4) are rows in the `notification` table, read only inside the app. There is no email, push message or outside service.
 
-- **What is stored:** the person who gets it, the trip, the type, the time, whether it has been read, and a payload of the trip's id and title plus the type's own fields. Those are the name of the person who acted, as the group already sees it (for example "Asha asked for new recommendations"), and, for "not included", a flag. The payload never holds a preference, budget, date, score, vote or email. Nine types: a member joined (to the organiser), a reminder (to the one member reminded), preferences closed, shortlist ready, shortlist reopened, package chosen, plan ready, trip finalised and trip cancelled (to the trip's active members, the person who acted left out; preferences closed goes to all of them, and tells a member who was left out that they were not included).
+- **What is stored:** the person who gets it, the trip, the type, the time, whether it has been read, and a payload of the trip's id and title plus the type's own fields. Those are the user id of the person who acted and, for "not included", a flag. Names are not stored: they are looked up when your list is read (for example "Asha asked for new recommendations"), so a renamed account reads under its new name and a deleted one reads "A former member". The actor's id stays on the server; a response carries only the sentence. The payload never holds a preference, budget, date, score, vote or email. Nine types: a member joined (to the organiser), a reminder (to the one member reminded), preferences closed, shortlist ready, shortlist reopened, package chosen, plan ready, trip finalised and trip cancelled (to the trip's active members, the person who acted left out; preferences closed also tells a member who was left out that they were not included).
 - **Who sees it:** only its owner. `GET /api/notifications` returns your own, newest 30 first, with the count of unread ones. Marking one read with someone else's id is a 404, the same as an id that does not exist.
 - **Reminders:** the organiser can remind a member who has not submitted, once per member per rolling 24 hours (429 `TOO_MANY_REQUESTS` with `Retry-After` after that). Whether a member has submitted is already visible to the whole group.
 - **Written with the event:** a notification is written in the same database transaction as the transition or the join, so an event that fails writes none.
-- **Deleted with:** your account (all notifications you received) or the trip (all notifications about it). A notification that names you, such as "Rohan joined the trip", stays in the organiser's list after you delete your account, because it holds your name as text; it is deleted with the trip.
+- **Deleted with:** your account (all notifications you received) or the trip (all notifications about it). A notification about something you did, such as joining, stays in the organiser's list after you delete your account, but it no longer names you: it reads "A former member joined the trip".
 
 ## Language-model prompts
 

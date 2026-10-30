@@ -277,7 +277,7 @@ describe('a trip from joining to cancelled', () => {
     expect((await inbox(rohan)).items).toHaveLength(0);
   });
 
-  it('submissions_closed (T3b): all active members, and a different sentence for the one left out', async () => {
+  it('submissions_closed (T3b): active members except the organiser, and a different sentence for the one left out', async () => {
     tick();
     await submit(asha, tripId, ...BUDGETS.Asha);
     await submit(meera, tripId, ...BUDGETS.Meera);
@@ -286,8 +286,10 @@ describe('a trip from joining to cancelled', () => {
     const res = await asha.agent.post(`/api/trips/${tripId}/close-submissions`).set(H).send({});
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     const after = await counts();
-    expect(after.map((n, i) => n - before[i]!)).toEqual([1, 1, 1, 1]);
-    for (const p of [asha, rohan, meera]) {
+    // Asha closed submissions, so she is skipped like every other actor.
+    expect(after.map((n, i) => n - before[i]!)).toEqual([0, 1, 1, 1]);
+    expect((await inbox(asha)).items.some((n) => n.type === 'submissions_closed')).toBe(false);
+    for (const p of [rohan, meera]) {
       expect((await inbox(p)).items[0]).toMatchObject({
         type: 'submissions_closed',
         message: 'Preferences are closed. The trip is ready for recommendations',
@@ -421,9 +423,12 @@ describe('a trip from joining to cancelled', () => {
       const res = await p.agent.get('/api/notifications').set(H);
       const body = res.body as { items: Record<string, unknown>[]; unreadCount: number };
       expect(budgets).not.toContain(body.unreadCount);
-      for (const email of everyone().map((q) => q.email)) {
-        expect(res.text, `${p.name} saw ${email}`).not.toContain(email);
+      for (const q of everyone()) {
+        expect(res.text, `${p.name} saw ${q.email}`).not.toContain(q.email);
+        // The actor is stored by id; the id never leaves the server.
+        expect(res.text, `${p.name} saw ${q.name}'s user id`).not.toContain(q.userId);
       }
+      expect(res.text).not.toContain('actorUserId');
       expect(res.text).not.toMatch(/"(score|lambda|weight|deficit|budget\w*|email|vote)"/i);
       for (const item of body.items) {
         expect(Object.keys(item).sort()).toEqual(
@@ -438,9 +443,11 @@ describe('a trip from joining to cancelled', () => {
     expect(rows.length).toBeGreaterThan(0);
     for (const row of rows) {
       const keys = Object.keys(row.payload as object);
-      expect(keys.every((k) => ['tripId', 'tripTitle', 'actorName', 'excluded'].includes(k))).toBe(
-        true,
-      );
+      expect(
+        keys.every((k) => ['tripId', 'tripTitle', 'actorUserId', 'excluded'].includes(k)),
+      ).toBe(true);
+      // No name is stored: it is looked up when the list is read.
+      expect(JSON.stringify(row.payload)).not.toMatch(/Asha|Rohan|Meera|Kabir/);
     }
   });
 
@@ -648,5 +655,32 @@ describe('account deletion', () => {
     expect(await rows(rohan.userId)).toBe(0);
     expect(await rows(meera.userId)).toBe(1);
     expect(await rows(asha.userId)).toBe(2);
+  });
+
+  it('a member who joined then deleted their account is "A former member" on the organiser’s list', async () => {
+    const asha = await person('Asha');
+    const rohan = await person('Rohan');
+    const meera = await person('Meera');
+    await collectingTrip(asha, [rohan, meera]);
+    expect((await inbox(asha)).items.map((n) => n.message).sort()).toEqual([
+      'Meera joined the trip',
+      'Rohan joined the trip',
+    ]);
+
+    const res = await rohan.agent
+      .delete('/api/me/profile')
+      .set(H)
+      .send({ password: PW, confirmEmail: rohan.email });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+
+    const list = await asha.agent.get('/api/notifications').set(H);
+    const { items } = NotificationsResponse.parse(list.body);
+    expect(items.map((n) => n.message).sort()).toEqual([
+      'A former member joined the trip',
+      'Meera joined the trip',
+    ]);
+    for (const leaked of ['Rohan', rohan.userId, rohan.email, meera.userId, meera.email]) {
+      expect(list.text).not.toContain(leaked);
+    }
   });
 });

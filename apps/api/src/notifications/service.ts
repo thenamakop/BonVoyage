@@ -20,6 +20,7 @@ import {
   findRecentReminder,
   findTripHeader,
   findUserName,
+  findUserNames,
   insertNotifications,
   listForUser,
   lockReminder,
@@ -33,28 +34,44 @@ import {
 
 const HOUR_MS = 3_600_000;
 
-function toItem(row: NotificationRow): NotificationItem {
-  const payload = NotificationPayload.parse(row.payload);
+/**
+ * The response item. The actor's id stays in the payload, server side: only the
+ * sentence built from their current name leaves (null once the account is gone).
+ */
+function toItem(
+  row: NotificationRow,
+  payload: NotificationPayload,
+  names: ReadonlyMap<string, string>,
+): NotificationItem {
   // The column holds the type as text; the writers only ever store a known one.
   const type = row.type as NotificationType;
+  const actorName = payload.actorUserId ? (names.get(payload.actorUserId) ?? null) : null;
   return {
     id: row.id,
     type,
     tripId: row.tripId,
     tripTitle: payload.tripTitle,
-    message: notificationMessage(type, payload),
+    message: notificationMessage(type, payload, actorName),
     createdAt: row.createdAt.toISOString(),
     readAt: row.readAt?.toISOString() ?? null,
   };
 }
 
-// GET /api/notifications: your own only, newest first.
+// GET /api/notifications: your own only, newest first. Names are looked up
+// now, in one query for the page, so a renamed or deleted account reads right.
 export async function getNotifications(db: Db, userId: string): Promise<NotificationsResponse> {
   const [rows, unreadCount] = await Promise.all([
     listForUser(db, userId, NOTIFICATIONS_PAGE),
     countUnread(db, userId),
   ]);
-  return { items: rows.map(toItem), unreadCount };
+  const payloads = rows.map((row) => NotificationPayload.parse(row.payload));
+  const actorIds = [...new Set(payloads.flatMap((p) => (p.actorUserId ? [p.actorUserId] : [])))];
+  const names = await findUserNames(db, actorIds);
+  return {
+    // Safe: payloads was mapped from rows, so index i exists.
+    items: rows.map((row, i) => toItem(row, payloads[i]!, names)),
+    unreadCount,
+  };
 }
 
 // POST /api/notifications/:id/read. Someone else's id is a 404, the same as an
@@ -125,11 +142,8 @@ export async function remindMember(
       targetUserId,
       new Date(now.getTime() - REMIND_WINDOW_HOURS * HOUR_MS),
     );
-    const [targetName, organiserName] = await Promise.all([
-      findUserName(tx, targetUserId),
-      findUserName(tx, organiserUserId),
-    ]);
     if (last) {
+      const targetName = await findUserName(tx, targetUserId);
       const again = new Date(last.getTime() + REMIND_WINDOW_HOURS * HOUR_MS);
       throw new RateLimitError(
         `You can remind ${firstName(targetName ?? 'this member')} again after ${indiaDateTime(again)}`,
@@ -142,7 +156,7 @@ export async function remindMember(
         userId: targetUserId,
         tripId,
         type: 'preferences_reminder',
-        payload: buildPayload('preferences_reminder', tripId, header.title, organiserName),
+        payload: buildPayload('preferences_reminder', tripId, header.title, organiserUserId),
         createdAt: now,
       },
     ]);

@@ -1,6 +1,6 @@
 import type { Db } from '@bonvoyage/db';
 import { notification, trip, tripMember, user } from '@bonvoyage/db/schema';
-import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import type { Tx } from '../trips/transition-trip';
 
 // S5-3: the queries behind in-app notifications. Every function takes the
@@ -37,6 +37,19 @@ export async function findTripTitle(tx: Db | Tx, tripId: string): Promise<string
 export async function findUserName(tx: Db | Tx, userId: string): Promise<string | undefined> {
   const rows = await tx.select({ name: user.name }).from(user).where(eq(user.id, userId));
   return rows[0]?.name;
+}
+
+/** Display names for a page of notifications, in one query; a deleted user is simply absent. */
+export async function findUserNames(
+  db: Db,
+  userIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (userIds.length === 0) return new Map();
+  const rows = await db
+    .select({ id: user.id, name: user.name })
+    .from(user)
+    .where(inArray(user.id, [...userIds]));
+  return new Map(rows.map((r) => [r.id, r.name]));
 }
 
 /** User ids of the trip's members with this status, oldest member first. */

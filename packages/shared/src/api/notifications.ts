@@ -18,20 +18,34 @@ export const NOTIFICATION_TYPES = [
 export const NotificationType = z.enum(NOTIFICATION_TYPES);
 export type NotificationType = z.infer<typeof NotificationType>;
 
-/** What is stored in notification.payload. */
+/**
+ * What is stored in notification.payload (server side only; never returned).
+ * The actor is kept by id, and the name looked up when the list is read, so
+ * a deleted account is never named.
+ */
 export const NotificationPayload = z.object({
   tripId: z.string(),
   tripTitle: z.string(),
-  /** The member who joined, the organiser who acted or reminded: names the group already sees. */
-  actorName: z.string().optional(),
+  /** The member who joined, or the organiser who acted or reminded. */
+  actorUserId: z.string().optional(),
   /** submissions_closed only: this member did not submit before preferences closed. */
   excluded: z.boolean().optional(),
 });
 export type NotificationPayload = z.infer<typeof NotificationPayload>;
 
-/** One sentence per type, from the payload alone (the web renders it as sent). */
-export function notificationMessage(type: NotificationType, payload: NotificationPayload): string {
-  const actor = payload.actorName ?? 'Someone';
+/** The actor's words when their account no longer exists. */
+export const FORMER_MEMBER = 'A former member';
+
+/**
+ * One sentence per type (the web renders it as sent). `actorName` is the actor's
+ * current display name, or null once their account is gone.
+ */
+export function notificationMessage(
+  type: NotificationType,
+  payload: Pick<NotificationPayload, 'excluded'>,
+  actorName: string | null,
+): string {
+  const actor = actorName ?? FORMER_MEMBER;
   switch (type) {
     case 'member_joined':
       return `${actor} joined the trip`;

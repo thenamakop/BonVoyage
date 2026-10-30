@@ -712,7 +712,11 @@ describe('notifications hold no preference, budget, score or email', () => {
     for (const p of everyone) {
       const res = await p.agent.get('/api/notifications').set(H);
       expect(res.status).toBe(200);
-      for (const q of everyone) expect(res.text).not.toContain(q.email);
+      for (const q of everyone) {
+        expect(res.text).not.toContain(q.email);
+        // Actors are stored by user id and named on read; the id never leaves.
+        expect(res.text).not.toContain(q.userId);
+      }
       expect(res.text).not.toContain('@');
       expect(res.text).not.toMatch(/"(score|lambda|weight|deficit|budget\w*|email|vote)"/i);
       const body = res.body as { items: { id: string; message: string; tripTitle: string }[] };

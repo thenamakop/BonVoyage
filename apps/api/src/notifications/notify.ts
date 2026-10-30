@@ -3,7 +3,6 @@ import type { Tx } from '../trips/transition-trip';
 import {
   findOrganiserUserId,
   findTripTitle,
-  findUserName,
   insertNotifications,
   listMemberUserIds,
   type NewNotification,
@@ -38,18 +37,21 @@ const NAMES_ACTOR: ReadonlySet<NotificationType> = new Set([
   'trip_cancelled',
 ]);
 
-/** The payload: trip id, title and the type's own fields, nothing a member entered. */
+/**
+ * The payload: trip id, title and the type's own fields, nothing a member entered.
+ * The actor is stored by id and named on read, so a deleted account is never named.
+ */
 export function buildPayload(
   type: NotificationType,
   tripId: string,
   tripTitle: string,
-  actorName: string | undefined,
+  actorUserId: string,
   excluded = false,
 ): NotificationPayload {
   return {
     tripId,
     tripTitle,
-    ...(NAMES_ACTOR.has(type) && actorName !== undefined ? { actorName } : {}),
+    ...(NAMES_ACTOR.has(type) ? { actorUserId } : {}),
     ...(excluded ? { excluded: true } : {}),
   };
 }
@@ -64,31 +66,28 @@ interface TransitionInput {
 }
 
 /**
- * Every active member hears of a transition except the actor; T3b tells all of
- * them, the organiser included, and the members it just excluded as well. A
- * transition with no entry in NOTIFYING_TRANSITIONS writes nothing.
+ * Every active member hears of a transition except the actor; T3b also tells the
+ * members it just excluded. A transition with no entry in NOTIFYING_TRANSITIONS
+ * writes nothing.
  */
 export async function notifyTransition(tx: Tx, input: TransitionInput): Promise<void> {
   const type = NOTIFYING_TRANSITIONS[input.transitionId];
   if (!type) return;
   const { tripId, actorUserId, now } = input;
-  const [title, actorName, active] = await Promise.all([
+  const [title, active] = await Promise.all([
     findTripTitle(tx, tripId),
-    findUserName(tx, actorUserId),
     listMemberUserIds(tx, tripId, 'active'),
   ]);
   if (title === undefined) return;
-  const recipients =
-    type === 'submissions_closed' ? active : active.filter((id) => id !== actorUserId);
   const row = (userId: string, excluded: boolean): NewNotification => ({
     userId,
     tripId,
     type,
-    payload: buildPayload(type, tripId, title, actorName, excluded),
+    payload: buildPayload(type, tripId, title, actorUserId, excluded),
     createdAt: now,
   });
   await insertNotifications(tx, [
-    ...recipients.map((id) => row(id, false)),
+    ...active.filter((id) => id !== actorUserId).map((id) => row(id, false)),
     ...(type === 'submissions_closed' ? input.excludedUserIds.map((id) => row(id, true)) : []),
   ]);
 }
@@ -99,9 +98,8 @@ export async function notifyMemberJoined(
   input: { tripId: string; joinerUserId: string; now: Date },
 ): Promise<void> {
   const { tripId, joinerUserId, now } = input;
-  const [title, joinerName, organiserId] = await Promise.all([
+  const [title, organiserId] = await Promise.all([
     findTripTitle(tx, tripId),
-    findUserName(tx, joinerUserId),
     findOrganiserUserId(tx, tripId),
   ]);
   if (title === undefined || organiserId === undefined || organiserId === joinerUserId) return;
@@ -110,7 +108,7 @@ export async function notifyMemberJoined(
       userId: organiserId,
       tripId,
       type: 'member_joined',
-      payload: buildPayload('member_joined', tripId, title, joinerName),
+      payload: buildPayload('member_joined', tripId, title, joinerUserId),
       createdAt: now,
     },
   ]);
