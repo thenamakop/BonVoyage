@@ -301,7 +301,7 @@ describe('schema', () => {
       .values(
         ['votedest1', 'votedest2'].map((slug) => ({
           slug,
-          name: slug,
+          name: `Vote ${slug}`,
           state: 'S',
           lat: 29,
           lng: 78,
