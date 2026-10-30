@@ -28,6 +28,17 @@ export class AppError extends Error {
   }
 }
 
+/** 429 TOO_MANY_REQUESTS (decision E3). The handler sends Retry-After in whole seconds. */
+export class RateLimitError extends AppError {
+  readonly retryAfterSeconds: number;
+
+  constructor(message: string, retryAfterSeconds: number) {
+    super(429, ERROR_CODES.TOO_MANY_REQUESTS, message);
+    this.name = 'RateLimitError';
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 export function zodFieldErrors(error: z.ZodError): Record<string, string> {
   const fields: Record<string, string> = {};
   for (const issue of error.issues) {
@@ -84,6 +95,7 @@ function bodyParserType(err: unknown): string | undefined {
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (err instanceof AppError) {
+    if (err instanceof RateLimitError) res.set('Retry-After', String(err.retryAfterSeconds));
     res.status(err.status).json(envelope(err.code, err.message, err.fields, err.details));
     return;
   }

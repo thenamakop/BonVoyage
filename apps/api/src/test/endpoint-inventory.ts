@@ -41,6 +41,11 @@ export const ENDPOINTS: readonly Endpoint[] = [
   { method: 'POST', path: '/api/trips', access: 'session' },
   { method: 'POST', path: '/api/invitations/:token/accept', access: 'session' },
 
+  // S5-3: your own notifications. Someone else's id is a 404.
+  { method: 'GET', path: '/api/notifications', access: 'session' },
+  { method: 'POST', path: '/api/notifications/read-all', access: 'session' },
+  { method: 'POST', path: '/api/notifications/:id/read', access: 'owner' },
+
   { method: 'GET', path: '/api/trips/:id', access: 'member' },
   { method: 'GET', path: '/api/trips/:id/activity', access: 'member' },
   { method: 'GET', path: '/api/trips/:id/preferences/me', access: 'member' },
@@ -57,6 +62,7 @@ export const ENDPOINTS: readonly Endpoint[] = [
   { method: 'GET', path: '/api/trips/:id/invitations/active', access: 'organiser' },
   { method: 'DELETE', path: '/api/trips/:id/invitations/active', access: 'organiser' },
   { method: 'DELETE', path: '/api/trips/:id/members/:userId', access: 'organiser' },
+  { method: 'POST', path: '/api/trips/:id/members/:userId/remind', access: 'organiser' },
   { method: 'POST', path: '/api/trips/:id/recommendations', access: 'organiser' },
   { method: 'POST', path: '/api/trips/:id/destination', access: 'organiser' },
   { method: 'POST', path: '/api/trips/:id/reopen-shortlist', access: 'organiser' },

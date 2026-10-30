@@ -30,6 +30,7 @@ export * from './api/admin';
 export * from './api/recommendations';
 export * from './api/packages';
 export * from './api/itinerary';
+export * from './api/notifications';
 export * from './time';
 
 export const ERROR_CODES = {
@@ -61,6 +62,8 @@ export const ERROR_CODES = {
   PACKAGE_CHOICE_UNAVAILABLE: 'PACKAGE_CHOICE_UNAVAILABLE',
   ITINERARY_STALE: 'ITINERARY_STALE',
   PLACE_DOES_NOT_FIT: 'PLACE_DOES_NOT_FIT',
+  MEMBER_NOT_PENDING: 'MEMBER_NOT_PENDING',
+  TOO_MANY_REQUESTS: 'TOO_MANY_REQUESTS',
   DB_UNAVAILABLE: 'DB_UNAVAILABLE',
   INTERNAL: 'INTERNAL',
 } as const;

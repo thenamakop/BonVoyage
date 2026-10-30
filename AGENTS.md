@@ -136,7 +136,7 @@ These come from the SRS and the runbook. Breaking one is a bug, even if tests pa
 - **Units:** money in whole rupees (integer `_inr` columns), distance in kilometres, duration in minutes, dates as ISO `YYYY-MM-DD`, timestamps in UTC.
 - **Spelling:** keep the British spelling used in the SRS and the enums (`organiser`, `finalised`, `catalogue`), and keep enum values exactly as listed in the runbook.
 - **Trip statuses:** `draft`, `collecting_preferences`, `ready_for_recommendation`, `shortlisted`, `packages_proposed`, `package_selected`, `itinerary_proposed`, `finalised`, `in_progress`, `completed`, `cancelled`.
-- **Error format:** every API error returns `{ "error": { "code": "SNAKE_CASE_CODE", "message": "plain sentence", "fields": { "field": "message" } } }` (`fields` is optional and maps field names to messages, used for 400 validation errors, SRS 3.2.1) with the right HTTP status (400 validation, 401, 403, 404, 409 illegal transition, 422 business rule, 503 dependency down).
+- **Error format:** every API error returns `{ "error": { "code": "SNAKE_CASE_CODE", "message": "plain sentence", "fields": { "field": "message" } } }` (`fields` is optional and maps field names to messages, used for 400 validation errors, SRS 3.2.1) with the right HTTP status (400 validation, 401, 403, 404, 409 illegal transition, 422 business rule, 429 rate limit with a `Retry-After` header, 503 dependency down).
 - **Glossary:** *common availability window* is the intersection of every member's dates. *Hard constraint* means radius, budget, duration or dates. *Soft preference* means types, activities, climate. *Provenance* is where a number came from.
 
 ## 8. Code style

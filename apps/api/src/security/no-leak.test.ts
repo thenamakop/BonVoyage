@@ -654,6 +654,106 @@ describe('after two shortlists no body holds a weight, a deficit or lambda (R17)
   });
 });
 
+// S5-3 (V2, E3): notifications carry the trip id, title and the type's own
+// fields only. After a join, a reminder, T3b, a shortlist and "Ask again", no
+// body holds a budget, an email, a score or an answer, and nobody can read, or
+// even confirm, another user's notification (404, not 403). The notifications
+// test covers all nine types the same way.
+describe('notifications hold no preference, budget, score or email', () => {
+  it('each caller reads only their own, with nothing private in them', async () => {
+    await ensureHubAt(db, 'leak-hub', 32, 85);
+    for (const [slug, lat] of [
+      ['leak-dest', 32.2],
+      ['leak-dest2', 32.3],
+      ['leak-dest3', 32.4],
+    ] as const) {
+      await ensureDestination(db, { slug, lat, lng: 85 });
+    }
+    const asha = await createTestUser(app, 'LeakNote Asha');
+    const rohan = await createTestUser(app, 'LeakNote Rohan');
+    const meera = await createTestUser(app, 'LeakNote Meera');
+    const trip = await createTripAs(asha.agent, {
+      originHubSlug: 'leak-hub',
+      radiusKm: 200,
+      budgetTotalInr: 120000,
+      durationNights: 2,
+    });
+    const { token: noteToken } = InvitationResponse.parse(
+      (await asha.agent.post(`/api/trips/${trip.id}/invitations`).set(H).send({})).body,
+    );
+    for (const m of [rohan, meera]) {
+      await m.agent.post(`/api/invitations/${noteToken}/accept`).set(H).send({});
+    }
+    // Meera is reminded, never submits and is left out by T3b.
+    const reminded = await asha.agent
+      .post(`/api/trips/${trip.id}/members/${meera.userId}/remind`)
+      .set(H)
+      .send({});
+    expect(reminded.status, JSON.stringify(reminded.body)).toBe(201);
+    const budgets = { asha: [10019, 40021], rohan: [10039, 40043] } as const;
+    for (const [m, [min, max]] of [
+      [asha, budgets.asha],
+      [rohan, budgets.rohan],
+    ] as const) {
+      const res = await m.agent
+        .put(`/api/trips/${trip.id}/preferences/me`)
+        .set(H)
+        .send(prefs(min, max));
+      expect(res.status).toBe(200);
+    }
+    for (const step of ['close-submissions', 'recommendations', 'reopen-shortlist']) {
+      const res = await asha.agent.post(`/api/trips/${trip.id}/${step}`).set(H).send({});
+      expect(res.status, `${step}: ${JSON.stringify(res.body)}`).toBe(200);
+    }
+
+    const everyone = [asha, rohan, meera];
+    const all = Object.values(budgets).flat();
+    const bodies = new Map<string, { items: { id: string; message: string }[] }>();
+    for (const p of everyone) {
+      const res = await p.agent.get('/api/notifications').set(H);
+      expect(res.status).toBe(200);
+      for (const q of everyone) {
+        expect(res.text).not.toContain(q.email);
+        // Actors are stored by user id and named on read; the id never leaves.
+        expect(res.text).not.toContain(q.userId);
+      }
+      expect(res.text).not.toContain('@');
+      expect(res.text).not.toMatch(/"(score|lambda|weight|deficit|budget\w*|email|vote)"/i);
+      const body = res.body as { items: { id: string; message: string; tripTitle: string }[] };
+      for (const item of body.items) {
+        for (const b of all) expect(`${item.message} ${item.tripTitle}`).not.toContain(String(b));
+      }
+      bodies.set(p.userId, body);
+    }
+    // Rohan: T3b, shortlist_ready, shortlist_reopened. Meera: a reminder, then left out.
+    // This app's clock is fixed, so notifications share a time and are compared sorted.
+    const messages = (p: { userId: string }) =>
+      bodies
+        .get(p.userId)!
+        .items.map((i) => i.message)
+        .sort();
+    expect(messages(rohan)).toEqual(
+      [
+        'LeakNote Asha asked for new recommendations',
+        'A shortlist of destinations is ready',
+        'Preferences are closed. The trip is ready for recommendations',
+      ].sort(),
+    );
+    expect(messages(meera)).toEqual(
+      [
+        'You were not included because preferences closed before you submitted',
+        'LeakNote Asha asked you to add your preferences',
+      ].sort(),
+    );
+
+    // Someone else's notification: 404, the same as a made-up id.
+    const meerasId = bodies.get(meera.userId)!.items[0]!.id;
+    const peek = await rohan.agent.post(`/api/notifications/${meerasId}/read`).set(H).send({});
+    expect(peek.status).toBe(404);
+    expect(peek.text).not.toContain(meerasId);
+  });
+});
+
 // S4-3, D1 (#116): with fewer than 3 contributing members, nothing a member
 // can read carries the budget band's figures, or anything from which the other
 // member's minimum or maximum follows. Budgets are multiples of ₹500, so the

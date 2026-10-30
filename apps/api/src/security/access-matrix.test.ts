@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createDb } from '@bonvoyage/db';
+import { notification } from '@bonvoyage/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import {
   InvitationResponse,
@@ -65,6 +67,8 @@ interface Fixture {
   token: string;
   memberId: string;
   pastTripId: string;
+  /** One of the organiser's notifications (a member joined), so only they own it. */
+  notificationId: string;
 }
 
 const PREFS = {
@@ -216,6 +220,44 @@ const CASES: Case[] = [
     url: (f) => `/api/invitations/${f.token}/accept`,
     body: {},
     expected: ['401', '200', '200', '409 MEMBER_EXCLUDED', '200', '200'],
+  },
+
+  // S5-3: notifications. The list and "read all" are the caller's own; a single
+  // one belongs to the organiser (a member joined), so everyone else gets 404.
+  {
+    method: 'GET',
+    path: '/api/notifications',
+    url: () => '/api/notifications',
+    expected: ['401', '200', '200', '200', '200', '200'],
+  },
+  {
+    method: 'POST',
+    path: '/api/notifications/read-all',
+    url: () => '/api/notifications/read-all',
+    body: {},
+    expected: ['401', '204', '204', '204', '204', '204'],
+  },
+  {
+    method: 'POST',
+    path: '/api/notifications/:id/read',
+    url: (f) => `/api/notifications/${f.notificationId}/read`,
+    body: {},
+    expected: ['401', '404 NOT_FOUND', '404 NOT_FOUND', '404 NOT_FOUND', '204', '404 NOT_FOUND'],
+  },
+  // The fixture member has submitted, so the organiser's reminder is refused.
+  {
+    method: 'POST',
+    path: '/api/trips/:id/members/:userId/remind',
+    url: (f) => `/api/trips/${f.tripId}/members/${f.memberId}/remind`,
+    body: {},
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '403 FORBIDDEN',
+      '403 FORBIDDEN',
+      '409 MEMBER_NOT_PENDING',
+      '404 NOT_FOUND',
+    ],
   },
 
   {
@@ -568,7 +610,15 @@ async function freshTrip(): Promise<Fixture> {
         .send({ placeName: 'Organiser only', rating: 3 })
     ).body,
   );
-  return { tripId, token, memberId: member.userId, pastTripId };
+  // Read from the table: this app's clock is fixed, so the organiser's list (30
+  // newest, all with one timestamp) would not reliably hold this trip's row.
+  const [joined] = await db
+    .select({ id: notification.id })
+    .from(notification)
+    .where(and(eq(notification.userId, organiser.userId), eq(notification.tripId, tripId)))
+    .limit(1);
+  if (!joined) throw new Error('the organiser has no member_joined notification for the fixture');
+  return { tripId, token, memberId: member.userId, pastTripId, notificationId: joined.id };
 }
 
 function call(actor: Actor, c: Case, f: Fixture) {
