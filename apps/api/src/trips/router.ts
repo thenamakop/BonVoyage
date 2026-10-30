@@ -111,7 +111,7 @@ export function createRouter({
   router.get('/trips/:id', requireSession(auth), async (req, res) => {
     const tripId = parseTripId(req.params.id);
     const { userId } = getSessionUser(res);
-    res.json(await getTrip(db, tripId, userId));
+    res.json(await getTrip(db, tripId, userId, clock));
   });
 
   router.patch('/trips/:id', requireSession(auth), async (req, res) => {

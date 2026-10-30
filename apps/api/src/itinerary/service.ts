@@ -468,7 +468,7 @@ async function decide(
       }
     },
   });
-  return getTrip(db, tripId, userId);
+  return getTrip(db, tripId, userId, deps.clock);
 }
 
 export const acceptItinerary = (deps: Deps, tripId: string, userId: string) =>

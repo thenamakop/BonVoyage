@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NOTIFICATION_TYPES, notificationMessage } from './notifications';
+import { NOTIFICATION_TYPES, notificationMessage, remindAgainText } from './notifications';
 
 // S5-3: one sentence per type, from the type, the excluded flag and the actor's
 // name as it reads today.
@@ -37,5 +37,22 @@ describe('notificationMessage', () => {
     expect(notificationMessage('submissions_closed', {}, null)).toBe(
       'Preferences are closed. The trip is ready for recommendations',
     );
+  });
+});
+
+describe('remindAgainText', () => {
+  const at = new Date('2026-11-02T06:34:00Z');
+
+  it('uses the first name and the time in India', () => {
+    expect(remindAgainText('Meera Rao', at)).toBe(
+      'You can remind Meera again after 2 Nov, 12:04 pm',
+    );
+    expect(remindAgainText('  Meera  ', at)).toBe(
+      'You can remind Meera again after 2 Nov, 12:04 pm',
+    );
+  });
+
+  it('reads "this member" with no name', () => {
+    expect(remindAgainText('', at)).toBe('You can remind this member again after 2 Nov, 12:04 pm');
   });
 });

@@ -752,6 +752,57 @@ describe('notifications hold no preference, budget, score or email', () => {
     expect(peek.status).toBe(404);
     expect(peek.text).not.toContain(meerasId);
   });
+
+  // S5-3 part 2: canRemindAt tells the organiser whom they reminded and when, so
+  // it is theirs alone: the reminded member, another member and a removed member
+  // read the same trip without it.
+  it('canRemindAt reaches only the organiser, never a member or an excluded member', async () => {
+    await ensureHubAt(db, 'leak-hub', 32, 85);
+    const asha = await createTestUser(app, 'LeakRemind Asha');
+    const rohan = await createTestUser(app, 'LeakRemind Rohan');
+    const meera = await createTestUser(app, 'LeakRemind Meera');
+    const dev = await createTestUser(app, 'LeakRemind Dev');
+    const trip = await createTripAs(asha.agent, { originHubSlug: 'leak-hub', durationNights: 2 });
+    const { token: remindToken } = InvitationResponse.parse(
+      (await asha.agent.post(`/api/trips/${trip.id}/invitations`).set(H).send({})).body,
+    );
+    for (const m of [rohan, meera, dev]) {
+      await m.agent.post(`/api/invitations/${remindToken}/accept`).set(H).send({});
+    }
+    expect(
+      (await asha.agent.delete(`/api/trips/${trip.id}/members/${dev.userId}`).set(H)).status,
+    ).toBe(204);
+    const sent = await asha.agent
+      .post(`/api/trips/${trip.id}/members/${meera.userId}/remind`)
+      .set(H)
+      .send({});
+    expect(sent.status, JSON.stringify(sent.body)).toBe(201);
+
+    const memberKeys = ['joinedAt', 'name', 'role', 'status', 'submitted', 'userId'].sort();
+    for (const [who, caller] of [
+      ['a member', rohan],
+      ['the member reminded', meera],
+      ['an excluded member', dev],
+    ] as const) {
+      const res = await caller.agent.get(`/api/trips/${trip.id}`).set(H);
+      expect(res.status, who).toBe(200);
+      expect(res.text, who).not.toContain('canRemindAt');
+      for (const m of (res.body as { members: Record<string, unknown>[] }).members) {
+        expect(Object.keys(m).sort(), who).toEqual(memberKeys);
+      }
+    }
+
+    // The organiser does read it, on the two members still pending.
+    const organiserView = TripDetail.parse(
+      (await asha.agent.get(`/api/trips/${trip.id}`).set(H)).body,
+    );
+    const canRemind = (userId: string) =>
+      organiserView.members.find((m) => m.userId === userId)?.canRemindAt;
+    expect(canRemind(rohan.userId)).toBeNull();
+    expect(canRemind(meera.userId)).toEqual(expect.any(String));
+    expect(canRemind(dev.userId)).toBeUndefined();
+    expect(canRemind(asha.userId)).toBeUndefined();
+  });
 });
 
 // S4-3, D1 (#116): with fewer than 3 contributing members, nothing a member

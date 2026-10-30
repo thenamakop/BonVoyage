@@ -55,7 +55,7 @@ export function UserMenu({ user }: { user: MeResponse }) {
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className="relative min-w-0">
       <button
         ref={buttonRef}
         type="button"
@@ -65,9 +65,10 @@ export function UserMenu({ user }: { user: MeResponse }) {
           setError(false);
           setOpen((v) => !v);
         }}
-        className="flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium text-white hover:bg-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="flex min-h-11 max-w-full items-center gap-2 rounded-md px-3 text-sm font-medium text-white hover:bg-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
-        {user.name}
+        {/* At 360 px the bell leaves little room: two lines at most, and a long word breaks. */}
+        <span className="line-clamp-2 min-w-0 [overflow-wrap:anywhere]">{user.name}</span>
         <span aria-hidden="true">▾</span>
       </button>
       {open ? (

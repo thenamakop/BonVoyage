@@ -40,7 +40,12 @@ describe('AppShell header focus', () => {
       const controls = [
         screen.getByRole('link', { name: 'BonVoyage' }),
         screen.getByRole('link', { name: signedIn ? 'Trips' : 'Sign in' }),
-        ...(signedIn ? [screen.getByRole('button', { name: /Asha/ })] : []),
+        ...(signedIn
+          ? [
+              screen.getByRole('button', { name: /^Notifications/ }),
+              screen.getByRole('button', { name: /Asha/ }),
+            ]
+          : []),
       ];
       for (const control of controls) {
         await user.tab();

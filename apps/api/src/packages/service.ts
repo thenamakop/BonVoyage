@@ -380,7 +380,7 @@ export async function selectPackage(
         .where(and(eq(tripPackage.tripId, tripId), eq(tripPackage.status, 'proposed')));
     },
   });
-  return getTrip(db, tripId, userId);
+  return getTrip(db, tripId, userId, deps.clock);
 }
 
 export async function removePackage(
@@ -410,7 +410,7 @@ export async function removePackage(
       }
     },
   });
-  return getTrip(db, tripId, userId);
+  return getTrip(db, tripId, userId, deps.clock);
 }
 
 export async function changePackage(

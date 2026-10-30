@@ -158,6 +158,121 @@ describe('TripPage roster', () => {
     ).toBeInTheDocument();
   });
 
+  describe('Remind (S5-3)', () => {
+    const AGAIN_AT = '2026-11-02T06:34:00.000Z';
+    const AGAIN = 'You can remind Meera again after 2 Nov, 12:04 pm';
+    const withMeera = (canRemindAt: string | null) =>
+      detail({
+        members: [
+          member('u1', 'Asha', { role: 'organiser', submitted: true }),
+          member('u2', 'Rohan', { submitted: true }),
+          { ...member('u3', 'Meera'), canRemindAt },
+        ],
+      });
+
+    /** Asha's dashboard, with the remind endpoint answering `remind`; the trip follows `after`. */
+    function stubRemind(before: TripDetail, remind: Response, after: TripDetail = before) {
+      stubFetch(before);
+      const base = fetchMock.getMockImplementation()!;
+      let current = before;
+      fetchMock.mockImplementation((url, init) => {
+        if (url === `/api/trips/${TRIP_ID}`) return Promise.resolve(Response.json(current));
+        if (url === `/api/trips/${TRIP_ID}/members/u3/remind` && init?.method === 'POST') {
+          current = after;
+          return Promise.resolve(remind);
+        }
+        return base(url, init);
+      });
+    }
+
+    it('only members with canRemindAt get a button, by name and 44 px tall', async () => {
+      stubFetch(withMeera(null));
+      renderPage();
+      const button = await screen.findByRole('button', { name: 'Remind Meera' });
+      expect(button).toBeEnabled();
+      expect(button).toHaveClass('min-h-11');
+      expect(screen.queryByRole('button', { name: 'Remind Rohan' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Remind Asha' })).not.toBeInTheDocument();
+    });
+
+    it('a member sees no Remind at all: the API sends them no canRemindAt', async () => {
+      stubFetch(detail({ myRole: 'member' }));
+      renderPage();
+      await screen.findByText('Rohan');
+      expect(screen.queryByRole('button', { name: /^Remind/ })).not.toBeInTheDocument();
+    });
+
+    it('after a reload it is disabled with the reason, tied to the button', async () => {
+      stubFetch(withMeera(AGAIN_AT));
+      renderPage();
+      const button = await screen.findByRole('button', { name: 'Remind Meera' });
+      expect(button).toBeDisabled();
+      const reason = screen.getByText(AGAIN);
+      expect(button).toHaveAttribute('aria-describedby', reason.id);
+    });
+
+    it('clicking posts {}, announces it, then shows the reason from the refreshed trip', async () => {
+      stubRemind(
+        withMeera(null),
+        Response.json(
+          { remindedAt: '2026-11-01T06:34:00.000Z', canRemindAgainAt: AGAIN_AT },
+          { status: 201 },
+        ),
+        withMeera(AGAIN_AT),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Remind Meera' }));
+      expect(fetchMock).toHaveBeenCalledWith(
+        `/api/trips/${TRIP_ID}/members/u3/remind`,
+        expect.objectContaining({ method: 'POST', body: '{}' }),
+      );
+      expect(await screen.findByText('Reminder sent to Meera')).toBeInTheDocument();
+      expect(await screen.findByText(AGAIN)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Remind Meera' })).toBeDisabled();
+    });
+
+    it('a 429 from an out-of-date page shows the same message, then the disabled button', async () => {
+      stubRemind(
+        withMeera(null),
+        Response.json(
+          { error: { code: 'TOO_MANY_REQUESTS', message: AGAIN } },
+          { status: 429, headers: { 'Retry-After': '86400' } },
+        ),
+        withMeera(AGAIN_AT),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Remind Meera' }));
+      expect(await screen.findByText(AGAIN)).toBeInTheDocument();
+      expect(await screen.findByRole('button', { name: 'Remind Meera' })).toBeDisabled();
+      expect(screen.getAllByText(AGAIN)).toHaveLength(1);
+    });
+
+    it('a 429 still shows its message if the trip has not caught up', async () => {
+      stubRemind(
+        withMeera(null),
+        Response.json({ error: { code: 'TOO_MANY_REQUESTS', message: AGAIN } }, { status: 429 }),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Remind Meera' }));
+      expect(await screen.findByText(AGAIN)).toBeInTheDocument();
+    });
+
+    it('a 409 shows the server’s message on that member’s row', async () => {
+      const message = 'That person has already added their preferences.';
+      stubRemind(
+        withMeera(null),
+        Response.json({ error: { code: 'MEMBER_NOT_PENDING', message } }, { status: 409 }),
+      );
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Remind Meera' }));
+      expect(await screen.findByText(message)).toBeInTheDocument();
+    });
+  });
+
   it('a removed member is told the trip is read-only', async () => {
     stubFetch(detail({ myRole: 'member', myStatus: 'excluded' }));
     renderPage();

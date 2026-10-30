@@ -746,5 +746,5 @@ export async function chooseDestination(
       await storePackages(tx, tripId, destinationId, drafts);
     },
   });
-  return getTrip(db, tripId, userId);
+  return getTrip(db, tripId, userId, deps.clock);
 }

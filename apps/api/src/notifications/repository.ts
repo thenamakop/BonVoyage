@@ -130,6 +130,28 @@ export async function lockReminder(tx: Tx, tripId: string, userId: string): Prom
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${tripId}), hashtext(${userId}))`);
 }
 
+/** Each member's newest reminder on this trip after `since`, in one query. */
+export async function listRecentReminders(
+  db: Db,
+  tripId: string,
+  since: Date,
+): Promise<Map<string, Date>> {
+  const rows = await db
+    .select({ userId: notification.userId, createdAt: notification.createdAt })
+    .from(notification)
+    .where(
+      and(
+        eq(notification.tripId, tripId),
+        eq(notification.type, 'preferences_reminder'),
+        gt(notification.createdAt, since),
+      ),
+    )
+    .orderBy(desc(notification.createdAt));
+  const newest = new Map<string, Date>();
+  for (const row of rows) if (!newest.has(row.userId)) newest.set(row.userId, row.createdAt);
+  return newest;
+}
+
 /** The newest reminder for this member on this trip at or after `since`. */
 export async function findRecentReminder(
   tx: Tx,

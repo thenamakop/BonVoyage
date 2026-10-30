@@ -1,10 +1,10 @@
 import type { Db } from '@bonvoyage/db';
 import {
   ERROR_CODES,
-  indiaDateTime,
   notificationMessage,
   NotificationPayload,
   NOTIFICATIONS_PAGE,
+  remindAgainText,
   REMIND_WINDOW_HOURS,
   type NotificationItem,
   type NotificationsResponse,
@@ -23,6 +23,7 @@ import {
   findUserNames,
   insertNotifications,
   listForUser,
+  listRecentReminders,
   lockReminder,
   markAllRead,
   markRead,
@@ -32,7 +33,7 @@ import {
 // S5-3 (decisions E3 and M4): reading your own notifications and the
 // organiser's rate-limited reminder. No email, no push, no outside service.
 
-const HOUR_MS = 3_600_000;
+const REMIND_WINDOW_MS = REMIND_WINDOW_HOURS * 3_600_000;
 
 /**
  * The response item. The actor's id stays in the payload, server side: only the
@@ -95,9 +96,26 @@ export async function readAllNotifications(
   await markAllRead(db, userId, clock());
 }
 
-const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
-
 const notPending = (message: string) => new AppError(409, ERROR_CODES.MEMBER_NOT_PENDING, message);
+
+/**
+ * When each member reminded inside the window may next be reminded, so the trip
+ * detail can tell the organiser after a reload (S5-3). A member not in the map
+ * can be reminded now.
+ */
+export async function nextReminderTimes(
+  db: Db,
+  tripId: string,
+  now: Date,
+): Promise<Map<string, string>> {
+  const recent = await listRecentReminders(db, tripId, new Date(now.getTime() - REMIND_WINDOW_MS));
+  return new Map(
+    [...recent].map(([userId, at]) => [
+      userId,
+      new Date(at.getTime() + REMIND_WINDOW_MS).toISOString(),
+    ]),
+  );
+}
 
 // POST /api/trips/:id/members/:userId/remind: the organiser nudges a member who
 // has not submitted, once per member per rolling 24 hours (E3). The check reads
@@ -140,13 +158,13 @@ export async function remindMember(
       tx,
       tripId,
       targetUserId,
-      new Date(now.getTime() - REMIND_WINDOW_HOURS * HOUR_MS),
+      new Date(now.getTime() - REMIND_WINDOW_MS),
     );
     if (last) {
       const targetName = await findUserName(tx, targetUserId);
-      const again = new Date(last.getTime() + REMIND_WINDOW_HOURS * HOUR_MS);
+      const again = new Date(last.getTime() + REMIND_WINDOW_MS);
       throw new RateLimitError(
-        `You can remind ${firstName(targetName ?? 'this member')} again after ${indiaDateTime(again)}`,
+        remindAgainText(targetName ?? '', again),
         Math.max(1, Math.ceil((again.getTime() - now.getTime()) / 1000)),
       );
     }
@@ -162,7 +180,7 @@ export async function remindMember(
     ]);
     return {
       remindedAt: now.toISOString(),
-      canRemindAgainAt: new Date(now.getTime() + REMIND_WINDOW_HOURS * HOUR_MS).toISOString(),
+      canRemindAgainAt: new Date(now.getTime() + REMIND_WINDOW_MS).toISOString(),
     };
   });
 }

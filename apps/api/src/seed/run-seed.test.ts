@@ -33,6 +33,7 @@ import {
   modifyItinerary,
   planItinerary,
 } from '../itinerary/service';
+import { getNotifications } from '../notifications/service';
 import { giveOpinion, listTripPackages, selectPackage } from '../packages/service';
 import { saveMyPreference } from '../preferences/service';
 import {
@@ -169,6 +170,13 @@ describe('Sprint 2 demo trips', () => {
         'T3',
       ]);
     }
+    // Script step 2: Meera's bell starts empty, so the shortlist makes it read 1.
+    const [meera] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, `meera${DEMO_EMAIL_DOMAIN}`));
+    if (!meera) throw new Error('Meera was not seeded');
+    expect((await getNotifications(db, meera.id)).unreadCount).toBe(0);
   });
 
   it('hills: a shortlist with at least 8 feasible destinations', async () => {
@@ -314,6 +322,12 @@ describe('Long weekend in the hills: the full journey through the services', () 
     const first = rec.items[0]!.destination;
     // The demo script names it; a catalogue change that moves it fails here first.
     expect(first.slug).toBe('chakrata');
+    // Script step 2 (optional line): "Meera's bell shows 1". Earlier tests in this
+    // file ran the other demo trips, so this counts the script's trip alone.
+    const bell = await getNotifications(db, meera.id);
+    expect(bell.items.filter((n) => n.tripId === row.id).map((n) => n.message)).toEqual([
+      'A shortlist of destinations is ready',
+    ]);
 
     await chooseDestination(deps, row.id, asha, { destinationSlug: first.slug });
     const { packages } = await listTripPackages(db, row.id, asha);

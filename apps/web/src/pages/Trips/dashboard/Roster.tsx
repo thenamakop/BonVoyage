@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { MAX_MEMBERS, type TripDetail, type TripMember } from '@bonvoyage/shared';
+import { MAX_MEMBERS, remindAgainText, type TripDetail, type TripMember } from '@bonvoyage/shared';
 import { Alert } from '../../../components/ui/Alert';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { useLeaveTrip, useRemoveMember } from '../../../features/invitations/api';
+import { useRemindMember } from '../../../features/notifications/api';
 import { ApiError } from '../../../lib/api';
 
 // Roster (wireframe 06, S1-3). The organiser can remove a member and a member
@@ -47,6 +48,7 @@ export function Roster({ trip }: { trip: TripDetail }) {
   const navigate = useNavigate();
   const remove = useRemoveMember(trip.id);
   const leave = useLeaveTrip(trip.id);
+  const remind = useRemindMember(trip.id);
   const [confirmRemove, setConfirmRemove] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
 
@@ -60,45 +62,80 @@ export function Roster({ trip }: { trip: TripDetail }) {
   const removed = trip.members.filter((m) => m.status === 'excluded');
   const error = remove.error ?? leave.error;
 
-  const memberRow = (m: TripMember) => (
-    <li key={m.userId} className="py-2">
-      <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
-        <span className="text-sm text-slate-900">{m.name}</span>
-        <span className="flex items-center gap-2">
-          {m.role === 'organiser' ? <Badge>Organiser</Badge> : null}
-          {showSubmitted ? (
-            m.submitted ? (
-              <Badge tone="success">
-                <span aria-hidden="true">✓&nbsp;</span>Submitted
-              </Badge>
-            ) : (
-              <Badge tone="warning">
-                <span aria-hidden="true">…&nbsp;</span>Waiting
-              </Badge>
-            )
-          ) : null}
-          {isOrganiser && open && m.role !== 'organiser' && confirmRemove !== m.userId ? (
-            <Button
-              variant="ghost"
-              aria-label={`Remove ${m.name}`}
-              onClick={() => setConfirmRemove(m.userId)}
-            >
-              Remove
-            </Button>
-          ) : null}
-        </span>
-      </div>
-      {confirmRemove === m.userId ? (
-        <ConfirmRow
-          text={`Remove ${m.name}? Their preferences will be deleted.`}
-          confirmLabel="Remove"
-          busy={remove.isPending}
-          onConfirm={() => remove.mutate(m.userId, { onSuccess: () => setConfirmRemove(null) })}
-          onCancel={() => setConfirmRemove(null)}
-        />
-      ) : null}
-    </li>
-  );
+  const memberRow = (m: TripMember) => {
+    // S5-3: the API sends canRemindAt only to the organiser, only on a member they
+    // could remind. The button follows it, like every other dashboard action.
+    const remindable = m.canRemindAt !== undefined;
+    const nextAt = m.canRemindAt ? remindAgainText(m.name, new Date(m.canRemindAt)) : null;
+    const lastTry = remind.variables === m.userId;
+    const reasonId = `remind-${m.userId}`;
+    return (
+      <li key={m.userId} className="py-2">
+        <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
+          <span className="text-sm text-slate-900">{m.name}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            {m.role === 'organiser' ? <Badge>Organiser</Badge> : null}
+            {showSubmitted ? (
+              m.submitted ? (
+                <Badge tone="success">
+                  <span aria-hidden="true">✓&nbsp;</span>Submitted
+                </Badge>
+              ) : (
+                <Badge tone="warning">
+                  <span aria-hidden="true">…&nbsp;</span>Waiting
+                </Badge>
+              )
+            ) : null}
+            {remindable ? (
+              <Button
+                variant="secondary"
+                aria-label={`Remind ${m.name}`}
+                aria-describedby={nextAt ? reasonId : undefined}
+                disabled={nextAt !== null}
+                loading={remind.isPending && lastTry}
+                onClick={() => remind.mutate(m.userId)}
+              >
+                Remind
+              </Button>
+            ) : null}
+            {isOrganiser && open && m.role !== 'organiser' && confirmRemove !== m.userId ? (
+              <Button
+                variant="ghost"
+                aria-label={`Remove ${m.name}`}
+                onClick={() => setConfirmRemove(m.userId)}
+              >
+                Remove
+              </Button>
+            ) : null}
+          </span>
+        </div>
+        {nextAt ? (
+          <p id={reasonId} className="mt-1 text-sm text-slate-600">
+            {nextAt}
+          </p>
+        ) : lastTry && remind.error ? (
+          // A 429 from a page that was out of date reads the same as the line above.
+          <div className="mt-1">
+            <Alert tone="error">{errorText(remind.error)}</Alert>
+          </div>
+        ) : null}
+        {lastTry && remind.isSuccess ? (
+          <p role="status" className="sr-only">
+            Reminder sent to {m.name}
+          </p>
+        ) : null}
+        {confirmRemove === m.userId ? (
+          <ConfirmRow
+            text={`Remove ${m.name}? Their preferences will be deleted.`}
+            confirmLabel="Remove"
+            busy={remove.isPending}
+            onConfirm={() => remove.mutate(m.userId, { onSuccess: () => setConfirmRemove(null) })}
+            onCancel={() => setConfirmRemove(null)}
+          />
+        ) : null}
+      </li>
+    );
+  };
 
   return (
     <Card>
