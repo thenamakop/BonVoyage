@@ -33,7 +33,7 @@ import type { Auth } from '../auth/auth';
 import { saveMyPreference } from '../preferences/service';
 import { transitionTrip } from '../trips/transition-trip';
 import { DEMO_SCENARIOS, seedDemoTrip } from './demo-trips';
-import { deleteDemoTrips } from './fresh-demos';
+import { clearRebuildNotifications, deleteDemoTrips } from './fresh-demos';
 
 // S0-5 step 6: demo seed. Every step is idempotent so the seed can run again
 // without duplicating anything. Prints row counts, never the password.
@@ -303,7 +303,22 @@ export async function runSeed({
   }
 
   // i) S2-8: the three Sprint 2 demo trips, through the services only.
-  for (const scenario of DEMO_SCENARIOS) await seedDemoTrip(deps, scenario, userIds);
+  const scenarioTripIds: string[] = [];
+  for (const scenario of DEMO_SCENARIOS) {
+    scenarioTripIds.push(await seedDemoTrip(deps, scenario, userIds));
+  }
+
+  // j) --fresh-demos only: the rebuild's joins do not count as news. Kabir is in no trip.
+  if (freshDemos) {
+    const cleared = await clearRebuildNotifications(
+      db,
+      DEMO_USERS.filter((u) => u.name !== 'Kabir').map((u) => userIds.get(u.name)!),
+      [tripId, ...scenarioTripIds],
+    );
+    log(
+      `\nFresh demos: cleared ${cleared} notification${cleared === 1 ? '' : 's'} from the rebuild.`,
+    );
+  }
 
   const rows = await tableCounts(db);
   log('\nRow counts:');

@@ -55,7 +55,7 @@ Leave this window open for step 6.
 5. **Asha:** open **Long weekend in the hills**. Within 8 seconds the dashboard reads **"Step 3 of 7: Ready for recommendations"** and **"Get recommendations when you are ready."**
    > "The last submission moved the trip on by itself. Nobody had to press anything."
 
-   Optional: Asha's bell shows 5 after a fresh reset, all from the other demo trips: **"Rohan (demo) joined the trip"** on Hills shortlist demo, Tight budget demo and Date clash demo, and **"Meera (demo) joined the trip"** on Hills shortlist demo and Tight budget demo.
+   Optional: Asha's bell shows no number after a fresh reset.
 
 ## 2. Recommendations (2 minutes)
 
