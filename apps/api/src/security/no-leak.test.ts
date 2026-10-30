@@ -805,6 +805,171 @@ describe('notifications hold no preference, budget, score or email', () => {
   });
 });
 
+// S5-4 (V2, R18): no response, for any actor, says who voted for what. Votes hold
+// counts and the caller's own only, and the activity list never names a voter,
+// because a name beside a count that just moved would give the vote away.
+describe('votes: nobody can read who voted for what', () => {
+  async function votingTrip(prefix: string, names: readonly string[]) {
+    await ensureHubAt(db, 'leak-hub', 32, 85);
+    for (const [slug, lat] of [
+      ['leak-dest', 32.2],
+      ['leak-dest2', 32.3],
+      ['leak-dest3', 32.4],
+    ] as const) {
+      await ensureDestination(db, { slug, lat, lng: 85 });
+    }
+    const members = await Promise.all(names.map((n) => createTestUser(app, `${prefix} ${n}`)));
+    const organiser = members[0]!;
+    const trip = await createTripAs(organiser.agent, {
+      originHubSlug: 'leak-hub',
+      radiusKm: 200,
+      budgetTotalInr: 120000,
+      durationNights: 2,
+    });
+    const { token: voteToken } = InvitationResponse.parse(
+      (await organiser.agent.post(`/api/trips/${trip.id}/invitations`).set(H).send({})).body,
+    );
+    for (const m of members.slice(1)) {
+      await m.agent.post(`/api/invitations/${voteToken}/accept`).set(H).send({});
+    }
+    for (const m of members) {
+      const res = await m.agent
+        .put(`/api/trips/${trip.id}/preferences/me`)
+        .set(H)
+        .send(prefs(10000, 40000));
+      expect(res.status, JSON.stringify(res.body)).toBe(200);
+    }
+    const run = await organiser.agent.post(`/api/trips/${trip.id}/recommendations`).set(H).send({});
+    expect(run.status, JSON.stringify(run.body)).toBe(200);
+    const slugs = LatestRecommendationResponse.parse(run.body).items.map((i) => i.destination.slug);
+    return { tripId: trip.id, voteToken, members, slugs };
+  }
+  const castAs = (agent: Agent, id: string, destinationSlug: string) =>
+    agent.put(`/api/trips/${id}/vote`).set(H).send({ destinationSlug });
+
+  it('no body for any caller pairs a member with a destination', async () => {
+    const {
+      tripId: id,
+      voteToken,
+      members,
+      slugs,
+    } = await votingTrip('LeakVote', ['Asha', 'Rohan', 'Meera']);
+    const asha = members[0]!;
+    const rohan = members[1]!;
+    const meera = members[2]!;
+    const outsider = await createTestUser(app, 'LeakVote Outsider');
+    const slugA = slugs[0]!;
+    const slugB = slugs[1]!;
+    const writes = [
+      await castAs(rohan.agent, id, slugA),
+      await castAs(meera.agent, id, slugB),
+      await castAs(rohan.agent, id, slugB),
+      await rohan.agent.delete(`/api/trips/${id}/vote`).set(H),
+      await castAs(rohan.agent, id, slugA),
+    ];
+    for (const res of writes) expect(res.status, JSON.stringify(res.body)).toBe(200);
+    for (const res of writes) {
+      expect(Object.keys(res.body as object).sort()).toEqual(
+        expect.arrayContaining(['counts', 'eligible', 'voted']),
+      );
+    }
+
+    const rows = await db.query.tripMember.findMany({ where: (t, { eq }) => eq(t.tripId, id) });
+    const ids = rows.map((m) => m.id);
+    const userIds = members.map((m) => m.userId);
+    const emails = members.map((m) => m.email);
+    const paths = GETS.map((e) => e.path.replace(':id', id).replace(':token', voteToken));
+    for (const [who, agent] of [
+      ['Asha', asha.agent],
+      ['Rohan', rohan.agent],
+      ['Meera', meera.agent],
+      ['Outsider', outsider.agent],
+      ['anonymous', null],
+    ] as const) {
+      const bodies = await Promise.all(
+        paths.map(async (path) => ({
+          path,
+          res: await (agent ?? request(app)).get(path).set(H),
+        })),
+      );
+      for (const { path, res } of bodies) {
+        expect(res.text, `${path} as ${who}`).not.toMatch(/"(voters?|votedBy|tripMemberId)"/);
+        // No trip-member id reaches anyone in any response.
+        for (const memberId of ids) expect(res.text, `${path} as ${who}`).not.toContain(memberId);
+        if (path === `/api/trips/${id}/activity`) {
+          expect(res.text, who).not.toMatch(/voteCast|"I6"|their vote/);
+        }
+        if (path === `/api/trips/${id}/recommendations/latest` && res.status === 200) {
+          const votes = LatestRecommendationResponse.parse(res.body).votes!;
+          expect(Object.keys(votes).sort(), who).toEqual(
+            ['counts', 'eligible', 'voted', ...(who === 'Asha' ? [] : ['mine'])].sort(),
+          );
+          // The votes object holds slugs and numbers: no id, name or email of anyone.
+          const text = JSON.stringify(votes);
+          for (const s of [...userIds, ...ids, ...emails, 'LeakVote']) {
+            expect(text, who).not.toContain(s);
+          }
+          expect(votes.counts).toMatchObject({ [slugA]: 1, [slugB]: 1 });
+          expect(votes.voted).toBe(2);
+          expect(votes.eligible).toBe(3);
+          if (who === 'Rohan') expect(votes.mine).toBe(slugA);
+          if (who === 'Meera') expect(votes.mine).toBe(slugB);
+        }
+      }
+    }
+
+    // The bodies of the writes hold the caller's own vote and no one else's identity.
+    for (const res of writes) {
+      for (const s of [...userIds, ...ids, ...emails, 'LeakVote']) {
+        expect(res.text).not.toContain(s);
+      }
+    }
+    // A refused vote says nothing either.
+    const refused = await outsider.agent
+      .put(`/api/trips/${id}/vote`)
+      .set(H)
+      .send({ destinationSlug: slugA });
+    expect(refused.status).toBe(404);
+    expect(refused.text).not.toContain(slugA);
+  });
+
+  it('two members: no response carries per-destination counts until both have voted', async () => {
+    const {
+      tripId: id,
+      voteToken,
+      members,
+      slugs,
+    } = await votingTrip('LeakVote2', ['Asha', 'Rohan']);
+    const asha = members[0]!;
+    const rohan = members[1]!;
+    const slugA = slugs[0]!;
+    const slugB = slugs[1]!;
+    const paths = GETS.map((e) => e.path.replace(':id', id).replace(':token', voteToken));
+
+    const first = await castAs(rohan.agent, id, slugA);
+    expect(first.body).toEqual({ voted: 1, eligible: 2, mine: slugA });
+    for (const path of paths) {
+      const res = await asha.agent.get(path).set(H);
+      expect(res.text, path).not.toContain('"counts"');
+      // Rohan's choice is nowhere in the vote data Asha can read.
+      if (path.endsWith('/recommendations/latest')) {
+        expect(LatestRecommendationResponse.parse(res.body).votes).toEqual({
+          voted: 1,
+          eligible: 2,
+        });
+      }
+    }
+
+    const second = await castAs(asha.agent, id, slugB);
+    expect(second.body).toMatchObject({
+      counts: { [slugA]: 1, [slugB]: 1 },
+      voted: 2,
+      eligible: 2,
+      mine: slugB,
+    });
+  });
+});
+
 // S4-3, D1 (#116): with fewer than 3 contributing members, nothing a member
 // can read carries the budget band's figures, or anything from which the other
 // member's minimum or maximum follows. Budgets are multiples of ₹500, so the

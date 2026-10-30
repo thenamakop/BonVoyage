@@ -179,10 +179,24 @@ export const RecommendationItem = z.object({
 });
 export type RecommendationItem = z.infer<typeof RecommendationItem>;
 
-/** GET /api/trips/:id/recommendations/latest */
+/**
+ * R18: the votes on a shortlisted run. Never who voted for what, for anyone. `counts`
+ * has every destination in the run; it is left out of a 2-member trip until both have
+ * voted (decision E4). `mine` is the caller's own vote, left out if they have none.
+ */
+export const RunVotes = z.object({
+  counts: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  voted: z.number().int().nonnegative(),
+  eligible: z.number().int().nonnegative(),
+  mine: z.string().optional(),
+});
+export type RunVotes = z.infer<typeof RunVotes>;
+
+/** GET /api/trips/:id/recommendations/latest. `votes` comes with a shortlist only. */
 export const LatestRecommendationResponse = z.object({
   run: RecommendationRun.nullable(),
   items: z.array(RecommendationItem),
+  votes: RunVotes.optional(),
 });
 export type LatestRecommendationResponse = z.infer<typeof LatestRecommendationResponse>;
 
@@ -205,6 +219,10 @@ export const ChooseDestinationInput = z.strictObject({
     .max(100, 'Choose a destination from the shortlist.'),
 });
 export type ChooseDestinationInput = z.infer<typeof ChooseDestinationInput>;
+
+/** PUT /api/trips/:id/vote casts or changes the caller's vote (R18). */
+export const VoteInput = ChooseDestinationInput;
+export type VoteInput = z.infer<typeof VoteInput>;
 
 export const LatestRecommendationSummary = z.object({
   round: z.number().int(),

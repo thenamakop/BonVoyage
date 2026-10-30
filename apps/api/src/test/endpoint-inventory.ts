@@ -54,6 +54,8 @@ export const ENDPOINTS: readonly Endpoint[] = [
 
   { method: 'PUT', path: '/api/trips/:id/preferences/me', access: 'activeMember' },
   { method: 'DELETE', path: '/api/trips/:id/members/me', access: 'activeMember' },
+  { method: 'PUT', path: '/api/trips/:id/vote', access: 'activeMember' },
+  { method: 'DELETE', path: '/api/trips/:id/vote', access: 'activeMember' },
 
   { method: 'PATCH', path: '/api/trips/:id', access: 'organiser' },
   { method: 'POST', path: '/api/trips/:id/cancel', access: 'organiser' },

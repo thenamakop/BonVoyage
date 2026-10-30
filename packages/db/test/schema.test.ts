@@ -280,6 +280,113 @@ describe('schema', () => {
     expect(decisions[0]!.n).toBe(0);
   });
 
+  // R18: one vote per member per run, for a destination in that run; votes go with the
+  // member, the run and the trip.
+  it('vote enforces its keys and cascades from the member, the run and the trip', async () => {
+    await db.insert(user).values({ id: uid('v'), name: 'V', email: 'v@test.bv' });
+    const [h] = await db
+      .insert(s.hub)
+      .values({
+        slug: 'votehub',
+        name: 'H',
+        state: 'S',
+        lat: 28,
+        lng: 77,
+        collectedOn: '2026-10-12',
+        reviewStatus: 'draft',
+      })
+      .returning({ id: s.hub.id });
+    const [inRun, notInRun] = await db
+      .insert(s.destination)
+      .values(
+        ['votedest1', 'votedest2'].map((slug) => ({
+          slug,
+          name: `Vote ${slug}`,
+          state: 'S',
+          lat: 29,
+          lng: 78,
+          types: ['heritage'],
+          activities: ['museums'],
+          climate: 'mild' as const,
+          bestMonths: [10],
+          minNights: 1,
+          collectedOn: '2026-10-12',
+          reviewStatus: 'draft' as const,
+          costReviewStatus: 'draft' as const,
+        })),
+      )
+      .returning({ id: s.destination.id });
+    const newTrip = async () => {
+      const [t] = await db
+        .insert(s.trip)
+        .values({
+          title: 'Vote',
+          organiserId: uid('v'),
+          originHubId: h!.id,
+          durationNights: 2,
+          budgetTotalInr: 10000,
+          radiusKm: 400,
+        })
+        .returning({ id: s.trip.id });
+      const [m] = await db
+        .insert(s.tripMember)
+        .values({ tripId: t!.id, userId: uid('v'), role: 'organiser' })
+        .returning({ id: s.tripMember.id });
+      const [run] = await db
+        .insert(s.recommendationRun)
+        .values({
+          tripId: t!.id,
+          kind: 'shortlist',
+          alpha: 0.5,
+          beta: 0.3,
+          gamma: 0.2,
+          feasibleCount: 3,
+        })
+        .returning({ id: s.recommendationRun.id });
+      await db.insert(s.recommendationItem).values({
+        runId: run!.id,
+        destinationId: inRun!.id,
+        rank: 1,
+        gfs: 0.5,
+        mean: 0.5,
+        min: 0.5,
+        sd: 0,
+        estimatedCostInr: 1000,
+        distanceKm: 100,
+        distanceProvenance: 'estimated',
+      });
+      const row = { runId: run!.id, tripMemberId: m!.id, destinationId: inRun!.id };
+      return { tripId: t!.id, memberId: m!.id, runId: run!.id, row };
+    };
+    const left = async (runId: string) =>
+      (
+        await db
+          .select()
+          .from(s.vote)
+          .where(sql`${s.vote.runId} = ${runId}`)
+      ).length;
+
+    const one = await newTrip();
+    await expectSqlState(
+      db.insert(s.vote).values({ ...one.row, destinationId: notInRun!.id }),
+      '23503',
+    );
+    await db.insert(s.vote).values(one.row);
+    await expectSqlState(db.insert(s.vote).values(one.row), '23505');
+    await db.delete(s.tripMember).where(sql`${s.tripMember.id} = ${one.memberId}`);
+    expect(await left(one.runId)).toBe(0);
+
+    const two = await newTrip();
+    await db.insert(s.vote).values(two.row);
+    await db.delete(s.recommendationRun).where(sql`${s.recommendationRun.id} = ${two.runId}`);
+    expect(await left(two.runId)).toBe(0);
+
+    const three = await newTrip();
+    await db.insert(s.vote).values(three.row);
+    await db.delete(s.trip).where(sql`${s.trip.id} = ${three.tripId}`);
+    expect(await left(three.runId)).toBe(0);
+  });
+
   it('rejects CHECK violations with SQLSTATE 23514', async () => {
     const [h] = await db
       .insert(s.hub)

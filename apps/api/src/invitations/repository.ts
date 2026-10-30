@@ -1,5 +1,5 @@
 import type { Db } from '@bonvoyage/db';
-import { invitation, preference, trip, tripMember, user } from '@bonvoyage/db/schema';
+import { invitation, preference, trip, tripMember, user, vote } from '@bonvoyage/db/schema';
 import { and, desc, eq, gt, sql } from 'drizzle-orm';
 import type { MembershipRow, TripRow } from '../trips/access';
 import type { Tx } from '../trips/transition-trip';
@@ -99,11 +99,16 @@ export async function deleteMembership(tx: Tx, membershipId: string): Promise<vo
   await tx.delete(tripMember).where(eq(tripMember.id, membershipId));
 }
 
-/** Exclude a member and drop their preference so it never counts (S1-3). */
+/**
+ * Exclude a member and drop their preference and votes so they never count (S1-3,
+ * R18). A vote can be here from an earlier shortlist, after T21 and T6>T8. T3b needs no
+ * such delete: it excludes only members who never submitted, and they cannot have voted.
+ */
 export async function excludeMember(tx: Tx, membershipId: string): Promise<void> {
   await tx
     .update(tripMember)
     .set({ status: 'excluded', submittedAt: null })
     .where(eq(tripMember.id, membershipId));
   await tx.delete(preference).where(eq(preference.tripMemberId, membershipId));
+  await tx.delete(vote).where(eq(vote.tripMemberId, membershipId));
 }

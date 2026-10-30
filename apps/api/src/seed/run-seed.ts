@@ -23,6 +23,7 @@ import {
   tripPackage,
   tripTransition,
   userProfile,
+  vote,
 } from '@bonvoyage/db/schema';
 import { account, session, user, verification } from '@bonvoyage/db/schema/auth';
 import { distanceCache, providerUsage } from '@bonvoyage/db/schema';
@@ -87,6 +88,7 @@ async function tableCounts(db: Db): Promise<Record<string, number>> {
     past_trip: pastTrip,
     recommendation_run: recommendationRun,
     recommendation_item: recommendationItem,
+    vote,
     trip_package: tripPackage,
     cost_item: costItem,
     package_decision: packageDecision,

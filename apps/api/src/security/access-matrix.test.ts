@@ -476,6 +476,35 @@ const CASES: Case[] = [
       '404 NOT_FOUND',
     ],
   },
+  // R18: active members only, the organiser included. The fixture trip is collecting
+  // preferences, so voting is closed; votes.test.ts covers the shortlisted trip.
+  {
+    method: 'PUT',
+    path: '/api/trips/:id/vote',
+    url: (f) => `/api/trips/${f.tripId}/vote`,
+    body: { destinationSlug: 'nowhere' },
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '409 ILLEGAL_TRANSITION',
+      '403 FORBIDDEN',
+      '409 ILLEGAL_TRANSITION',
+      '404 NOT_FOUND',
+    ],
+  },
+  {
+    method: 'DELETE',
+    path: '/api/trips/:id/vote',
+    url: (f) => `/api/trips/${f.tripId}/vote`,
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '409 ILLEGAL_TRANSITION',
+      '403 FORBIDDEN',
+      '409 ILLEGAL_TRANSITION',
+      '404 NOT_FOUND',
+    ],
+  },
 
   // Collecting preferences: details are editable until the shortlist (0004 j),
   // and 1 submission is too few to close.

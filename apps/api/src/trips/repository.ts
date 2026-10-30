@@ -8,7 +8,7 @@ import {
   tripTransition,
   user,
 } from '@bonvoyage/db/schema';
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import type { MembershipRow, TripRow } from './access';
 
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
@@ -138,12 +138,17 @@ export async function countActiveMembers(db: Db, tripIds: string[]): Promise<Map
   return new Map(rows.map((r) => [r.tripId, r.n]));
 }
 
-/** created_at of the trip's newest transition row, or null. */
+// R18: votes stay in the audit table and out of everything the group reads. "Meera"
+// beside a count that just moved would say who voted for what.
+const visibleToGroup = (tripId: string) =>
+  and(eq(tripTransition.tripId, tripId), ne(tripTransition.transitionId, 'I6'));
+
+/** created_at of the trip's newest transition row the group can see, or null. */
 export async function newestTransitionAt(db: Db, tripId: string): Promise<Date | null> {
   const rows = await db
     .select({ at: tripTransition.createdAt })
     .from(tripTransition)
-    .where(eq(tripTransition.tripId, tripId))
+    .where(visibleToGroup(tripId))
     .orderBy(desc(tripTransition.createdAt))
     .limit(1);
   return rows[0]?.at ?? null;
@@ -173,7 +178,7 @@ export async function listActivity(db: Db, tripId: string, limit: number): Promi
     })
     .from(tripTransition)
     .leftJoin(user, eq(user.id, tripTransition.actorUserId))
-    .where(eq(tripTransition.tripId, tripId))
+    .where(visibleToGroup(tripId))
     .orderBy(desc(tripTransition.createdAt), desc(tripTransition.id))
     .limit(limit);
 }

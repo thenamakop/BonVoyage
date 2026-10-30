@@ -40,6 +40,7 @@ export const TripEventName = z.enum([
   'tripStarted',
   'tripEnded',
   'shortlistReopened',
+  'voteCast',
 ]);
 export type TripEventName = z.infer<typeof TripEventName>;
 
@@ -275,6 +276,9 @@ export const EVENT_SUMMARIES: Record<TripEventName, (actor: string, detail?: str
   tripStarted: (a) => `${a} marked the trip as started`,
   tripEnded: (a) => `${a} marked the trip as finished`,
   shortlistReopened: (a) => `${a} asked for new recommendations`,
+  // Never shown: the activity list leaves I6 out, because a name beside a count
+  // that just moved would say who voted for what (R18).
+  voteCast: (a) => `${a} changed their vote`,
 };
 
 /** The activity sentence for a stored event; a missing actor reads "Someone". */

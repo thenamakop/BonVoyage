@@ -17,6 +17,7 @@ This note covers the personal data BonVoyage keeps and who can see each part of 
 | Recommendation runs: the weights, the group profile the run was computed from, and the diagnostic | `recommendation_run` | Each ranking can be checked and reproduced later |
 | Each recommended destination's scores and every member's own match explanation (what it meets and misses for them) | `recommendation_item` | Showing each member why a destination suits them |
 | In-app notifications (type, trip, a payload of the trip title and the user id of who acted, read or unread) | `notification` | Telling members what needs them without leaving the app (see Notifications) |
+| Your vote on a shortlist (the destination, for that run) | `vote`, one row per member per run | Showing the group and the organiser how the shortlist was received (see Votes) |
 
 ## Who sees what
 
@@ -31,6 +32,8 @@ This note covers the personal data BonVoyage keeps and who can see each part of 
 | The trip's activity (who did what, by name) | Yes | Yes | Yes | Yes | No |
 | Your own match score and explanation for each recommended destination | Yes | No | No | Yes | No |
 | The group profile and the recommendations (combined figures only, see below) | Yes | Yes | Yes | Yes | No |
+| Your vote on a shortlist, next to your name | Yes | No | No | Yes | No |
+| How many votes each destination has, and how many members have voted (see Votes) | Yes | Yes | Yes | Yes | No |
 
 - **Your group never sees your answers.** Members see each other's names, roles, whether they are still in the trip, and whether they have submitted. Nobody else's preference is ever in a response as they entered it, and no preference is ever shown next to a name. The recommendation steps combine everyone's answers; the group then sees the combined result, not who wanted what (decision 0004 i).
 - **What the group does see** (`GET /api/trips/:id/group-profile` and each recommendation run):
@@ -65,6 +68,17 @@ In-app notifications (S5-3, decisions E3 and M4) are rows in the `notification` 
 - **Written with the event:** a notification is written in the same database transaction as the transition or the join, so an event that fails writes none.
 - **Deleted with:** your account (all notifications you received) or the trip (all notifications about it). A notification about something you did, such as joining, stays in the organiser's list after you delete your account, but it no longer names you: it reads "A former member joined the trip".
 
+## Votes
+
+Members can vote on a shortlist (R18, decision E4). The vote informs the organiser's choice and never makes it.
+
+- **What is shown:** the number of votes per destination, how many members have voted ("3 of 5 voted") and your own vote. No response says who voted for what, for anyone, the organiser included.
+- **Not in the activity list:** casting, changing or withdrawing a vote writes a `trip_transition` row like every event, with who and when but not the destination, which is only in `vote`. The dashboard's "Recent activity" and `lastActivityAt` leave votes out, because a name beside a count that just moved would say who voted for what. Votes send no notification.
+- **What counts can still reveal in small groups.** This is accepted, and stated here so nobody relies on more privacy than there is:
+  - In a 2-member trip the counts stay hidden until both have voted, so the first vote does not show to the member still deciding. Once both have voted, **each member can work out the other's vote**: 2 votes minus your own is theirs. A vote is a choice made for the group to see, like the package opinions' counts, not a private preference (R10).
+  - In any group, someone who sees a count move, or who knows the votes of everyone else, can narrow down or work out a vote. With 3 members, if you and one other person have voted, the second count is theirs.
+- **Deleted with:** your account or the trip. It is also deleted when the organiser removes you. "Close submissions" leaves nothing to delete, because it only excludes members who never submitted, and they cannot have voted. A new shortlist starts with no votes; the earlier shortlist's votes stay with that shortlist.
+
 ## Language-model prompts
 
 The itinerary text from Sprint 4 is written by Gemini on its free tier, which may use prompts to improve Google's products. So a prompt contains destination facts only. It never contains names, emails, user ids, member identities or anyone's personal budget (AGENTS.md section 11).
@@ -80,8 +94,8 @@ Every change to your data goes through a JSON request (`Content-Type: applicatio
 ## Deleting your data
 
 - **Leave a trip** (a member, while preferences are open): your membership and your preferences for that trip are deleted.
-- **Removed by the organiser:** your preferences for that trip are deleted; you keep read-only access.
-- **Delete your account** (S3-5, #54): sign in, open your profile, enter your password and type your email. Your sign-in, sessions, profile, preferences, package opinions, itinerary decisions, notifications, past trips and memberships are deleted; trips you organised that are finalised, completed or cancelled are deleted with it. The request is refused while you organise a trip that is still being planned or is in progress: cancel or finish it first.
+- **Removed by the organiser:** your preferences and votes for that trip are deleted; you keep read-only access.
+- **Delete your account** (S3-5, #54): sign in, open your profile, enter your password and type your email. Your sign-in, sessions, profile, preferences, votes, package opinions, itinerary decisions, notifications, past trips and memberships are deleted; trips you organised that are finalised, completed or cancelled are deleted with it. The request is refused while you organise a trip that is still being planned or is in progress: cancel or finish it first.
 
 ## How this is tested
 
@@ -89,10 +103,11 @@ Every change to your data goes through a JSON request (`Content-Type: applicatio
 | --- | --- |
 | `apps/api/src/security/routes.test.ts` | Every registered API route is in the endpoint inventory, so none skips the checks below |
 | `apps/api/src/security/access-matrix.test.ts` | Each of the 31 endpoints, called as anonymous, non-member, member, removed member, organiser and administrator, gives the expected status |
-| `apps/api/src/security/no-leak.test.ts` | No response to any caller contains another user's budget, past trips or email; your own email appears only on `/api/me`; the invitation preview holds no budgets, dates, emails or member names; the group profile and recommendations hold none of another member's own choices or exact budget figures, including the F5 diagnostic when members' maxima set the cap, and name a value only when two or more members chose it; with 2 members no GET a member can call, the packages included, carries the other member's minimum, maximum or the cap they set, and no closest miss rebuilds the cap (D1, #116) |
+| `apps/api/src/security/no-leak.test.ts` | No response to any caller contains another user's budget, past trips or email; your own email appears only on `/api/me`; the invitation preview holds no budgets, dates, emails or member names; the group profile and recommendations hold none of another member's own choices or exact budget figures, including the F5 diagnostic when members' maxima set the cap, and name a value only when two or more members chose it; with 2 members no GET a member can call, the packages included, carries the other member's minimum, maximum or the cap they set, and no closest miss rebuilds the cap (D1, #116); no response for any caller pairs a member with a voted destination, and with 2 members none carries per-destination counts until both have voted (R18) |
 | `apps/api/src/recommendations/recommendations.test.ts` | Each member's explanation is their own; budgets are rounded inwards; a trip-set cap stays exact; groups of 2 get no score range, no budget band, no per-person cap, no member-set group cap and no F5 amounts against a member-set cap (D1, #116) |
 | `apps/api/src/packages/packages.test.ts` | With 2 members an over-budget package against a member-set cap carries no amount; against a trip-set cap it does (D1, #116) |
 | `apps/api/src/notifications/notifications.test.ts` | Each of the nine types is written to the right people and nobody else; the reminder is limited to once per member per rolling 24 hours, also under two simultaneous clicks; someone else's notification id is a 404; no notification holds a budget, email, score or answer; deleting the account or the trip deletes the notifications |
+| `apps/api/src/recommendations/votes.test.ts` | One vote per member per run; a 2-member trip's counts wait until both have voted; removing a member or deleting an account deletes their votes; a vote never reaches the activity list, `lastActivityAt` or anyone's notifications |
 | `apps/api/src/security/logs.test.ts` | Logs from signing up, signing in and saving a preference hold no password, cookie, email or budget |
 | `apps/api/src/security/json-only.test.ts` | Non-JSON writes are refused with 415 |
 | `apps/api/src/preferences/preferences.test.ts` | A member only ever reads their own preference |

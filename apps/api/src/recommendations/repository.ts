@@ -10,6 +10,7 @@ import {
   trip,
   tripMember,
   tripPackage,
+  vote,
 } from '@bonvoyage/db/schema';
 import type { CostRules } from '@bonvoyage/engine';
 import { and, asc, desc, eq, gte, inArray, isNotNull, or, sql } from 'drizzle-orm';
@@ -175,7 +176,7 @@ export async function insertItems(
   await tx.insert(recommendationItem).values(values);
 }
 
-export async function findLatestRun(db: Db, tripId: string): Promise<RunRow | undefined> {
+export async function findLatestRun(db: Db | Tx, tripId: string): Promise<RunRow | undefined> {
   const rows = await db
     .select()
     .from(recommendationRun)
@@ -257,7 +258,7 @@ export async function listRunItems(db: Db, runId: string): Promise<ItemWithDesti
 
 /** The destination id of `slug` when it is an item of `runId`. */
 export async function findRunItemDestination(
-  db: Db,
+  db: Db | Tx,
   runId: string,
   slug: string,
 ): Promise<string | undefined> {
@@ -268,6 +269,41 @@ export async function findRunItemDestination(
     .where(and(eq(recommendationItem.runId, runId), eq(destination.slug, slug)))
     .limit(1);
   return rows[0]?.id;
+}
+
+export interface VoteRow {
+  tripMemberId: string;
+  slug: string;
+}
+
+/** R18: the run's votes by active members. Member ids stay in the service. */
+export async function listRunVotes(db: Db, runId: string): Promise<VoteRow[]> {
+  return db
+    .select({ tripMemberId: vote.tripMemberId, slug: destination.slug })
+    .from(vote)
+    .innerJoin(destination, eq(destination.id, vote.destinationId))
+    .innerJoin(
+      tripMember,
+      and(eq(tripMember.id, vote.tripMemberId), eq(tripMember.status, 'active')),
+    )
+    .where(eq(vote.runId, runId));
+}
+
+export async function upsertVote(
+  tx: Tx,
+  values: { runId: string; tripMemberId: string; destinationId: string },
+): Promise<void> {
+  await tx
+    .insert(vote)
+    .values(values)
+    .onConflictDoUpdate({
+      target: [vote.runId, vote.tripMemberId],
+      set: { destinationId: values.destinationId, updatedAt: new Date() },
+    });
+}
+
+export async function deleteVote(tx: Tx, runId: string, tripMemberId: string): Promise<void> {
+  await tx.delete(vote).where(and(eq(vote.runId, runId), eq(vote.tripMemberId, tripMemberId)));
 }
 
 export async function setSelectedDestination(
