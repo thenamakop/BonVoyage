@@ -5,14 +5,14 @@ import {
   capSource,
   evaluateCandidate,
   explainMatch,
+  feasibilityContext,
   groupProfile,
   groupSummary,
   rankDestinations,
-  type CostedDestination,
-  type DestinationInput,
+  splitByCosts,
+  toMemberInput,
   type Evaluation,
   type Failure,
-  type FeasibilityContext,
   type GroupProfile,
   type GroupSummary,
   type MatchExplanation,
@@ -24,9 +24,7 @@ import type { Routing } from '@bonvoyage/integrations/routing';
 import {
   ERROR_CODES,
   indiaDate,
-  type Activity,
   type ChooseDestinationInput,
-  type DestinationType,
   type DiagnosticFailure,
   type GroupProfileReady,
   type GroupProfileResponse,
@@ -62,9 +60,7 @@ import {
   readRoundHistory,
   readStalenessStamp,
   setSelectedDestination,
-  type DestinationRow,
   type ItemWithDestination,
-  type Participant,
   type RunRow,
 } from './repository';
 import { earlierRounds, roundWeights } from './earlier-rounds';
@@ -153,55 +149,15 @@ interface ItemReasons {
   cheapestMode: TransportMode;
 }
 
-// ---------------------------------------------------------------------------
-// Mapping database rows to engine inputs.
-
-function toMemberInput(p: Participant, likedPastTypes: readonly string[]): MemberInput {
-  return {
-    memberId: p.tripMemberId,
-    types: p.preference.destinationTypes as DestinationType[],
-    activities: p.preference.activities as Activity[],
-    climate: p.preference.climate,
-    likedPastTypes: likedPastTypes as DestinationType[],
-    budgetMinInr: p.preference.budgetMinInr,
-    budgetMaxInr: p.preference.budgetMaxInr,
-    dateStart: p.preference.dateStart,
-    dateEnd: p.preference.dateEnd,
-  };
-}
-
-function toDestinationInput(d: DestinationRow): DestinationInput {
-  return {
-    id: d.id,
-    slug: d.slug,
-    types: d.types as DestinationType[],
-    activities: d.activities as Activity[],
-    climate: d.climate,
-    bestMonths: d.bestMonths,
-    minNights: d.minNights,
-  };
-}
-
-/** 0004 e: a candidate needs its budget stay, food and local costs. */
-function toCosted(d: DestinationRow): CostedDestination | null {
-  if (d.stayBudgetInr === null || d.foodPerDayInr === null || d.localPerDayInr === null) {
-    return null;
-  }
-  return {
-    ...toDestinationInput(d),
-    stayBudgetInr: d.stayBudgetInr,
-    foodPerDayInr: d.foodPerDayInr,
-    localPerDayInr: d.localPerDayInr,
-  };
-}
-
 export async function loadMembers(db: Db, tripId: string) {
   const participants = await listParticipants(db, tripId);
   const liked = await listLikedPastTypes(
     db,
     participants.map((p) => p.userId),
   );
-  return participants.map((p) => toMemberInput(p, liked.get(p.userId) ?? []));
+  return participants.map((p) =>
+    toMemberInput(p.tripMemberId, p.preference, liked.get(p.userId) ?? []),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -475,8 +431,10 @@ async function planRun(
   const n = members.length;
   const source = capSource(tripRow.budgetTotalInr, n, profile.perPersonCapInr);
 
+  const ctx = feasibilityContext(tripRow, profile);
+
   // F3 (0004 c): a blocking window conflict sends the group back (T4).
-  if (profile.commonWindow === null || profile.conflicts.some((c) => c.blocking)) {
+  if (!ctx) {
     return {
       event: 'conflictDetected',
       feasibleCount: 0,
@@ -518,13 +476,7 @@ async function planRun(
     throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
   }
 
-  const costed: { row: DestinationRow; destination: CostedDestination }[] = [];
-  const incomplete: string[] = [];
-  for (const row of rows) {
-    const destination = toCosted(row);
-    if (destination) costed.push({ row, destination });
-    else incomplete.push(row.slug);
-  }
+  const { costed, incomplete } = splitByCosts(rows);
 
   const [distances, fares] = await Promise.all([
     routing.getDistances(
@@ -533,16 +485,6 @@ async function planRun(
     ),
     listPublicFares(db, origin.id),
   ]);
-
-  const ctx: FeasibilityContext = {
-    n,
-    durationNights: tripRow.durationNights,
-    radiusKm: tripRow.radiusKm,
-    groupCapInr: profile.groupCapInr,
-    capSource: source,
-    perPersonCapInr: profile.perPersonCapInr,
-    commonWindow: { start: profile.commonWindow.start, end: profile.commonWindow.end },
-  };
 
   const evaluated = costed.map(({ row, destination }) => {
     const distance = distances.get(row.id);
