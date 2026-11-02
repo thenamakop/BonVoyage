@@ -18,7 +18,7 @@ import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
-import { HILLS_DEMO } from '../seed/demo-trips';
+import { HILLS_DEMO, demoDates } from '../seed/demo-trips';
 import { createTestUser } from '../test/helpers';
 
 // S3-8 (R2, R8, R12, R13, R15): the whole journey over HTTP, from sign-up to a
@@ -34,8 +34,6 @@ const auth = createAuth({
 });
 const app = createApp({ db, pool, logger: pino({ level: 'silent' }), auth });
 const H = { Host: 'localhost:5173', Origin: 'http://localhost:5173' };
-
-const inDays = (n: number) => indiaDate(new Date(Date.now() + n * 86_400_000));
 
 beforeAll(async () => {
   await importCatalogue(db, resolve(import.meta.dirname, '../../../../packages/db/catalogue'), {
@@ -84,8 +82,9 @@ async function timed<T>(label: string, run: () => Promise<T>): Promise<T> {
 describe('full journey, end to end', () => {
   it('sign-up to a finalised trip, T1 to T14 in order, with a Remove and a Swap on the day plan', async () => {
     const people = [];
+    const at = await demoDates(db, () => new Date(), HILLS_DEMO.title, HILLS_DEMO.durationNights);
     for (const m of HILLS_DEMO.members) {
-      people.push({ input: m.input(inDays), ...(await createTestUser(app, `Journey ${m.name}`)) });
+      people.push({ input: m.input(at), ...(await createTestUser(app, `Journey ${m.name}`)) });
     }
     const [organiser, ...members] = people;
     if (!organiser || members.length !== 2) throw new Error('the journey needs three people');

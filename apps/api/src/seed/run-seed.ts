@@ -27,13 +27,18 @@ import {
 } from '@bonvoyage/db/schema';
 import { account, session, user, verification } from '@bonvoyage/db/schema/auth';
 import { distanceCache, providerUsage } from '@bonvoyage/db/schema';
-import { indiaDate, type PreferenceInput } from '@bonvoyage/shared';
 import { and, eq, sql } from 'drizzle-orm';
 import { pino } from 'pino';
 import type { Auth } from '../auth/auth';
 import { saveMyPreference } from '../preferences/service';
 import { transitionTrip } from '../trips/transition-trip';
-import { DEMO_SCENARIOS, seedDemoTrip } from './demo-trips';
+import {
+  DEMO_SCENARIOS,
+  HILLS_DEMO,
+  LONG_WEEKEND_TITLE,
+  demoDates,
+  seedDemoTrip,
+} from './demo-trips';
 import { clearRebuildNotifications, deleteDemoTrips } from './fresh-demos';
 
 // S0-5 step 6: demo seed. Every step is idempotent so the seed can run again
@@ -46,7 +51,7 @@ const DEMO_USERS = [
   { name: 'Kabir', role: 'member' },
 ] as const;
 
-const TRIP_TITLE = 'Long weekend in the hills';
+const TRIP_TITLE = LONG_WEEKEND_TITLE;
 const TODAY = () => new Date().toISOString().slice(0, 10);
 
 const demoEmail = (name: string) => `${name.toLowerCase()}@demo.bonvoyage.test`;
@@ -58,6 +63,8 @@ export interface SeedOptions {
   password: string;
   /** S3-8: delete every demo-organised trip first, so each is built fresh. */
   freshDemos?: boolean;
+  /** The run day; the demo trips' dates follow it (#154). Tests pass a fixed one. */
+  clock?: () => Date;
   /** Where progress lines go; defaults to stdout (the seed is a CLI step). */
   log?: (line: string) => void;
 }
@@ -111,6 +118,7 @@ export async function runSeed({
   catalogueDir,
   password,
   freshDemos = false,
+  clock = () => new Date(),
   log = stdout,
 }: SeedOptions): Promise<void> {
   const today = TODAY();
@@ -208,44 +216,20 @@ export async function runSeed({
 
   // S1-6: the seed follows the state machine like the app does. T2 opens the
   // trip once; a re-seed sees it already open and skips.
-  const deps = { db, logger: pino({ level: 'silent' }), clock: () => new Date() };
+  const deps = { db, logger: pino({ level: 'silent' }), clock };
   const [demo] = await db.select({ status: trip.status }).from(trip).where(eq(trip.id, tripId));
   if (demo!.status === 'draft') {
     await transitionTrip(deps, { tripId, event: 'inviteMembers', actorUserId: asha });
   }
 
   // f) Asha and Rohan submit through the same preference service the API
-  // uses, so each submission writes an I1 row; Meera stays pending. Dates are
-  // relative to today so the server's "from today" check always passes.
-  const inDays = (n: number) => indiaDate(new Date(Date.now() + n * 86_400_000));
-  const prefs: { name: string; input: PreferenceInput }[] = [
-    {
-      name: 'Asha',
-      input: {
-        destinationTypes: ['mountain', 'adventure'],
-        activities: ['trekking', 'rafting', 'camping'],
-        climate: 'cold',
-        travelStyle: 'budget',
-        budgetMinInr: 12000,
-        budgetMaxInr: 18000,
-        dateStart: inDays(31),
-        dateEnd: inDays(34),
-      },
-    },
-    {
-      name: 'Rohan',
-      input: {
-        destinationTypes: ['spiritual', 'mountain'],
-        activities: ['yoga_wellness', 'temples', 'trekking'],
-        climate: 'mild',
-        travelStyle: 'comfort',
-        budgetMinInr: 10000,
-        budgetMaxInr: 16000,
-        dateStart: inDays(30),
-        dateEnd: inDays(33),
-      },
-    },
-  ];
+  // uses, so each submission writes an I1 row; Meera stays pending. Dates follow
+  // the run day to the first in-season Saturday (#154), so the server's "from
+  // today" check always passes.
+  const at = await demoDates(db, clock, TRIP_TITLE, HILLS_DEMO.durationNights);
+  const prefs = HILLS_DEMO.members
+    .filter((m) => m.name !== 'Meera')
+    .map(({ name, input }) => ({ name, input: input(at) }));
   for (const { name, input } of prefs) {
     const userId = userIds.get(name)!;
     const [m] = await db
@@ -269,7 +253,7 @@ export async function runSeed({
       tripId,
       token: randomBytes(24).toString('base64url'),
       createdBy: asha,
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      expiresAt: new Date(clock().getTime() + 7 * 24 * 60 * 60 * 1000),
     });
   }
 
