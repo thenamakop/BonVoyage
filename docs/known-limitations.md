@@ -20,7 +20,7 @@ Source: `docs/evaluation/results-2026-11-03.md` and `docs/evaluation/README.md`.
 
 ## Catalogue rows still draft
 
-`pnpm catalogue:check` on 3 November 2026: stage A 50/50, B1 137/137, B2 102/104 and C 214/276 verified — 64 rows remain draft (2 fares, 62 places) and show in the app as "Not verified". Four Rajasthan places carry a best-estimate fee per the estimate rule in `docs/sprints/catalogue-s4-c-batch2-2026-11-03.md`; they stay draft until an operator's own page or two agreeing pages can be found.
+`pnpm catalogue:check` on 3 November 2026: stage A 50/50, B1 137/137, B2 102/104 and C 214/276 verified, so 64 rows remain draft (2 fares, 62 places) and show in the app as "Not verified". Four Rajasthan places carry a best-estimate fee per the estimate rule in `docs/sprints/catalogue-s4-c-batch2-2026-11-03.md`; they stay draft until an operator's own page or two agreeing pages can be found.
 
 ## In-app reminders only, and no user study
 
