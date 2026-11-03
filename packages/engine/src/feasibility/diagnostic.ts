@@ -71,15 +71,26 @@ function buildSuggestions(
       // Safe: actuals has at least `needed` entries (checked above).
       const covered = [...actuals].sort((a, b) => a - b)[needed - 1] as number;
       const newGroupCapInr = Math.ceil(covered / 500) * 500;
+      // The cap is min(trip budget, n × per-person cap) (0004 b) and a suggestion
+      // raises one side only, so the other side is as far as it can go.
+      const ceiling = ctx.capSource === 'trip' ? ctx.n * ctx.perPersonCapInr : ctx.tripBudgetInr;
+      if (newGroupCapInr > ceiling) continue;
+      // 0004 c: the organiser cannot raise members' maxima, so show the new per-person cap.
+      const newPerPersonMaxInr =
+        ctx.capSource === 'members' ? Math.ceil(newGroupCapInr / ctx.n / 500) * 500 : undefined;
+      // "This adds" lists what the change really reaches: rounding the per-person
+      // maximum up can carry the cap past newGroupCapInr, up to the trip budget.
+      const reached =
+        newPerPersonMaxInr === undefined
+          ? newGroupCapInr
+          : Math.min(ctx.tripBudgetInr, ctx.n * newPerPersonMaxInr);
       const suggestion: Suggestion = {
         constraint: 'F5',
         newGroupCapInr,
         capSource: ctx.capSource,
-        unlocks: slugs(misses.filter((e) => failureOf(e).actual <= newGroupCapInr)),
+        unlocks: slugs(misses.filter((e) => failureOf(e).actual <= reached)),
       };
-      // 0004 c: the organiser cannot raise members' maxima, so show the new per-person cap.
-      if (ctx.capSource === 'members')
-        suggestion.newPerPersonMaxInr = Math.ceil(newGroupCapInr / ctx.n / 500) * 500;
+      if (newPerPersonMaxInr !== undefined) suggestion.newPerPersonMaxInr = newPerPersonMaxInr;
       out.push(suggestion);
     }
   }

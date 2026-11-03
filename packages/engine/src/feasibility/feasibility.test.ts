@@ -55,6 +55,7 @@ const ctx = (overrides: Partial<FeasibilityContext> = {}): FeasibilityContext =>
   groupCapInr: 30000,
   capSource: 'trip',
   perPersonCapInr: 10000,
+  tripBudgetInr: 30000,
   commonWindow: { start: '2026-11-10', end: '2026-11-14' },
   ...overrides,
 });
@@ -457,6 +458,32 @@ describe('the F5 suggestion reaches a shortlist (#132)', () => {
         over('e', 15501),
       ]),
     ).toMatchObject({ newGroupCapInr: 15500, unlocks: ['a', 'b', 'c', 'd'] });
+  });
+
+  it('a trip cap: never above n × the lowest maximum, which the trip budget cannot pass', () => {
+    // 3 × 4000 = 12000 is as far as raising the trip budget can take the cap.
+    const capped = { ctx: ctx({ capSource: 'trip', n: 3, perPersonCapInr: 4000 }) };
+    expect(f5Of([over('a', 9000), over('b', 9500), over('c', 12000)], capped)).toMatchObject({
+      newGroupCapInr: 12000,
+    });
+    expect(f5Of([over('a', 9000), over('b', 9500), over('c', 12100)], capped)).toBeUndefined();
+  });
+
+  it('a members cap: never above the trip budget; "adds" follows the cap really reached', () => {
+    const members = (tripBudgetInr: number) => ({
+      ctx: ctx({ capSource: 'members', n: 4, tripBudgetInr }),
+    });
+    const four = [over('a', 9000), over('b', 9500), over('c', 15001), over('d', 15900)];
+    // 15500 / 4 rounds up to 4000 each, so the cap reaches 16000 and adds d too.
+    expect(f5Of(four, members(40000))).toMatchObject({
+      newGroupCapInr: 15500,
+      newPerPersonMaxInr: 4000,
+      unlocks: ['a', 'b', 'c', 'd'],
+    });
+    // A trip budget of 15800 stops it there, so d stays out.
+    expect(f5Of(four, members(15800))).toMatchObject({ unlocks: ['a', 'b', 'c'] });
+    // Below the new cap: raising maxima cannot reach it, so no budget suggestion.
+    expect(f5Of(four, members(15000))).toBeUndefined();
   });
 
   it('members set the cap: the per-person maximum follows the new group cap', () => {

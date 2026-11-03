@@ -123,6 +123,7 @@ describe('feasibilityContext', () => {
       groupCapInr: 20000,
       capSource: 'members',
       perPersonCapInr: 10000,
+      tripBudgetInr: 100000,
       commonWindow: { start: '2026-11-13', end: '2026-11-16' },
     });
   });
