@@ -24,6 +24,9 @@ const count = integer(values.scenarios, 'scenarios', 1, 100000);
 const seed = integer(values.seed, 'seed', 0, 4294967295);
 const date = new Date().toISOString().slice(0, 10);
 const commit = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+const dirty =
+  execFileSync('git', ['status', '--porcelain', '--', 'scripts/eval'], { encoding: 'utf8' }).trim()
+    .length > 0;
 const run = runEvaluation(count, seed, date);
 const milliseconds = performance.now() - started;
 const command = `pnpm eval${process.argv
@@ -34,7 +37,7 @@ const directory = resolve(values['output-dir']);
 mkdirSync(directory, { recursive: true });
 const base = resolve(directory, `results-${date}`);
 writeFileSync(`${base}.csv`, csvReport(run));
-writeFileSync(`${base}.md`, markdownReport(run, { date, commit, command, milliseconds }));
+writeFileSync(`${base}.md`, markdownReport(run, { date, commit, command, milliseconds, dirty }));
 const metrics = aggregate(run);
 console.log(
   `Evaluation: ${count} scenarios, seed ${seed}, ${(milliseconds / 1000).toFixed(3)} seconds`,
