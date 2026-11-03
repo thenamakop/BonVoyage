@@ -73,8 +73,14 @@ Leave this window open for step 6.
 4. **Meera:** the dashboard reads **"Waiting for Asha (demo) to choose a destination."** Click **See the shortlist**. Read her line on Chakrata: **"For you: 4.3 out of 10. Matches ‘hill station’, trekking. Misses heritage, museums, ‘food trails’."**
    > "Same card, different 'For you' line. Each person only sees their own reasons, and only Asha can choose."
 
-   Optional: Meera's bell shows 1: **"A shortlist of destinations is ready."**
-5. **Asha:** click **Choose** on Chakrata. The confirm reads **"Choose Chakrata? The group moves on to packages."** Click **Choose Chakrata**. The packages are built in (timed in the dry run).
+   Above the cards the page reads **"0 of 3 voted"**, and Chakrata reads **"No votes"**. Click **Vote for this** on Chakrata. The button now reads **"Your vote"** and the page reads **"1 of 3 voted"**.
+   > "Everyone can vote for one place, and change or withdraw it. Votes are counts: nobody sees who voted for what."
+
+   Optional: Meera's bell shows 1: **"A shortlist of destinations is ready. Vote for your favourite."**
+5. **Asha:** switch to her window; the shortlist refreshes by itself. Above the cards it reads **"1 of 3 voted"**, and Chakrata reads **"1 vote"** beside **Choose**.
+   > "The votes inform the choice, but Asha can choose any place on the list, whatever the count."
+
+   Click **Choose** on Chakrata. The confirm reads **"Choose Chakrata? The group moves on to packages."** Click **Choose Chakrata**. The packages are built in (timed in the dry run).
 6. The dashboard reads **"Step 5 of 7: Packages proposed"** and **"Compare the packages and say which work for you."**
 
 ## 3. Packages (2 minutes)
