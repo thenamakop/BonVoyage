@@ -1,10 +1,10 @@
 # Sprint 3 demo: ten minutes, the whole journey
 
-This script shows the full journey on Monday 2 November: a new account, a group's preferences, the shortlist, costed packages, a day plan built from catalogue facts, and a finalised trip. It ends with the transport comparison on the Tight budget demo and an account deletion. Anyone on the team can follow it. Every click and every line on screen is written exactly as the app shows it.
+This script shows the full journey on demo day: a new account, a group's preferences, the shortlist, costed packages, a day plan built from catalogue facts, and a finalised trip. It ends with the transport comparison on the Tight budget demo and an account deletion. Anyone on the team can follow it. Every click and every line on screen is written exactly as the app shows it.
 
 Every price in the app is an estimate, and the screens say "estimate" next to each one.
 
-**Dates.** The dates quoted below come from a reset on 28 October. The seed sets everyone's dates relative to the day it runs, so after a reset on another day every date moves by the same number of days. Nothing else changes.
+**Dates.** The dates quoted below (28 to 30 Nov 2026, a Saturday to a Monday) are an example. A reset puts the trips on the first in-season weekend at least two weeks ahead: the window opens on a Saturday, and every night of it falls in the season of the places this script names (Chakrata for the hills trips; Vrindavan, Mathura and Bikaner for the Tight budget demo). So the dates on screen may differ from those quoted, but the weekdays, places and prices do not.
 
 ## Before you start (2 minutes, before the audience arrives)
 
@@ -50,7 +50,7 @@ Leave this window open for step 6.
    - **Climate:** Any ("Weather does not matter")
    - **Travel style:** Comfort ("Trains or cabs, mid-range hotels")
    - **Budget min (₹ per person)** `11000`, **Budget max (₹ per person)** `17000`
-   - **Available from:** the day before the first date under "Dates everyone can make" on the dashboard; **Available to:** the day after the last date. After a 28 October reset the dashboard shows "28 to 30 Nov, 3 days", so enter 27 Nov 2026 and 1 Dec 2026.
+   - **Available from:** the day before the first date under "Dates everyone can make" on the dashboard; **Available to:** the day after the last date. In the quoted example the dashboard shows "28 to 30 Nov, 3 days", so enter 27 Nov 2026 and 1 Dec 2026.
 4. Click **Submit preferences**. The page reads **"Saved. Everyone has submitted, so the trip is ready for recommendations."**
 5. **Asha:** open **Long weekend in the hills**. Within 8 seconds the dashboard reads **"Step 3 of 7: Ready for recommendations"** and **"Get recommendations when you are ready."**
    > "The last submission moved the trip on by itself. Nobody had to press anything."
@@ -162,5 +162,5 @@ The account from step 0 is deleted in step 6, so nothing is left to clean up.
 - **The source line reads "Written with … from catalogue facts".** Gemini wording is switched on for preview (`LIVE_APIS=on`). The notes under each visit are worded differently; places, times and prices stay the same.
 - **The shortlist says ₹29,565 and the Saver package says ₹29,566.** The shortlist rounds its estimate once; a package rounds each cost line up to whole rupees and adds them.
 - **The shortlist says ₹13,860 for Bikaner and the Saver package says ₹13,995.** The shortlist estimate leaves out entry fees; a package adds them as their own line (₹135 here).
-- **The dates are different.** The reset ran on another day; every date moves by the same number of days.
+- **The dates are different.** The reset ran on another day, so the trips sit on the first in-season Saturday at least two weeks ahead. The window still opens on a Saturday and the places and prices are the same. `apps/api/src/seed/demo-season.test.ts` checks this for six run days.
 - **There's no "Get recommendations" button, or a trip is already further along.** It was used since the last reset. Ask Maulik to run the preview reset again.

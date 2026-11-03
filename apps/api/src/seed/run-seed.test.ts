@@ -20,7 +20,6 @@ import {
   vote,
 } from '@bonvoyage/db/schema';
 import { account, user } from '@bonvoyage/db/schema/auth';
-import { indiaDate } from '@bonvoyage/shared';
 import { asc, eq, inArray, like, sql } from 'drizzle-orm';
 import { resolve } from 'node:path';
 import { createRouting, curatedProvider, estimateProvider } from '@bonvoyage/integrations/routing';
@@ -54,6 +53,7 @@ import {
   TIGHT_BUDGET_DEMO,
   TIGHT_BUDGET_INR,
   TIGHT_BUDGET_MARGIN,
+  demoDates,
 } from './demo-trips';
 import { DEMO_EMAIL_DOMAIN } from './fresh-demos';
 import { runSeed } from './run-seed';
@@ -323,8 +323,8 @@ describe('Long weekend in the hills: the full journey through the services', () 
       .from(user)
       .where(eq(user.email, `meera${DEMO_EMAIL_DOMAIN}`));
     if (!meera) throw new Error('Meera was not seeded');
-    const inDays = (n: number) => indiaDate(new Date(Date.now() + n * 86_400_000));
-    await saveMyPreference(deps, row.id, meera.id, MEERA_PREFERENCE(inDays));
+    const at = await demoDates(db, deps.clock, row.title, row.durationNights);
+    await saveMyPreference(deps, row.id, meera.id, MEERA_PREFERENCE(at));
     const asha = row.organiserId;
 
     const rec = await requestRecommendations(deps, row.id, asha);
@@ -662,8 +662,8 @@ describe('runSeed with freshDemos', () => {
     };
     const [row] = await db.select().from(trip).where(eq(trip.title, 'Long weekend in the hills'));
     if (!row) throw new Error('Long weekend in the hills was not seeded');
-    const inDays = (n: number) => indiaDate(new Date(Date.now() + n * 86_400_000));
-    await saveMyPreference(deps, row.id, await idOf('meera'), MEERA_PREFERENCE(inDays));
+    const at = await demoDates(db, deps.clock, row.title, row.durationNights);
+    await saveMyPreference(deps, row.id, await idOf('meera'), MEERA_PREFERENCE(at));
     expect((await bellOf('asha')).unreadCount).toBe(0);
 
     const rec = await requestRecommendations(deps, row.id, row.organiserId);

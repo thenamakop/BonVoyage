@@ -1,11 +1,13 @@
 import type { Db } from '@bonvoyage/db';
-import { trip, tripMember } from '@bonvoyage/db/schema';
+import { destination, trip, tripMember } from '@bonvoyage/db/schema';
+import { addDaysUtc } from '@bonvoyage/engine';
 import { indiaDate, type PreferenceInput } from '@bonvoyage/shared';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import { acceptInvitation, createInvitation } from '../invitations/service';
 import { saveMyPreference } from '../preferences/service';
 import { createTrip } from '../trips/service';
+import { demoWindowStart } from './demo-window';
 
 // S2-8: the three Sprint 2 demo trips. Each is built through the same services
 // the API uses (T1 createTrip, T2 the first invitation, joins through the
@@ -25,44 +27,47 @@ interface Deps {
 
 export type DemoMember = 'Asha' | 'Rohan' | 'Meera' | 'Kabir';
 
+/** A date `n` days after the demo window's first day (0 is the window start). */
+export type DemoDates = (daysFromWindowStart: number) => string;
+
 export interface DemoScenario {
   title: string;
   budgetTotalInr: number;
   radiusKm: number;
   durationNights: number;
-  /** The organiser first; each member's preference, dated relative to today. */
-  members: { name: DemoMember; input: (inDays: (n: number) => string) => PreferenceInput }[];
+  /** The organiser first; each member's preference, dated from the window start. */
+  members: { name: DemoMember; input: (at: DemoDates) => PreferenceInput }[];
 }
 
-const asha = (inDays: (n: number) => string): PreferenceInput => ({
+const asha = (at: DemoDates): PreferenceInput => ({
   destinationTypes: ['mountain', 'adventure'],
   activities: ['trekking', 'rafting', 'camping'],
   climate: 'cold',
   travelStyle: 'budget',
   budgetMinInr: 12000,
   budgetMaxInr: 18000,
-  dateStart: inDays(31),
-  dateEnd: inDays(34),
+  dateStart: at(0),
+  dateEnd: at(3),
 });
-const rohan = (inDays: (n: number) => string): PreferenceInput => ({
+const rohan = (at: DemoDates): PreferenceInput => ({
   destinationTypes: ['spiritual', 'mountain'],
   activities: ['yoga_wellness', 'temples', 'trekking'],
   climate: 'mild',
   travelStyle: 'comfort',
   budgetMinInr: 10000,
   budgetMaxInr: 16000,
-  dateStart: inDays(30),
-  dateEnd: inDays(33),
+  dateStart: at(-1),
+  dateEnd: at(2),
 });
-const meera = (inDays: (n: number) => string): PreferenceInput => ({
+const meera = (at: DemoDates): PreferenceInput => ({
   destinationTypes: ['heritage', 'hill_station'],
   activities: ['museums', 'trekking', 'food_trails'],
   climate: 'any',
   travelStyle: 'comfort',
   budgetMinInr: 11000,
   budgetMaxInr: 17000,
-  dateStart: inDays(30),
-  dateEnd: inDays(34),
+  dateStart: at(-1),
+  dateEnd: at(3),
 });
 
 /** S3-8: what Meera submits on screen for "Long weekend in the hills" (demo step 1). */
@@ -111,17 +116,57 @@ export const DATE_CLASH_DEMO: DemoScenario = {
     { name: 'Asha', input: asha },
     {
       name: 'Rohan',
-      input: (inDays) => ({
-        ...rohan(inDays),
-        // Asha's window ends on day 34.
-        dateStart: inDays(34 + DATE_CLASH_GAP_DAYS),
-        dateEnd: inDays(34 + DATE_CLASH_GAP_DAYS + 3),
+      input: (at) => ({
+        ...rohan(at),
+        // Asha's window ends 3 days after the window start.
+        dateStart: at(3 + DATE_CLASH_GAP_DAYS),
+        dateEnd: at(3 + DATE_CLASH_GAP_DAYS + 3),
       }),
     },
   ],
 };
 
 export const DEMO_SCENARIOS = [HILLS_DEMO, TIGHT_BUDGET_DEMO, DATE_CLASH_DEMO] as const;
+
+/** The first demo trip, built by run-seed.ts; Meera submits on screen (demo step 1). */
+export const LONG_WEEKEND_TITLE = 'Long weekend in the hills';
+
+/**
+ * #154: per demo trip, the destinations docs/demo/sprint-3-demo.md relies on. The seed
+ * puts the trip's window on the first Saturday where every night is in season for all of
+ * them (demoWindowStart), so a reset on any day still shows the script's places and prices.
+ * The date clash demo names no place: it stops at F3.
+ */
+export const DEMO_ANCHORS: Readonly<Record<string, readonly string[]>> = {
+  [LONG_WEEKEND_TITLE]: ['chakrata'],
+  [HILLS_DEMO.title]: ['chakrata'],
+  [TIGHT_BUDGET_DEMO.title]: ['vrindavan', 'mathura', 'bikaner'],
+  [DATE_CLASH_DEMO.title]: [],
+};
+
+/**
+ * The dates helper for one demo trip on the run day: `at(0)` is the first Saturday at
+ * least 14 days ahead whose nights are in season for the trip's anchors. The catalogue
+ * must be imported (the anchors' best months come from it).
+ */
+export async function demoDates(
+  db: Db,
+  clock: () => Date,
+  title: string,
+  nights: number,
+): Promise<DemoDates> {
+  const slugs = DEMO_ANCHORS[title] ?? [];
+  const anchors = slugs.length
+    ? await db
+        .select({ slug: destination.slug, bestMonths: destination.bestMonths })
+        .from(destination)
+        .where(inArray(destination.slug, [...slugs]))
+    : [];
+  const missing = slugs.filter((slug) => !anchors.some((a) => a.slug === slug));
+  if (missing.length) throw new Error(`demo anchor ${missing.join(', ')} is not in the catalogue`);
+  const start = demoWindowStart(indiaDate(clock()), nights, anchors);
+  return (n) => addDaysUtc(start, n);
+}
 
 /**
  * Find or build one demo trip and bring it to ready_for_recommendation.
@@ -177,7 +222,7 @@ export async function seedDemoTrip(
   }
 
   // Everyone joins before anyone submits, so only the last submission fires T3.
-  const inDays = (n: number) => indiaDate(new Date(clock().getTime() + n * 86_400_000));
+  const at = await demoDates(db, clock, scenario.title, scenario.durationNights);
   for (const m of scenario.members) {
     const userId = idOf(m.name);
     const [row] = await db
@@ -186,7 +231,7 @@ export async function seedDemoTrip(
       .where(and(eq(tripMember.tripId, tripId), eq(tripMember.userId, userId)))
       .limit(1);
     if (row && row.submittedAt === null) {
-      await saveMyPreference(deps, tripId, userId, m.input(inDays));
+      await saveMyPreference(deps, tripId, userId, m.input(at));
     }
   }
   return tripId;
