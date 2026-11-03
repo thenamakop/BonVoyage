@@ -340,7 +340,7 @@ describe('Long weekend in the hills: the full journey through the services', () 
     // file ran the other demo trips, so this counts the script's trip alone.
     const bell = await getNotifications(db, meera.id);
     expect(bell.items.filter((n) => n.tripId === row.id).map((n) => n.message)).toEqual([
-      'A shortlist of destinations is ready',
+      'A shortlist of destinations is ready. Vote for your favourite',
     ]);
 
     await chooseDestination(deps, row.id, asha, { destinationSlug: first.slug });
@@ -676,7 +676,11 @@ describe('runSeed with freshDemos', () => {
     const meera = await bellOf('meera');
     expect(meera.unreadCount).toBe(1);
     expect(meera.items.map((n) => [n.type, n.tripTitle, n.message])).toEqual([
-      ['shortlist_ready', 'Long weekend in the hills', 'A shortlist of destinations is ready'],
+      [
+        'shortlist_ready',
+        'Long weekend in the hills',
+        'A shortlist of destinations is ready. Vote for your favourite',
+      ],
     ]);
     expect((await bellOf('asha')).unreadCount).toBe(0);
   });

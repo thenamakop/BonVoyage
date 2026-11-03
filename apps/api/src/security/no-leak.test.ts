@@ -735,7 +735,7 @@ describe('notifications hold no preference, budget, score or email', () => {
     expect(messages(rohan)).toEqual(
       [
         'LeakNote Asha asked for new recommendations',
-        'A shortlist of destinations is ready',
+        'A shortlist of destinations is ready. Vote for your favourite',
         'Preferences are closed. The trip is ready for recommendations',
       ].sort(),
     );

@@ -12,8 +12,10 @@ import {
   forYouText,
   groupScoreText,
   sharedText,
+  voteCountText,
 } from '../../../features/recommendations/wording';
 import { ApiError } from '../../../lib/api';
+import { VoteButton } from './VoteButton';
 
 // One ranked destination (wireframe 07). Everything on it is the API's: the
 // group sees aggregates, and "For you" comes only from the caller's own match.
@@ -62,14 +64,25 @@ function Choose({ tripId, item }: { tripId: string; item: RecommendationItem }) 
   );
 }
 
+/** R18: this card's share of the votes. Never who voted; `count` is absent while a pair waits (E4). */
+export interface CardVote {
+  count: number | undefined;
+  mine: boolean;
+  canVote: boolean;
+  busy: boolean;
+  onToggle: () => void;
+}
+
 export function DestinationCard({
   item,
   tripId,
   canChoose,
+  vote,
 }: {
   item: RecommendationItem;
   tripId: string;
   canChoose: boolean;
+  vote?: CardVote | undefined;
 }) {
   const headingId = useId();
   const score = groupScoreText(item.group);
@@ -89,6 +102,14 @@ export function DestinationCard({
       <p className="text-slate-900">{climateText(item.group)}</p>
       <p className="text-slate-900">{sharedText(item.group)}</p>
       {item.mine ? <p className="font-medium text-slate-900">{forYouText(item.mine)}</p> : null}
+      {vote?.count !== undefined ? (
+        <p className="font-medium text-slate-900">{voteCountText(vote.count)}</p>
+      ) : null}
+      {vote?.canVote ? (
+        <div className="pt-2">
+          <VoteButton mine={vote.mine} busy={vote.busy} onToggle={vote.onToggle} />
+        </div>
+      ) : null}
       {canChoose ? <Choose tripId={tripId} item={item} /> : null}
     </article>
   );

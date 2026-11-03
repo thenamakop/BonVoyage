@@ -17,7 +17,7 @@ const note = (id: string, over: Partial<NotificationItem> = {}): NotificationIte
   type: 'shortlist_ready',
   tripId: `trip-${id}`,
   tripTitle: `Trip ${id}`,
-  message: 'A shortlist of destinations is ready',
+  message: 'A shortlist of destinations is ready. Vote for your favourite',
   createdAt: '2026-11-02T06:30:00.000Z',
   readAt: null,
   ...over,

@@ -24,7 +24,11 @@ import {
   suggestionPatch,
   suggestionText,
   unlocksText,
+  voteButtonText,
+  voteCountText,
+  voteErrorText,
   voteText,
+  votedOfText,
   windowLine,
 } from './wording';
 
@@ -332,6 +336,37 @@ describe('diagnostic', () => {
     );
     expect(lastRoundText({ bindingConstraint: null, feasibleCount: 2 })).toBe(
       'The last round found only 2 destinations.',
+    );
+  });
+});
+
+describe('voting words (R18)', () => {
+  it('counts votes as text', () => {
+    expect(voteCountText(0)).toBe('No votes');
+    expect(voteCountText(1)).toBe('1 vote');
+    expect(voteCountText(2)).toBe('2 votes');
+  });
+
+  it('words the progress line, which has no destination in it', () => {
+    expect(votedOfText(1, 3)).toBe('1 of 3 voted');
+    expect(votedOfText(0, 2)).toBe('0 of 2 voted');
+    expect(votedOfText(8, 8)).toBe('8 of 8 voted');
+  });
+
+  it('labels the toggle', () => {
+    expect(voteButtonText(false)).toBe('Vote for this');
+    expect(voteButtonText(true)).toBe('Your vote');
+  });
+
+  it('shows the field message of a 400 and the message of anything else as sent', () => {
+    expect(
+      voteErrorText({
+        message: 'Some fields are invalid.',
+        fields: { destinationSlug: 'Choose a destination from the shortlist.' },
+      }),
+    ).toBe('Choose a destination from the shortlist.');
+    expect(voteErrorText({ message: 'Voting has closed.', fields: undefined })).toBe(
+      'Voting has closed.',
     );
   });
 });

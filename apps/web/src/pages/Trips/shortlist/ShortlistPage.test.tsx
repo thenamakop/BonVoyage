@@ -1,10 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LatestRecommendationResponse, TripDetail } from '@bonvoyage/shared';
+import type { LatestRecommendationResponse, RunVotes, TripDetail } from '@bonvoyage/shared';
 import {
   diagnosticRun,
   item,
@@ -608,5 +608,305 @@ describe('diagnostic view', () => {
     renderPage();
     expect(await screen.findByText('The dates members gave do not overlap.')).toBeInTheDocument();
     expect(screen.getByText('Ask members to check their dates')).toBeInTheDocument();
+  });
+});
+
+// R18 (S5-4 part 2): votes on the shortlist cards. The stub below plays the API's
+// part for one caller: a PUT or DELETE changes what the next GET sends.
+describe('voting (R18)', () => {
+  const SLUGS = ['place-1', 'place-2', 'place-3'];
+  const ITEMS = [item(1), item(2), item(3)];
+  const closed = Response.json(
+    { error: { code: 'ILLEGAL_TRANSITION', message: 'Voting has closed.' } },
+    { status: 409 },
+  );
+
+  /** Others' votes per slug, plus the caller's own; counts follow, as the API's would. */
+  function stubVoting({
+    trip = shortlisted(),
+    r = run(),
+    others = {},
+    mine,
+    eligible = 3,
+    waiting = false,
+    refuse,
+    gate,
+  }: {
+    trip?: TripDetail;
+    r?: ReturnType<typeof run>;
+    others?: Record<string, number>;
+    mine?: string;
+    eligible?: number;
+    waiting?: boolean;
+    refuse?: Response;
+    gate?: Promise<void>;
+  } = {}) {
+    let own = mine;
+    const view = (): RunVotes => {
+      const counts = Object.fromEntries(
+        SLUGS.map((s) => [s, (others[s] ?? 0) + (own === s ? 1 : 0)]),
+      );
+      const voted = Object.values(counts).reduce((a, b) => a + b, 0);
+      return {
+        ...(waiting ? {} : { counts }),
+        voted,
+        eligible,
+        ...(own ? { mine: own } : {}),
+      };
+    };
+    stubFetch({ trip, response: latest(r, ITEMS) });
+    // The base stub answers the trip, choose and destinations calls.
+    const base = fetchMock.getMockImplementation();
+    fetchMock.mockImplementation(async (url, init) => {
+      if (url === `${TRIP_URL}/vote`) {
+        await gate;
+        if (refuse) return refuse.clone();
+        if (init?.method === 'PUT') {
+          const sent = typeof init.body === 'string' ? init.body : '{}';
+          own = (JSON.parse(sent) as { destinationSlug: string }).destinationSlug;
+        } else {
+          own = undefined;
+        }
+        return Response.json(view());
+      }
+      if (url === `${TRIP_URL}/recommendations/latest`) {
+        return Response.json({ ...latest(r, ITEMS), votes: view() });
+      }
+      return base ? base(url, init) : Response.error();
+    });
+  }
+
+  const voteButtons = () =>
+    screen.queryAllByRole('button', { name: /^(Vote for this|Your vote)$/ });
+  const cardOf = (n: number) => within(cards()[n - 1]!);
+  const votePuts = () =>
+    fetchMock.mock.calls.filter(([url, init]) => url === `${TRIP_URL}/vote` && init?.method);
+
+  it('casts a vote: PUT, then Your vote, 1 of 3 voted and 1 vote', async () => {
+    stubVoting();
+    const user = userEvent.setup();
+    renderPage();
+    expect(await screen.findByText('0 of 3 voted')).toBeInTheDocument();
+    expect(cardOf(2).getByText('No votes')).toBeInTheDocument();
+    await user.click(cardOf(2).getByRole('button', { name: 'Vote for this' }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${TRIP_URL}/vote`,
+      expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ destinationSlug: 'place-2' }),
+      }),
+    );
+    const mine = await cardOf(2).findByRole('button', { name: 'Your vote' });
+    expect(mine).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText('1 of 3 voted')).toBeInTheDocument();
+    expect(cardOf(2).getByText('1 vote')).toBeInTheDocument();
+    expect(cardOf(1).getByRole('button', { name: 'Vote for this' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+  });
+
+  it('changes a vote: pressing another card PUTs it and moves Your vote', async () => {
+    stubVoting({ mine: 'place-1' });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByRole('article');
+    expect(await cardOf(1).findByRole('button', { name: 'Your vote' })).toBeInTheDocument();
+    await user.click(cardOf(3).getByRole('button', { name: 'Vote for this' }));
+    expect(await cardOf(3).findByRole('button', { name: 'Your vote' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(cardOf(1).getByRole('button', { name: 'Vote for this' })).toBeInTheDocument();
+    expect(cardOf(1).getByText('No votes')).toBeInTheDocument();
+    expect(cardOf(3).getByText('1 vote')).toBeInTheDocument();
+    expect(screen.getByText('1 of 3 voted')).toBeInTheDocument();
+    expect(votePuts()).toHaveLength(1);
+  });
+
+  it('withdraws a vote: pressing your own vote sends DELETE', async () => {
+    stubVoting({ mine: 'place-2' });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByRole('article');
+    await user.click(await cardOf(2).findByRole('button', { name: 'Your vote' }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${TRIP_URL}/vote`,
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+    expect(await screen.findByText('0 of 3 voted')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Your vote' })).not.toBeInTheDocument();
+    expect(voteButtons()).toHaveLength(3);
+  });
+
+  it('shows each count as text: No votes, 1 vote, 2 votes', async () => {
+    stubVoting({ others: { 'place-1': 2, 'place-2': 1 } });
+    renderPage();
+    expect(await screen.findByText('3 of 3 voted')).toBeInTheDocument();
+    expect(cardOf(1).getByText('2 votes')).toBeInTheDocument();
+    expect(cardOf(2).getByText('1 vote')).toBeInTheDocument();
+    expect(cardOf(3).getByText('No votes')).toBeInTheDocument();
+  });
+
+  it('a 2-member trip waiting for the second vote shows 1 of 2 voted and no counts', async () => {
+    stubVoting({ eligible: 2, waiting: true, mine: 'place-1' });
+    renderPage();
+    expect(await screen.findByText('1 of 2 voted')).toBeInTheDocument();
+    expect(screen.queryByText(/^(No votes|\d+ votes?)$/)).not.toBeInTheDocument();
+    // The caller still sees, and can change, their own vote.
+    expect(cardOf(1).getByRole('button', { name: 'Your vote' })).toBeInTheDocument();
+  });
+
+  it('a 2-member trip shows its counts once both have voted', async () => {
+    stubVoting({ eligible: 2, mine: 'place-1', others: { 'place-2': 1 } });
+    renderPage();
+    expect(await screen.findByText('2 of 2 voted')).toBeInTheDocument();
+    expect(cardOf(1).getByText('1 vote')).toBeInTheDocument();
+    expect(cardOf(2).getByText('1 vote')).toBeInTheDocument();
+    expect(cardOf(3).getByText('No votes')).toBeInTheDocument();
+  });
+
+  it('disables every vote button while a request is pending', async () => {
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    stubVoting({ gate });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click((await screen.findAllByRole('button', { name: 'Vote for this' }))[0]!);
+    await waitFor(() => expect(voteButtons().every((b) => b.hasAttribute('disabled'))).toBe(true));
+    expect(voteButtons()).toHaveLength(3);
+    release();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Your vote' })).toBeEnabled());
+    expect(votePuts()).toHaveLength(1);
+  });
+
+  it('a vote button is at least 44 px high (min-h-11)', async () => {
+    stubVoting();
+    renderPage();
+    const [first] = await screen.findAllByRole('button', { name: 'Vote for this' });
+    expect(first).toHaveClass('min-h-11');
+  });
+
+  it('shows a 409 as sent: Voting has closed.', async () => {
+    stubVoting({ refuse: closed });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click((await screen.findAllByRole('button', { name: 'Vote for this' }))[0]!);
+    expect(await screen.findByText('Voting has closed.')).toBeInTheDocument();
+  });
+
+  it('shows a 400 for a destination outside the run with the field message', async () => {
+    stubVoting({
+      refuse: Response.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Some fields are invalid.',
+            fields: { destinationSlug: 'Choose a destination from the shortlist.' },
+          },
+        },
+        { status: 400 },
+      ),
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click((await screen.findAllByRole('button', { name: 'Vote for this' }))[0]!);
+    expect(await screen.findByText('Choose a destination from the shortlist.')).toBeInTheDocument();
+  });
+
+  it('after T9 (packages proposed) shows the counts read-only, with no vote buttons', async () => {
+    stubVoting({
+      trip: shortlisted({ status: 'packages_proposed' }),
+      others: { 'place-1': 2, 'place-2': 1 },
+    });
+    renderPage();
+    expect(await screen.findByText('3 of 3 voted')).toBeInTheDocument();
+    expect(cardOf(1).getByText('2 votes')).toBeInTheDocument();
+    expect(voteButtons()).toHaveLength(0);
+  });
+
+  it('the earlier run kept after T21 shows no votes and no buttons', async () => {
+    stubVoting({
+      trip: tripDetail({
+        status: 'ready_for_recommendation',
+        members: MEMBERS,
+        latestRecommendation: summaryOf(run()),
+      }),
+      others: { 'place-1': 2 },
+    });
+    renderPage();
+    expect(await screen.findByText(/Earlier shortlist/)).toBeInTheDocument();
+    expect(screen.queryByText(/voted/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^(No votes|\d+ votes?)$/)).not.toBeInTheDocument();
+    expect(voteButtons()).toHaveLength(0);
+  });
+
+  it('a diagnostic run has no vote buttons and no vote line', async () => {
+    const r = diagnosticRun();
+    stubFetch({
+      trip: collecting(r),
+      response: { ...latest(r, [item(1)]), votes: { voted: 0, eligible: 3 } },
+    });
+    renderPage();
+    await screen.findByRole('heading', { name: 'Only 1 destination fits' });
+    expect(screen.queryByText(/voted/)).not.toBeInTheDocument();
+    expect(voteButtons()).toHaveLength(0);
+  });
+
+  it('a removed member sees the counts but no buttons', async () => {
+    stubVoting({ trip: shortlisted({ myStatus: 'excluded' }), others: { 'place-1': 1 } });
+    renderPage();
+    expect(await screen.findByText('1 of 3 voted')).toBeInTheDocument();
+    expect(voteButtons()).toHaveLength(0);
+  });
+
+  it('a member votes without a Choose button', async () => {
+    stubVoting({ trip: shortlisted({ myRole: 'member' }) });
+    renderPage();
+    expect(await screen.findAllByRole('button', { name: 'Vote for this' })).toHaveLength(3);
+    expect(screen.queryByRole('button', { name: 'Choose' })).not.toBeInTheDocument();
+  });
+
+  it('the organiser sees Vote and Choose, and can choose a destination with 0 votes', async () => {
+    stubVoting({ others: { 'place-1': 2 } });
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findAllByRole('article');
+    const third = cardOf(3);
+    expect(await third.findByText('No votes')).toBeInTheDocument();
+    expect(third.getByRole('button', { name: 'Vote for this' })).toBeInTheDocument();
+    await user.click(third.getByRole('button', { name: 'Choose' }));
+    await user.click(third.getByRole('button', { name: 'Choose Place 3' }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${TRIP_URL}/destination`,
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ destinationSlug: 'place-3' }),
+      }),
+    );
+    expect(await screen.findByText('Dashboard page')).toBeInTheDocument();
+  });
+
+  it('reloads the shortlist when the tab regains focus, without polling', async () => {
+    stubVoting();
+    renderPage();
+    await screen.findByText('0 of 3 voted');
+    const loads = () =>
+      fetchMock.mock.calls.filter(([url]) => url === `${TRIP_URL}/recommendations/latest`).length;
+    expect(loads()).toBe(1);
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange', { bubbles: true }));
+    });
+    await waitFor(() => expect(loads()).toBe(2));
+  });
+
+  it('never pairs a member name with a vote', async () => {
+    stubVoting({ mine: 'place-1', others: { 'place-2': 2 } });
+    renderPage();
+    await screen.findByText('3 of 3 voted');
+    const text = document.body.textContent ?? '';
+    for (const name of ['Rohan', 'Meera']) expect(text).not.toContain(name);
   });
 });
