@@ -31,7 +31,7 @@ const member = (i: number) => ({
 describe('costablePackageCount over the real catalogue', () => {
   it('equals generatePackages for every destination, hub, group size and stay length', async () => {
     const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
-    await importCatalogue(db, dir, { today: '2026-11-01' });
+    await importCatalogue(db, dir, { today: '2026-11-03' });
     // Only the catalogue's own destinations: other files leave fixtures in the
     // shared test database, which would make the case count vary.
     const catalogueSlugs = readFileSync(resolve(dir, 'destinations.csv'), 'utf8')

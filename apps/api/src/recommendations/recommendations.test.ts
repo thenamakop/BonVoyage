@@ -867,7 +867,7 @@ describe('fairness across rounds (R17)', () => {
 describe('speed on the real catalogue (R15)', () => {
   it('one recommendation for 3 members from gurugram takes under 2000 ms', async () => {
     const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
-    await importCatalogue(db, dir, { today: '2026-11-01' });
+    await importCatalogue(db, dir, { today: '2026-11-03' });
     const members: Member[] = [];
     for (const name of ['Speed A', 'Speed B', 'Speed C']) {
       members.push(await createTestUser(app, name));

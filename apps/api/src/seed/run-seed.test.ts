@@ -216,7 +216,7 @@ describe('Sprint 2 demo trips', () => {
   });
 
   // S3-8: the demo script's transport comparison. Round 2 after "Raise the
-  // group budget to ₹14,000" lists Bikaner, which has verified train, bus and
+  // group budget to ₹15,500" lists Bikaner, which has verified train, bus and
   // car rows from Gurugram, so its packages compare modes, not just stays.
   it('tight budget round 2: the raised budget lists Bikaner, whose packages compare at least two modes', async () => {
     const row = await tripOf(TIGHT_BUDGET_DEMO.title);
@@ -225,7 +225,9 @@ describe('Sprint 2 demo trips', () => {
       (s) => s.constraint === 'F5' && s.capSource === 'trip',
     );
     if (raise?.constraint !== 'F5') throw new Error('no F5 suggestion on round 1');
-    expect(raise.newGroupCapInr).toBe(14000);
+    // #132: the smallest amount that reaches a shortlist (Vrindavan's ₹15,008, rounded up).
+    expect(raise.newGroupCapInr).toBe(15500);
+    expect(raise.unlocks).toEqual(['bikaner', 'mathura', 'pushkar', 'rishikesh', 'vrindavan']);
 
     // What the screen does: save the budget, "Mark ready again" (T3b), ask again.
     await updateTrip(deps, row.id, row.organiserId, { budgetTotalInr: raise.newGroupCapInr });
@@ -236,6 +238,8 @@ describe('Sprint 2 demo trips', () => {
     // M3 (plan finding f): round 2 is this trip's first shortlist, so R17 never
     // reorders it. Any change to a first shortlist's order fails here.
     expect(round2.items.map((i) => i.destination.slug)).toEqual([
+      'rishikesh',
+      'pushkar',
       'vrindavan',
       'mathura',
       'bikaner',
