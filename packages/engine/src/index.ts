@@ -27,7 +27,7 @@ export {
 } from './feasibility/inputs';
 export type { DestinationFields, PreferenceFields } from './feasibility/inputs';
 export { evaluateCandidate, monthShift, windowMonths } from './feasibility/evaluate';
-export { buildDiagnostic } from './feasibility/diagnostic';
+export { buildDiagnostic, SHORTLIST_SIZE } from './feasibility/diagnostic';
 export type {
   CandidateFacts,
   ConstraintId,

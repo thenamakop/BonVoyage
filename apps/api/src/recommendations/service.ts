@@ -9,6 +9,7 @@ import {
   groupProfile,
   groupSummary,
   rankDestinations,
+  SHORTLIST_SIZE,
   splitByCosts,
   toMemberInput,
   type Evaluation,
@@ -90,8 +91,6 @@ interface RequestDeps extends Deps {
   hooks?: RecommendationHooks;
 }
 
-/** A shortlist needs this many feasible destinations (T6 guard). */
-const SHORTLIST_SIZE = 3;
 /** 0004 g: below this best mean the page says the match is weak. */
 const WEAK_MATCH_MEAN = 0.25;
 /**

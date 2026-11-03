@@ -110,7 +110,12 @@ const prefs = (over: Partial<PreferenceInput> = {}): PreferenceInput => ({
  */
 async function readyTrip(
   memberPrefs: PreferenceInput[],
-  trip: { radiusKm?: number; budgetTotalInr?: number; durationNights?: number } = {},
+  trip: {
+    radiusKm?: number;
+    budgetTotalInr?: number;
+    durationNights?: number;
+    originHubSlug?: string;
+  } = {},
 ): Promise<{ tripId: string; members: Member[] }> {
   const members: Member[] = [];
   for (const [i] of memberPrefs.entries()) {
@@ -118,7 +123,7 @@ async function readyTrip(
   }
   const organiser = members[0]!;
   const { id: tripId } = await createTripAs(organiser.agent, {
-    originHubSlug: HUB.slug,
+    originHubSlug: trip.originHubSlug ?? HUB.slug,
     radiusKm: trip.radiusKm ?? 150,
     budgetTotalInr: trip.budgetTotalInr ?? 120000,
     durationNights: trip.durationNights ?? 2,
@@ -414,6 +419,69 @@ describe('POST /api/trips/:id/recommendations', () => {
 });
 
 // The privacy of these responses (rule S4) is tested in ../security/no-leak.test.ts.
+
+describe('the one-tap budget fix reaches a shortlist (#132)', () => {
+  const TAP_HUB = { slug: 'tap-hub', lat: 22, lng: 92 };
+  // Three places within reach whose costs sit in different ₹500 steps, so the
+  // cheapest miss alone (the rule before #132) would add one place and leave
+  // round 2 a diagnostic.
+  const PLACES: FixtureDestination[] = [
+    { slug: 'tap-cheap', lat: 22.3, lng: 92, stayBudgetInr: 500 },
+    { slug: 'tap-mid', lat: 21.7, lng: 92, stayBudgetInr: 1500 },
+    { slug: 'tap-dear', lat: 22, lng: 92.3, stayBudgetInr: 2500 },
+  ];
+
+  beforeAll(async () => {
+    await ensureHubAt(db, TAP_HUB.slug, TAP_HUB.lat, TAP_HUB.lng);
+    for (const d of PLACES) await ensureDestination(db, d);
+  });
+
+  it('apply the F5 suggestion, mark ready, ask again: round 2 is a shortlist of all three', async () => {
+    const { tripId, members } = await readyTrip([prefs(), prefs()], {
+      originHubSlug: TAP_HUB.slug,
+      budgetTotalInr: 1000,
+    });
+    const organiser = members[0]!;
+    const round1 = RequestRecommendationsResponse.parse((await recommend(organiser, tripId)).body);
+    expect(round1.run).toMatchObject({
+      round: 1,
+      kind: 'diagnostic',
+      feasibleCount: 0,
+      bindingConstraint: 'F5',
+    });
+    const diagnostic = round1.run!.diagnostic!;
+    const f5 = diagnostic.suggestions.find((s) => s.constraint === 'F5');
+    expect(f5).toMatchObject({ capSource: 'trip', unlocks: ['tap-cheap', 'tap-dear', 'tap-mid'] });
+    const costs = diagnostic.nearMisses.map((e) => e.estimatedCostInr).sort((a, b) => a - b);
+    expect(costs).toHaveLength(3);
+    // Each place in its own ₹500 step, so only covering the dearest adds all three.
+    expect(new Set(costs.map((c) => Math.ceil(c / 500))).size).toBe(3);
+    const newGroupCapInr = f5?.constraint === 'F5' ? f5.newGroupCapInr : NaN;
+    expect(newGroupCapInr).toBe(Math.ceil(costs[2]! / 500) * 500);
+
+    // What the panel's button sends, then Close submissions (T3b) and ask again.
+    const patch = await organiser.agent
+      .patch(`/api/trips/${tripId}`)
+      .set(H)
+      .send({ budgetTotalInr: newGroupCapInr });
+    expect(patch.status, JSON.stringify(patch.body)).toBe(200);
+    const close = await organiser.agent
+      .post(`/api/trips/${tripId}/close-submissions`)
+      .set(H)
+      .send({});
+    expect(close.status, JSON.stringify(close.body)).toBe(200);
+    const res = await recommend(organiser, tripId);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const round2 = RequestRecommendationsResponse.parse(res.body);
+    expect(round2.run).toMatchObject({ round: 2, kind: 'shortlist', feasibleCount: 3 });
+    expect(round2.transition.to).toBe('shortlisted');
+    expect(round2.items.map((i) => i.destination.slug).sort()).toEqual([
+      'tap-cheap',
+      'tap-dear',
+      'tap-mid',
+    ]);
+  });
+});
 
 describe('GET /api/trips/:id/group-profile', () => {
   it('not ready with one submission; ready with two, member budgets rounded inwards to ₹500', async () => {
