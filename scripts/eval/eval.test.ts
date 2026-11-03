@@ -10,6 +10,8 @@ import { aggregate, distribution, quantile } from './metrics';
 import { csvReport, markdownReport } from './report';
 import {
   independentConstraints,
+  budgetNoSuggestionReason,
+  leastServedRepeats,
   runEvaluation,
   type EvaluationRun,
   type ScenarioResult,
@@ -81,6 +83,7 @@ function handmade(): EvaluationRun {
       scenario: generateScenario(data.catalogue, seed, index),
       feasibleCount: index === 0 ? 0 : 3,
       binding: index === 0 ? 'F5' : null,
+      budgetNoSuggestionReason: null,
       checks: {
         constraints: { passed: index, total: index },
         packages: { passed: 1, total: 1 },
@@ -100,8 +103,8 @@ function handmade(): EvaluationRun {
         index === 0
           ? []
           : [
-              { lambda: 0, spread: index, repeatLeast: index === 2 },
-              { lambda: 1, spread: index / 2, repeatLeast: false },
+              { lambda: 0, spread: index, repeatLeast: index === 2, repeatUniqueLeast: false },
+              { lambda: 1, spread: index / 2, repeatLeast: false, repeatUniqueLeast: false },
             ],
       defects: [],
     };
@@ -131,8 +134,20 @@ describe('evaluation metrics and reports', () => {
     expect(metrics.fits[0]?.min.q3).toBeCloseTo(0.075, 12);
     expect(metrics.fits[1]?.differs).toBe(1);
     expect(metrics.fairness).toEqual([
-      { lambda: 0, count: 2, spread: { median: 1.5, q1: 1.25, q3: 1.75 }, repeats: 1 },
-      { lambda: 1, count: 2, spread: { median: 0.75, q1: 0.625, q3: 0.875 }, repeats: 0 },
+      {
+        lambda: 0,
+        count: 2,
+        spread: { median: 1.5, q1: 1.25, q3: 1.75 },
+        repeats: 1,
+        strictRepeats: 0,
+      },
+      {
+        lambda: 1,
+        count: 2,
+        spread: { median: 0.75, q1: 0.625, q3: 0.875 },
+        repeats: 0,
+        strictRepeats: 0,
+      },
     ]);
     expect(metrics.counts).toEqual([
       [0, 1],
@@ -174,6 +189,154 @@ describe('evaluation metrics and reports', () => {
     expect(markdown).toContain('Seed 20261029, index 0: plans: fixture failure');
     expect(markdown).toContain('abc123');
     expect(csvReport(run).trim().split('\n')).toHaveLength(10);
+  });
+});
+
+describe('follow-up fairness and recovery measures', () => {
+  it('pairs changes by group and applies the 1e-9 equality tolerance', () => {
+    const run = handmade();
+    for (const [i, r] of run.results.entries()) {
+      r.fairness = [
+        { lambda: 0, spread: 0, repeatLeast: false, repeatUniqueLeast: false },
+        {
+          lambda: 1,
+          spread: [-0.1, 5e-10, 0.2][i] ?? 0,
+          repeatLeast: false,
+          repeatUniqueLeast: false,
+        },
+      ];
+    }
+    expect(aggregate(run).pairedFairness).toEqual([
+      { lambda: 1, count: 3, lower: 1, equal: 1, higher: 1, medianChange: 5e-10 },
+    ]);
+    run.results[0]?.fairness.pop();
+    expect(aggregate(run).pairedFairness[0]?.count).toBe(2);
+  });
+  it('includes both exact equality-tolerance boundaries', () => {
+    const run = handmade();
+    run.results.forEach((r, i) => {
+      r.fairness = [
+        { lambda: 0, spread: 0, repeatLeast: false, repeatUniqueLeast: false },
+        {
+          lambda: 1,
+          spread: [-1e-9, 1e-9, 0][i] ?? 0,
+          repeatLeast: false,
+          repeatUniqueLeast: false,
+        },
+      ];
+    });
+    expect(aggregate(run).pairedFairness[0]).toMatchObject({ lower: 0, equal: 3, higher: 0 });
+  });
+  it('distinguishes repeated tied minima from the same repeated unique minimum', () => {
+    expect(
+      leastServedRepeats([
+        { a: 0, b: 0, c: 1 },
+        { a: 0, b: 0, c: 1 },
+      ]),
+    ).toEqual({ repeatLeast: true, repeatUniqueLeast: false });
+    expect(
+      leastServedRepeats([
+        { a: 0, b: 1, c: 1 },
+        { a: 0, b: 0.5, c: 1 },
+      ]),
+    ).toEqual({ repeatLeast: true, repeatUniqueLeast: true });
+    expect(
+      leastServedRepeats([
+        { a: 0, b: 1 },
+        { a: 1, b: 0 },
+      ]),
+    ).toEqual({ repeatLeast: false, repeatUniqueLeast: false });
+    expect(
+      leastServedRepeats([
+        { a: 0, b: 1e-12 },
+        { a: 0, b: 5e-13 },
+      ]),
+    ).toEqual({ repeatLeast: true, repeatUniqueLeast: false });
+    expect(
+      leastServedRepeats([
+        { a: 0, b: 2e-12 },
+        { a: 0, b: 2e-12 },
+      ]),
+    ).toEqual({ repeatLeast: true, repeatUniqueLeast: true });
+    expect(leastServedRepeats([])).toEqual({ repeatLeast: false, repeatUniqueLeast: false });
+  });
+  it('derives dropped-budget reasons from diagnostic misses and both cap sources', () => {
+    const ctx = {
+      n: 3,
+      durationNights: 2,
+      radiusKm: 400,
+      groupCapInr: 10000,
+      capSource: 'trip' as const,
+      perPersonCapInr: 5000,
+      tripBudgetInr: 10000,
+      commonWindow: { start: '2026-11-01', end: '2026-11-03' },
+    };
+    const miss = (actual: number) => ({
+      destinationId: String(actual),
+      slug: String(actual),
+      feasible: false,
+      estimatedGroupCostInr: actual,
+      cheapest: { inr: 500, mode: 'bus' as const },
+      failures: [
+        {
+          id: 'F5' as const,
+          actual,
+          limit: 10000,
+          relaxation: actual - 10000,
+          relative: 1,
+          unit: 'inr' as const,
+        },
+      ],
+    });
+    const diagnostic = {
+      feasibleCount: 0,
+      feasible: [],
+      nearMisses: [miss(11000), miss(12000)],
+      alternatives: [],
+      bindingConstraint: 'F5' as const,
+      suggestions: [],
+      incomplete: [],
+    };
+    expect(budgetNoSuggestionReason(diagnostic, ctx)).toBe('too-few-budget-misses');
+    const enough = { ...diagnostic, nearMisses: [...diagnostic.nearMisses, miss(15001)] };
+    expect(budgetNoSuggestionReason(enough, ctx)).toBe('other-cap');
+    expect(
+      budgetNoSuggestionReason(
+        { ...enough, nearMisses: [miss(11000), miss(12000), miss(15000)] },
+        ctx,
+      ),
+    ).toBe('other');
+    expect(
+      budgetNoSuggestionReason(enough, { ...ctx, capSource: 'members', tripBudgetInr: 15000 }),
+    ).toBe('other-cap');
+    expect(
+      budgetNoSuggestionReason(enough, { ...ctx, capSource: 'members', tripBudgetInr: 15500 }),
+    ).toBe('other');
+    expect(budgetNoSuggestionReason({ ...enough, feasibleCount: 2 }, ctx)).toBe('other');
+    expect(
+      budgetNoSuggestionReason(
+        {
+          ...diagnostic,
+          suggestions: [
+            { constraint: 'F5', newGroupCapInr: 15000, capSource: 'trip', unlocks: [] },
+          ],
+        },
+        ctx,
+      ),
+    ).toBeNull();
+    expect(budgetNoSuggestionReason({ ...diagnostic, bindingConstraint: 'F1' }, ctx)).toBeNull();
+  });
+  it('aggregates all three no-suggestion reasons without counting actionable diagnostics', () => {
+    const run = handmade();
+    run.results.forEach((r, i) => {
+      r.budgetNoSuggestionReason =
+        (['too-few-budget-misses', 'other-cap', 'other'] as const)[i] ?? null;
+    });
+    expect(aggregate(run).recoveryReasons).toEqual([
+      { reason: 'too-few-budget-misses', count: 1 },
+      { reason: 'other-cap', count: 1 },
+      { reason: 'other', count: 1 },
+    ]);
   });
 });
 

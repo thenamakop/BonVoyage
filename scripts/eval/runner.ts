@@ -15,6 +15,8 @@ import {
   toPackageInput,
   validateItinerary,
   type CandidateFacts,
+  type Diagnostic,
+  type FeasibilityContext,
   type FairnessRound,
   type RankedDestination,
   type Weights,
@@ -34,11 +36,14 @@ export interface FairnessResult {
   lambda: number;
   spread: number;
   repeatLeast: boolean;
+  repeatUniqueLeast: boolean;
 }
+export type BudgetNoSuggestionReason = 'too-few-budget-misses' | 'other-cap' | 'other';
 export interface ScenarioResult {
   scenario: Scenario;
   feasibleCount: number;
   binding: string | null;
+  budgetNoSuggestionReason: BudgetNoSuggestionReason | null;
   checks: {
     constraints: Check;
     packages: Check;
@@ -95,6 +100,44 @@ export function independentConstraints(facts: CandidateFacts, scenario: Scenario
   );
 }
 
+export function leastServedRepeats(rounds: readonly Readonly<Record<string, number>>[]) {
+  const inclusive = new Map<string, number>();
+  const strict = new Map<string, number>();
+  for (const scores of rounds) {
+    const minimum = Math.min(...Object.values(scores));
+    const lowest = Object.entries(scores).filter(([, score]) => Math.abs(score - minimum) <= 1e-12);
+    for (const [id] of lowest) inclusive.set(id, (inclusive.get(id) ?? 0) + 1);
+    const unique = lowest.length === 1 ? lowest[0] : undefined;
+    if (unique) strict.set(unique[0], (strict.get(unique[0]) ?? 0) + 1);
+  }
+  return {
+    repeatLeast: [...inclusive.values()].some((count) => count >= 2),
+    repeatUniqueLeast: [...strict.values()].some((count) => count >= 2),
+  };
+}
+
+export function budgetNoSuggestionReason(
+  diagnostic: Diagnostic,
+  ctx: FeasibilityContext,
+): BudgetNoSuggestionReason | null {
+  if (
+    diagnostic.bindingConstraint !== 'F5' ||
+    diagnostic.suggestions.some((s) => s.constraint === 'F5')
+  )
+    return null;
+  const actuals = diagnostic.nearMisses
+    .flatMap((miss) =>
+      miss.failures.length === 1 && miss.failures[0]?.id === 'F5' ? [miss.failures[0].actual] : [],
+    )
+    .sort((a, b) => a - b);
+  const needed = Math.max(1, SHORTLIST_SIZE - diagnostic.feasibleCount);
+  if (actuals.length < needed) return 'too-few-budget-misses';
+  const covered = actuals[needed - 1];
+  if (covered === undefined) return 'other';
+  const ceiling = ctx.capSource === 'trip' ? ctx.n * ctx.perPersonCapInr : ctx.tripBudgetInr;
+  return Math.ceil(covered / 500) * 500 > ceiling ? 'other-cap' : 'other';
+}
+
 export function fairnessRounds(
   scenario: Scenario,
   destinations: CandidateFacts['destination'][],
@@ -104,7 +147,6 @@ export function fairnessRounds(
   const ids = scenario.members.map((m) => m.memberId);
   const history: FairnessRound[] = [];
   const sums = new Map(ids.map((id) => [id, 0]));
-  const least = new Map(ids.map((id) => [id, 0]));
   let remaining = [...destinations];
   for (let round = 0; round < 3; round++) {
     const memberWeights = fairnessWeights(memberDeficits(history, ids), lambda);
@@ -115,7 +157,6 @@ export function fairnessRounds(
     });
     for (const { memberId, score } of top.memberScores) {
       sums.set(memberId, (sums.get(memberId) ?? 0) + score);
-      if (Math.abs(score - top.min) < 1e-12) least.set(memberId, (least.get(memberId) ?? 0) + 1);
     }
     remaining = remaining.filter((d) => d.id !== top.destinationId);
   }
@@ -123,7 +164,7 @@ export function fairnessRounds(
   return {
     lambda,
     spread: Math.max(...cumulative) - Math.min(...cumulative),
-    repeatLeast: [...least.values()].some((count) => count >= 2),
+    ...leastServedRepeats(history.map((round) => round.topChoiceScores)),
   };
 }
 
@@ -145,6 +186,7 @@ export function evaluateScenario(
     scenario,
     feasibleCount: feasible.length,
     binding: shortlisted ? null : diagnostic.bindingConstraint,
+    budgetNoSuggestionReason: budgetNoSuggestionReason(diagnostic, ctx),
     checks: {
       constraints: { passed: 0, total: 0 },
       packages: { passed: 0, total: 0 },

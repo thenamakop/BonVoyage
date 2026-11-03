@@ -53,8 +53,32 @@ export function aggregate(run: EvaluationRun) {
       count: rows.length,
       spread: distribution(rows.map((r) => r.spread)),
       repeats: rows.filter((r) => r.repeatLeast).length,
+      strictRepeats: rows.filter((r) => r.repeatUniqueLeast).length,
     };
   });
+  const pairedFairness = lambdas
+    .filter((lambda) => lambda !== 0)
+    .map((lambda) => {
+      const changes = run.results.flatMap((r) => {
+        const baseline = r.fairness.find((f) => f.lambda === 0);
+        const comparison = r.fairness.find((f) => f.lambda === lambda);
+        return baseline && comparison ? [comparison.spread - baseline.spread] : [];
+      });
+      return {
+        lambda,
+        count: changes.length,
+        lower: changes.filter((change) => change < -1e-9).length,
+        equal: changes.filter((change) => Math.abs(change) <= 1e-9).length,
+        higher: changes.filter((change) => change > 1e-9).length,
+        medianChange: quantile(changes, 0.5),
+      };
+    });
+  const recoveryReasons = (['too-few-budget-misses', 'other-cap', 'other'] as const).map(
+    (reason) => ({
+      reason,
+      count: run.results.filter((r) => r.budgetNoSuggestionReason === reason).length,
+    }),
+  );
   const counts = new Map<number, number>();
   const bindings = new Map<string, number>();
   for (const r of run.results) {
@@ -66,6 +90,8 @@ export function aggregate(run: EvaluationRun) {
     checks,
     fits,
     fairness,
+    pairedFairness,
+    recoveryReasons,
     counts: [...counts].sort(([a], [b]) => a - b),
     bindings: [...bindings].sort(([a], [b]) => a.localeCompare(b)),
     diagnostics: run.results.filter((r) => r.feasibleCount < SHORTLIST_SIZE).length,

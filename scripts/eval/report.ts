@@ -40,6 +40,7 @@ export function csvReport(run: EvaluationRun): string {
     'plans_total',
     'budget_rerun_passed',
     'budget_rerun_total',
+    'budget_no_suggestion_reason',
     'fairness',
     'defects',
   ];
@@ -77,6 +78,7 @@ export function csvReport(run: EvaluationRun): string {
         r.checks.plans.total,
         r.checks.budgetRerun.passed,
         r.checks.budgetRerun.total,
+        r.budgetNoSuggestionReason ?? '',
         JSON.stringify(r.fairness),
         r.defects.join('; '),
       ];
@@ -94,6 +96,7 @@ export interface Metadata {
   commit: string;
   command: string;
   milliseconds: number;
+  dirty?: boolean;
 }
 export function markdownReport(run: EvaluationRun, meta: Metadata): string {
   const m = aggregate(run);
@@ -105,7 +108,7 @@ export function markdownReport(run: EvaluationRun, meta: Metadata): string {
 
 Issue #140; synopsis objective 8 (quantitative component only).
 
-- Commit: \`${meta.commit}\` (source checkout; generated evidence is committed afterwards).
+- Commit: \`${meta.commit}\` (source checkout${meta.dirty ? ' with uncommitted harness changes' : ''}; generated evidence is committed afterwards).
 - Run date (UTC): ${meta.date}
 - Exact command: \`${meta.command}\`
 - Seed: ${run.seed}; scenarios: ${n}; elapsed: ${(meta.milliseconds / 1000).toFixed(3)} seconds.
@@ -177,6 +180,38 @@ ${table(
 
 **How to read this.** The cohort has at least three members and at least three initially feasible destinations. Each round chooses the top, removes it, and ranks the remaining feasible set, until three distinct choices have been taken (later pools may contain fewer than three). Preferences and constraints stay fixed. Weights use earlier top-choice scores via the production fairness functions. Spread is max minus min of the three-round cumulative scores. All tied least-served members count, with a 1e-12 tolerance. Smaller spread is more equal under this simulation, not evidence of perceived fairness or a guarantee that each group improves.
 
+### Paired cumulative-spread changes against lambda 0
+
+${table(
+  [
+    'Lambda vs 0',
+    'Paired groups',
+    'Lower spread',
+    'Equal spread (within 1e-9)',
+    'Higher spread',
+    'Median per-group change',
+  ],
+  m.pairedFairness.map((r) => [
+    r.lambda,
+    r.count,
+    percent(r.lower, r.count),
+    percent(r.equal, r.count),
+    percent(r.higher, r.count),
+    number(r.medianChange),
+  ]),
+)}
+
+**How to read this.** Each change is that same group's spread at the stated lambda minus its spread at lambda 0. Lower is a change below -1e-9, equal is within ±1e-9, and higher is above 1e-9. The median is taken over paired changes, not obtained by subtracting the two aggregate medians. Groups missing either run are excluded from that pair.
+
+### Strict least-served measure
+
+${table(
+  ['Lambda', 'Groups', 'Same member uniquely least served in ≥2 rounds'],
+  m.fairness.map((r) => [r.lambda, r.count, percent(r.strictRepeats, r.count)]),
+)}
+
+**How to read this.** A strict occurrence requires exactly one lowest-scoring member, with no other member within 1e-12 of that minimum; the same member must have such an occurrence in at least two rounds. Ties are common because many scores are 0, so the existing tie-inclusive figure is high even at lambda 0. The strict measure excludes those tied occurrences, not those groups, and is not a measure of perceived fairness.
+
 ## D. Feasibility and budget recovery
 
 ${table(
@@ -214,6 +249,26 @@ ${table(
 )}
 
 **How to read this.** Recovery is measured only when the engine supplies an F5 suggestion. A trip-side raise changes the trip budget only; a member-side raise changes only member maxima below the suggested maximum, leaving the trip cap unchanged. All candidates are evaluated again, rather than trusting the suggestion's unlock list. No suggestion can be tested when the other cap or too few near misses prevents one.
+
+### Why F5 diagnostics have no actionable suggestion
+
+${table(
+  ['Reason', 'Scenarios', 'Share without a suggestion'],
+  m.recoveryReasons.map((r) => [
+    {
+      'too-few-budget-misses': 'Fewer budget-only misses than needed',
+      'other-cap': 'Required amount would cross the other cap',
+      other: 'Other',
+    }[r.reason],
+    r.count,
+    percent(
+      r.count,
+      m.recoveryReasons.reduce((sum, row) => sum + row.count, 0),
+    ),
+  ]),
+)}
+
+**How to read this.** Reasons are derived from the engine's full diagnostic near-miss list, failure actual amounts and feasible count, together with the existing cap context; the engine emits no explicit dropped-reason field. Too few budget-only misses takes precedence. Otherwise the needed miss's cost rounded up to ₹500 is compared with the unchanged side of the cap: n × the lowest member maximum for a trip-budget raise, or the trip budget for a member-maximum raise. "Other" catches a dropped suggestion not explained by those conditions. ${(m.recoveryReasons.find((r) => r.reason === 'other-cap')?.count ?? 0) > m.recoveryReasons.reduce((sum, r) => sum + r.count, 0) / 2 ? 'The majority of these diagnostics have no suggestion because the required amount would cross the other cap.' : 'Crossing the other cap is not the majority reason in this run.'}
 
 ## Defects
 
