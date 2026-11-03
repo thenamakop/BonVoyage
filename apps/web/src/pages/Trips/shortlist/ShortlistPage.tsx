@@ -14,12 +14,16 @@ import { NotConsidered } from './NotConsidered';
 import { ShortlistView } from './ShortlistView';
 
 // /trips/:id/shortlist (S2-7), any member, removed members included. It does
-// not poll: the dashboard's 8 s poll is the one live query (amendment 10).
+// not poll: the dashboard's 8 s poll is the one live query (amendment 10). It
+// does reload when the tab regains focus, which is how a vote cast elsewhere
+// shows up (R18).
 
 export function ShortlistPage() {
   const { id = '' } = useParams();
   const trip = useTrip(id);
-  const latest = useLatestRecommendation(id, trip.data?.latestRecommendation);
+  const latest = useLatestRecommendation(id, trip.data?.latestRecommendation, {
+    refetchOnFocus: true,
+  });
   useDocumentTitle('Shortlist');
 
   const back = (
@@ -76,7 +80,7 @@ export function ShortlistPage() {
   }
 
   const t = trip.data;
-  const { run, items } = latest.data;
+  const { run, items, votes } = latest.data;
   // T21 is the only way from shortlisted back to ready_for_recommendation, and
   // T4 and T6 both store a new run, so a shortlist here is the earlier one.
   const earlier = run?.kind === 'shortlist' && t.status === 'ready_for_recommendation';
@@ -97,7 +101,7 @@ export function ShortlistPage() {
           {earlier ? <Alert tone="info">{earlierShortlistText(t.organiser.name)}</Alert> : null}
           {run.favoursLessServed ? <p className="text-sm text-slate-900">{FAIRNESS_NOTE}</p> : null}
           {run.kind === 'shortlist' ? (
-            <ShortlistView trip={t} run={run} items={items} earlier={earlier} />
+            <ShortlistView trip={t} run={run} items={items} votes={votes} earlier={earlier} />
           ) : (
             // Keyed on the run: a saved suggestion belongs to the run it came from.
             <DiagnosticView key={run.id} trip={t} run={run} items={items} />

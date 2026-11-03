@@ -18,6 +18,7 @@ import {
   getLatestRecommendation,
   requestRecommendations,
 } from '../recommendations/service';
+import { castVote } from '../recommendations/votes';
 import { closeSubmissions, updateTrip } from '../trips/service';
 import {
   DATE_CLASH_DEMO,
@@ -265,6 +266,20 @@ describe('the demo script holds after a reset', () => {
       await saveMyPreference(deps, hills.id, meera, MEERA_PREFERENCE(at));
       const rec = await requestRecommendations(deps, hills.id, asha);
       expect(rec.items[0]!.destination.slug).toBe('chakrata');
+      // Step 2.4 (R18): Meera votes for Chakrata; Asha sees 1 vote and 1 of 3 voted, and her choice
+      // below does not read it. Nothing in either view says who voted.
+      await castVote(deps, hills.id, meera, { destinationSlug: 'chakrata' });
+      const meerasView = (await getLatestRecommendation(db, hills.id, meera)).votes;
+      expect([meerasView?.voted, meerasView?.eligible, meerasView?.mine]).toEqual([
+        1,
+        3,
+        'chakrata',
+      ]);
+      const ashasView = (await getLatestRecommendation(db, hills.id, asha)).votes;
+      expect([ashasView?.voted, ashasView?.eligible, ashasView?.counts?.chakrata]).toEqual([
+        1, 3, 1,
+      ]);
+      expect(ashasView?.mine).toBeUndefined();
       await chooseDestination(deps, hills.id, asha, { destinationSlug: 'chakrata' });
       const { packages } = await listTripPackages(db, hills.id, asha);
       expect(packages.map((p) => [p.label, p.transportMode, p.stayTier])).toEqual([

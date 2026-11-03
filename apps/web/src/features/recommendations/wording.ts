@@ -292,3 +292,30 @@ export function lastRoundText(
   if (run.feasibleCount === 0) return 'The last round found no destination.';
   return `The last round found only ${plural(run.feasibleCount, 'destination')}.`;
 }
+
+// ---------------------------------------------------------------------------
+// R18: voting on the shortlist. Counts and the caller's own vote only; nothing
+// here can name a voter, because the API never sends one.
+
+/** "No votes", "1 vote", "2 votes". */
+export function voteCountText(count: number): string {
+  return count === 0 ? 'No votes' : plural(count, 'vote');
+}
+
+/** "1 of 3 voted": the progress line, shown even while counts are hidden (E4). */
+export function votedOfText(voted: number, eligible: number): string {
+  return `${voted} of ${eligible} voted`;
+}
+
+/** The toggle's label: "Vote for this", or "Your vote" on the destination the caller picked. */
+export function voteButtonText(mine: boolean): string {
+  return mine ? 'Your vote' : 'Vote for this';
+}
+
+/** The 400 for a destination outside the run names the field; anything else is the message as sent. */
+export function voteErrorText(err: {
+  message: string;
+  fields?: Record<string, string> | undefined;
+}): string {
+  return err.fields?.destinationSlug ?? err.message;
+}

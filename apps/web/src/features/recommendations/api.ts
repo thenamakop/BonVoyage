@@ -4,6 +4,7 @@ import {
   GroupProfileResponse,
   LatestRecommendationResponse,
   RequestRecommendationsResponse,
+  RunVotes,
   TripDetail,
   type LatestRecommendationSummary,
 } from '@bonvoyage/shared';
@@ -34,12 +35,14 @@ function useInvalidateOn(id: string, part: string, version: string | undefined) 
 
 /**
  * The newest run, reloaded when TripDetail.latestRecommendation changes.
- * `summary` is undefined until the trip has loaded.
+ * `summary` is undefined until the trip has loaded. `refetchOnFocus` is for the
+ * shortlist page: votes move without moving the trip, and coming back to the tab
+ * is when a member looks for them (R18). It is a refetch, not a poll.
  */
 export function useLatestRecommendation(
   id: string,
   summary: LatestRecommendationSummary | null | undefined,
-  { enabled = true }: { enabled?: boolean } = {},
+  { enabled = true, refetchOnFocus = false }: { enabled?: boolean; refetchOnFocus?: boolean } = {},
 ) {
   const version =
     summary === undefined ? undefined : summary ? `${summary.round}|${summary.createdAt}` : 'none';
@@ -48,7 +51,7 @@ export function useLatestRecommendation(
     queryKey: ['trip', id, 'recommendation'],
     retry: false,
     enabled: enabled && version !== undefined,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: refetchOnFocus,
     queryFn: () =>
       fetchJson(`/api/trips/${id}/recommendations/latest`, LatestRecommendationResponse),
   });
@@ -113,6 +116,30 @@ export function useReopenShortlist(id: string) {
       void queryClient.invalidateQueries({ queryKey: ['trip', id] });
       void queryClient.invalidateQueries({ queryKey: ['trips'] });
     },
+    onError: refetchOnConflict(queryClient, id),
+  });
+}
+
+// R18: both return the caller's view of the votes, but the shortlist query is
+// invalidated instead of patched, so the page shows what the server holds. The
+// promise is returned, so the mutation stays pending (buttons disabled) until the
+// shortlist has reloaded. A 409 ("Voting has closed.") also reloads the trip, which
+// then no longer offers the buttons.
+export function useCastVote(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (destinationSlug: string) =>
+      fetchJson(`/api/trips/${id}/vote`, RunVotes, { ...json({ destinationSlug }), method: 'PUT' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', id, 'recommendation'] }),
+    onError: refetchOnConflict(queryClient, id),
+  });
+}
+
+export function useWithdrawVote(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => fetchJson(`/api/trips/${id}/vote`, RunVotes, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['trip', id, 'recommendation'] }),
     onError: refetchOnConflict(queryClient, id),
   });
 }

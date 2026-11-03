@@ -315,7 +315,7 @@ describe('a trip from joining to cancelled', () => {
     expect(after.map((n, i) => n - before[i]!)).toEqual([0, 1, 1, 0]);
     expect((await inbox(rohan)).items[0]).toMatchObject({
       type: 'shortlist_ready',
-      message: 'A shortlist of destinations is ready',
+      message: 'A shortlist of destinations is ready. Vote for your favourite',
     });
   });
 

@@ -57,7 +57,7 @@ export function notificationMessage(
         ? 'You were not included because preferences closed before you submitted'
         : 'Preferences are closed. The trip is ready for recommendations';
     case 'shortlist_ready':
-      return 'A shortlist of destinations is ready';
+      return 'A shortlist of destinations is ready. Vote for your favourite';
     case 'shortlist_reopened':
       return `${actor} asked for new recommendations`;
     case 'package_chosen':
