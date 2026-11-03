@@ -35,7 +35,7 @@ const app = createApp({
   logger: pino({ level: 'silent' }),
   auth,
   adminEmails: [ADMIN_EMAIL],
-  clock: () => new Date('2026-11-01T06:30:00Z'),
+  clock: () => new Date('2026-11-03T06:30:00Z'),
 });
 const H = { Host: 'localhost:5173', Origin: 'http://localhost:5173' };
 

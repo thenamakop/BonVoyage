@@ -593,7 +593,7 @@ describe('model wording plan-level fallback', () => {
 describe('whole-plan validity on the real catalogue', () => {
   it('every costable package from gurugram produces a plan the validator accepts', async () => {
     const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
-    await importCatalogue(db, dir, { today: '2026-11-01' });
+    await importCatalogue(db, dir, { today: '2026-11-03' });
     const hub = await db.query.hub.findFirst({ where: (h, { eq }) => eq(h.slug, 'gurugram') });
     const dests = await db.select().from(destination).where(eq(destination.active, true));
     const failures: string[] = [];
@@ -710,7 +710,7 @@ catalogue loop: ${planned} destinations planned, ${failures.length} failures
 describe('speed on the real catalogue (templates path)', () => {
   it('planning a Gurugram trip stays under 2000 ms', async () => {
     const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
-    await importCatalogue(db, dir, { today: '2026-11-01' });
+    await importCatalogue(db, dir, { today: '2026-11-03' });
     const members = await Promise.all([
       createTestUser(app, 'Sp A'),
       createTestUser(app, 'Sp B'),
