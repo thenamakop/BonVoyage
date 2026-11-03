@@ -295,11 +295,14 @@ describe('the demo script holds after a reset', () => {
         (s) => s.constraint === 'F5' && s.capSource === 'trip',
       );
       if (raise?.constraint !== 'F5') throw new Error('no F5 suggestion on round 1');
-      expect(raise.newGroupCapInr).toBe(14000);
+      expect(raise.newGroupCapInr).toBe(15500);
+      expect(raise.unlocks).toEqual(['bikaner', 'mathura', 'pushkar', 'rishikesh', 'vrindavan']);
       await updateTrip(deps, tight.id, organiser, { budgetTotalInr: raise.newGroupCapInr });
       await closeSubmissions(deps, tight.id, organiser);
       const round2 = await requestRecommendations(deps, tight.id, organiser);
       expect(round2.items.map((i) => i.destination.slug)).toEqual([
+        'rishikesh',
+        'pushkar',
         'vrindavan',
         'mathura',
         'bikaner',
@@ -309,9 +312,9 @@ describe('the demo script holds after a reset', () => {
       expect(new Set(bikaner.map((p) => p.transportMode)).size).toBeGreaterThanOrEqual(2);
       expect(bikaner.map((p) => [p.label, p.totalInr, p.overByInr])).toEqual([
         ['Saver', 13995, 0],
-        ['Balanced', 19195, 5195],
-        ['Comfort', 25195, 11195],
-        ['Comfort by car', 36688, 22688],
+        ['Balanced', 19195, 3695],
+        ['Comfort', 25195, 9695],
+        ['Comfort by car', 36688, 21188],
       ]);
 
       // Step 5.7: Balanced changed to Bus. The entry-fee line depends on the weekday, so this
@@ -321,7 +324,7 @@ describe('the demo script holds after a reset', () => {
         await changePackage(deps, tight.id, balanced.id, organiser, { transportMode: 'bus' })
       ).packages.find((p) => p.id === balanced.id)!;
       expect([changed.totalInr, changed.perPersonInr, changed.overByInr]).toEqual([
-        22570, 7524, 8570,
+        22570, 7524, 7070,
       ]);
       expect(changed.lines.find((l) => l.category === 'activities')?.amountInr).toBe(210);
     }, 120_000);

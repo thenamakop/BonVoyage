@@ -4,7 +4,7 @@ This script shows the full journey on demo day: a new account, a group's prefere
 
 Every price in the app is an estimate, and the screens say "estimate" next to each one.
 
-**Dates.** The dates quoted below (28 to 30 Nov 2026, a Saturday to a Monday) are an example. A reset puts the trips on the first in-season weekend at least two weeks ahead: the window opens on a Saturday, and every night of it falls in the season of the places this script names (Chakrata for the hills trips; Vrindavan, Mathura and Bikaner for the Tight budget demo). So the dates on screen may differ from those quoted, but the weekdays, places and prices do not.
+**Dates.** The dates quoted below (28 to 30 Nov 2026, a Saturday to a Monday) are an example. A reset puts the trips on the first in-season weekend at least two weeks ahead: the window opens on a Saturday, and every night of it falls in the season of the places this script names (Chakrata for the hills trips; Rishikesh, Pushkar, Vrindavan, Mathura and Bikaner for the Tight budget demo). So the dates on screen may differ from those quoted, but the weekdays, places and prices do not.
 
 ## Before you start (2 minutes, before the audience arrives)
 
@@ -117,21 +117,21 @@ Leave this window open for step 6.
 ## 5. Transport comparison: Tight budget demo (1 minute)
 
 1. **Asha:** on **Trips**, open **Tight budget demo** and click **Get recommendations**.
-2. The page reads **"No destination fits"**, **"Most places cost more than the group can spend."** and the closest misses: **"Mathura: about ₹6,600 over the group budget"**, **"Vrindavan: about ₹6,730 over the group budget"**, **"Bikaner: about ₹6,860 over the group budget"**.
-3. Click **Raise the group budget to ₹14,000** ("This adds Bikaner, Mathura and Vrindavan."). The page reads **"Saved. Now mark the trip ready again and get recommendations."**
+2. The page reads **"No destination fits"**, **"Most places cost more than the group can spend."** and the closest misses: **"Bikaner: about ₹6,860 over the group budget"**, **"Mathura: about ₹7,836 over the group budget"**, **"Vrindavan: about ₹8,008 over the group budget"**.
+3. Click **Raise the group budget to ₹15,500** ("This adds Bikaner, Mathura, Pushkar, Rishikesh and Vrindavan."). The amount is the smallest that gives a shortlist of three; at ₹15,500 two more places fit as well. The page reads **"Saved. Now mark the trip ready again and get recommendations."**
 4. Click **Mark ready again**. The confirm reads **"Everyone active has submitted."** Click **Mark ready again**, then **Get recommendations**.
-5. The page reads **"Round 2"**: **"1. Vrindavan"**, **"2. Mathura"**, **"3. Bikaner"** (**"429 km, curated road distance"**, **"₹13,860 for the group, about ₹4,620 each, estimate, cheapest by train"**).
+5. The page reads **"Round 2"**: **"1. Rishikesh"**, **"2. Pushkar"**, **"3. Vrindavan"**, **"4. Mathura"**, **"5. Bikaner"** (**"429 km, curated road distance"**, **"₹13,860 for the group, about ₹4,620 each, estimate, cheapest by train"**).
 6. On **Bikaner**, click **Choose**, then **Choose Bikaner**. Click **See the packages**:
 
    | Package | Lines under the name | Group total | Flag |
    | --- | --- | --- | --- |
    | Saver | Train · Budget stay · 2 rooms<br>About 6 h 30 min each way (planned) | ₹13,995 for the group | none |
-   | Balanced | Train · Mid stay · 2 rooms<br>About 6 h 30 min each way (planned) | ₹19,195 for the group | ₹5,195 over the group budget |
-   | Comfort | Train · Premium stay · 2 rooms<br>About 6 h 30 min each way (planned) | ₹25,195 for the group | ₹11,195 over the group budget |
-   | Comfort by car | Car · Premium stay · 2 rooms<br>About 8 h 5 min each way (planned) | ₹36,688 for the group | ₹22,688 over the group budget |
+   | Balanced | Train · Mid stay · 2 rooms<br>About 6 h 30 min each way (planned) | ₹19,195 for the group | ₹3,695 over the group budget |
+   | Comfort | Train · Premium stay · 2 rooms<br>About 6 h 30 min each way (planned) | ₹25,195 for the group | ₹9,695 over the group budget |
+   | Comfort by car | Car · Premium stay · 2 rooms<br>About 8 h 5 min each way (planned) | ₹36,688 for the group | ₹21,188 over the group budget |
 
    > "Bikaner has checked train, bus and car fares from Gurugram, so here the packages compare transport. The train is both the cheapest and the quickest, so three packages use it, and one goes by car. A package that costs more than the group can spend is flagged in words, not hidden."
-7. On **Balanced**, click **Change**. The card shows **Transport mode** (**Train**, **Bus**, **Car**), **Stay tier** (**Budget**, **Mid**, **Premium**) and **"Saving clears everyone’s opinion on this package."** Set **Transport mode** to **Bus** and click **Save changes**. Balanced now reads **"Bus · Mid stay · 2 rooms"**, **"About 9 h 40 min each way (planned)"**, **"₹22,570 for the group"**, **"about ₹7,524 each"** and **"₹8,570 over the group budget"**.
+7. On **Balanced**, click **Change**. The card shows **Transport mode** (**Train**, **Bus**, **Car**), **Stay tier** (**Budget**, **Mid**, **Premium**) and **"Saving clears everyone’s opinion on this package."** Set **Transport mode** to **Bus** and click **Save changes**. Balanced now reads **"Bus · Mid stay · 2 rooms"**, **"About 9 h 40 min each way (planned)"**, **"₹22,570 for the group"**, **"about ₹7,524 each"** and **"₹7,070 over the group budget"**.
    > "Change re-costs the package from the catalogue straight away, and the over-budget flag follows the new total."
 
 Stop here. This trip does not need a day plan.

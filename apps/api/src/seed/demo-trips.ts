@@ -140,7 +140,7 @@ export const LONG_WEEKEND_TITLE = 'Long weekend in the hills';
 export const DEMO_ANCHORS: Readonly<Record<string, readonly string[]>> = {
   [LONG_WEEKEND_TITLE]: ['chakrata'],
   [HILLS_DEMO.title]: ['chakrata'],
-  [TIGHT_BUDGET_DEMO.title]: ['vrindavan', 'mathura', 'bikaner'],
+  [TIGHT_BUDGET_DEMO.title]: ['rishikesh', 'pushkar', 'vrindavan', 'mathura', 'bikaner'],
   [DATE_CLASH_DEMO.title]: [],
 };
 
