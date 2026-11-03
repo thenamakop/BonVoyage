@@ -2,6 +2,10 @@
 
 Status: Accepted · Date: 2026-10-24 · Supersedes: scoring draft; earlier rules only where stated below
 
+Amended 2026-11-03 (#132, Maulik): the budget suggestion must reach a shortlist. When a run ends in a diagnostic, the suggested group cap is the smallest ₹500 step at which the destinations already feasible, plus the budget near misses the cap covers, number at least three (the T6 guard in m). Only budget near misses count: destinations that pass F1, F2 and F4 and fail F5 alone. The suggestion raises one side of the group cap in b) (the trip budget, or members' maxima), so the new cap may not exceed the other side. If too few budget near misses exist, or the cap would have to pass the other side, no budget suggestion is made, and the diagnostic still names the binding constraint. For a member-set cap, the per-person maximum is still the new group cap / n, rounded up to ₹500. The amount depends only on destination costs, so no member's limit can be worked out from it. The radius, nights and season suggestions are unchanged.
+
+Why: before, the cap covered only the cheapest budget miss, so one tap could add a single place and the next round was again a diagnostic. Real case: without the Gurugram trains to Mathura and Vrindavan (branch `data/126-no-service-trains-hold`), the Tight budget demo (₹7,000) suggested ₹14,000. That added Bikaner alone, and reaching a shortlist took three taps (₹14,000, then ₹15,000, then ₹15,500). The rule is in `packages/engine/src/feasibility/diagnostic.ts`; the spec is `docs/specs/scoring.md` section 6.
+
 ## Context
 
 Sprint 2 implements R4 to R7 and R16, with the R15 shortlist speed target. Sprint 1 closed on 23 October with catalogue stage A at 0/50. These decisions fix the recommendation rules before implementation; the [re-plan](../sprints/replan-2026-10-23.md) fixes the calendar without cutting a Must have.

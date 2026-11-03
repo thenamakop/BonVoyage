@@ -105,6 +105,7 @@ export function feasibilityContext(
     groupCapInr: profile.groupCapInr,
     capSource: capSource(trip.budgetTotalInr, profile.memberCount, profile.perPersonCapInr),
     perPersonCapInr: profile.perPersonCapInr,
+    tripBudgetInr: trip.budgetTotalInr,
     commonWindow: { start: profile.commonWindow.start, end: profile.commonWindow.end },
   };
 }

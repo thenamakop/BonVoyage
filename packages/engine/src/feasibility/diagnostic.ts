@@ -9,6 +9,9 @@ import type {
   Suggestion,
 } from './types';
 
+/** A shortlist needs this many feasible destinations (T6 guard, 0004 m). */
+export const SHORTLIST_SIZE = 3;
+
 // Scoring section 6: ties on near-miss counts resolve in the order F5, F1, F2, F4.
 const BINDING_ORDER: EvaluatedConstraintId[] = ['F5', 'F1', 'F2', 'F4'];
 // Suggestions print in constraint order for readability.
@@ -24,6 +27,7 @@ const slugs = (list: readonly Evaluation[]) => list.map((e) => e.slug).sort(comp
 function buildSuggestions(
   nearMisses: readonly Evaluation[],
   ctx: DiagnosticInput['ctx'],
+  feasibleCount: number,
 ): Suggestion[] {
   const out: Suggestion[] = [];
   for (const id of SUGGESTION_ORDER) {
@@ -58,16 +62,35 @@ function buildSuggestions(
         unlocks: slugs(misses.filter((e) => failureOf(e).actual <= shiftMonths)),
       });
     } else {
-      const newGroupCapInr = Math.ceil(Math.min(...actuals) / 500) * 500;
+      // 0004, amended 2026-11-03 (#132): one tap must reach a shortlist. Places already
+      // feasible stay feasible under a higher cap, so the cap covers the k-th
+      // cheapest budget miss, k being what they leave to fill (at least 1). With
+      // fewer than k budget misses no amount can, so there is no budget button.
+      const needed = Math.max(1, SHORTLIST_SIZE - feasibleCount);
+      if (actuals.length < needed) continue;
+      // Safe: actuals has at least `needed` entries (checked above).
+      const covered = [...actuals].sort((a, b) => a - b)[needed - 1] as number;
+      const newGroupCapInr = Math.ceil(covered / 500) * 500;
+      // The cap is min(trip budget, n × per-person cap) (0004 b) and a suggestion
+      // raises one side only, so the other side is as far as it can go.
+      const ceiling = ctx.capSource === 'trip' ? ctx.n * ctx.perPersonCapInr : ctx.tripBudgetInr;
+      if (newGroupCapInr > ceiling) continue;
+      // 0004 c: the organiser cannot raise members' maxima, so show the new per-person cap.
+      const newPerPersonMaxInr =
+        ctx.capSource === 'members' ? Math.ceil(newGroupCapInr / ctx.n / 500) * 500 : undefined;
+      // "This adds" lists what the change really reaches: rounding the per-person
+      // maximum up can carry the cap past newGroupCapInr, up to the trip budget.
+      const reached =
+        newPerPersonMaxInr === undefined
+          ? newGroupCapInr
+          : Math.min(ctx.tripBudgetInr, ctx.n * newPerPersonMaxInr);
       const suggestion: Suggestion = {
         constraint: 'F5',
         newGroupCapInr,
         capSource: ctx.capSource,
-        unlocks: slugs(misses.filter((e) => failureOf(e).actual <= newGroupCapInr)),
+        unlocks: slugs(misses.filter((e) => failureOf(e).actual <= reached)),
       };
-      // 0004 c: the organiser cannot raise members' maxima, so show the new per-person cap.
-      if (ctx.capSource === 'members')
-        suggestion.newPerPersonMaxInr = Math.ceil(newGroupCapInr / ctx.n / 500) * 500;
+      if (newPerPersonMaxInr !== undefined) suggestion.newPerPersonMaxInr = newPerPersonMaxInr;
       out.push(suggestion);
     }
   }
@@ -101,7 +124,7 @@ export function buildDiagnostic({
     .sort((a, b) => failureOf(a).relative - failureOf(b).relative || compareText(a.slug, b.slug))
     .slice(0, 3);
   let bindingConstraint: Diagnostic['bindingConstraint'] = null;
-  if (feasible.length < 3) {
+  if (feasible.length < SHORTLIST_SIZE) {
     let best = 0;
     for (const id of BINDING_ORDER) {
       const count = nearMisses.filter((e) => byFailure(e, id)).length;
@@ -117,7 +140,7 @@ export function buildDiagnostic({
     nearMisses,
     alternatives,
     bindingConstraint,
-    suggestions: buildSuggestions(nearMisses, ctx),
+    suggestions: buildSuggestions(nearMisses, ctx, feasible.length),
     incomplete: [...incomplete],
   };
 }

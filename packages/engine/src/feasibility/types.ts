@@ -13,6 +13,8 @@ export interface FeasibilityContext {
   groupCapInr: number;
   capSource: 'trip' | 'members';
   perPersonCapInr: number;
+  /** The trip's own budget, which caps a members-side raise (#132). */
+  tripBudgetInr: number;
   commonWindow: { start: string; end: string };
 }
 
