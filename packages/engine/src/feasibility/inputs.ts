@@ -124,7 +124,7 @@ export function toPublicFares(
   return out;
 }
 
-const COST_RULE_KEYS = {
+export const COST_RULE_KEYS = {
   fuelPriceInrPerLitre: 'fuel_price_inr_per_litre',
   carKmPerLitre: 'car_km_per_litre',
   tollInrPerKm: 'toll_inr_per_km',

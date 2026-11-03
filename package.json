@@ -19,6 +19,7 @@
     "vercel-build": "tsx scripts/vercel-build.ts",
     "smoke:function": "tsx scripts/smoke-function.ts",
     "perf:recommend": "tsx scripts/perf/recommend-timing.ts",
+    "eval": "tsx scripts/eval/run.ts",
     "backlog": "tsx scripts/backlog/create-backlog.ts",
     "verify": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:up": "docker compose up -d --wait db db-test",
@@ -34,6 +35,9 @@
     "spike:itinerary": "tsx packages/integrations/spikes/itinerary/run.ts"
   },
   "devDependencies": {
+    "@bonvoyage/db": "workspace:*",
+    "@bonvoyage/engine": "workspace:*",
+    "@bonvoyage/shared": "workspace:*",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.19.2",
     "@vitejs/plugin-react": "^6.1.2",

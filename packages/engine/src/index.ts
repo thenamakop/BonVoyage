@@ -25,6 +25,9 @@ export {
   toMemberInput,
   toPublicFares,
 } from './feasibility/inputs';
+export { COST_RULE_KEYS } from './feasibility/inputs';
+export { toPackageInput } from './feasibility/package-input';
+export type { PackageSource } from './feasibility/package-input';
 export type { DestinationFields, PreferenceFields } from './feasibility/inputs';
 export { evaluateCandidate, monthShift, windowMonths } from './feasibility/evaluate';
 export { buildDiagnostic, SHORTLIST_SIZE } from './feasibility/diagnostic';

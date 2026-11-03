@@ -11,8 +11,7 @@ import {
   type PackageDraft,
   type PackageInput,
 } from '@bonvoyage/engine';
-import type { PlannerPlace } from '@bonvoyage/engine';
-import { groupProfile } from '@bonvoyage/engine';
+import { toPackageInput } from '@bonvoyage/engine';
 import { and, eq } from 'drizzle-orm';
 import type { Logger } from 'pino';
 import {
@@ -58,17 +57,6 @@ const PACKAGE_ERROR = {
     ),
 };
 
-const COST_RULE_KEYS: Record<
-  string,
-  'fuelPriceInrPerLitre' | 'carKmPerLitre' | 'tollInrPerKm' | 'personsPerCar' | 'carRentalInrPerDay'
-> = {
-  fuel_price_inr_per_litre: 'fuelPriceInrPerLitre',
-  car_km_per_litre: 'carKmPerLitre',
-  toll_inr_per_km: 'tollInrPerKm',
-  persons_per_car: 'personsPerCar',
-  car_rental_inr_per_day: 'carRentalInrPerDay',
-};
-
 /** Build the engine input for a (trip, destination) pair (0005 c/d). */
 export async function packageInput(
   db: Db | Tx,
@@ -76,81 +64,19 @@ export async function packageInput(
   members: MemberInput[],
   dest: typeof DestinationTable.$inferSelect,
 ): Promise<PackageInput> {
-  const profile = groupProfile(members, tripRow);
   const { dest: d, fares, rules, pois } = await loadPackageSource(db, tripRow.originHubId, dest.id);
   const hubRow = await db.query.hub.findFirst({
     where: (h, { eq }) => eq(h.id, tripRow.originHubId),
   });
-  const fareOf = (mode: 'bus' | 'train' | 'car') => fares.find((f) => f.mode === mode);
-  const bus = fareOf('bus');
-  const train = fareOf('train');
-  const car = fareOf('car');
-  const costRules = {
-    fuelPriceInrPerLitre: 0,
-    carKmPerLitre: 0,
-    tollInrPerKm: 0,
-    personsPerCar: 4,
-    carRentalInrPerDay: 0,
-  };
-  for (const r of rules) {
-    const key = COST_RULE_KEYS[r.key];
-    if (key) costRules[key] = r.value;
-  }
-  const groupInterests = profile.activityVotes.filter((v) => v.count >= 2).map((v) => v.value);
-  return {
-    n: members.length,
-    nights: tripRow.durationNights,
-    startDate: profile.commonWindow?.start ?? tripRow.startDate ?? '2026-11-01',
-    groupCapInr: Math.min(tripRow.budgetTotalInr, members.length * profile.perPersonCapInr),
-    originName: hubRow?.name ?? '',
-    destinationName: d?.name ?? dest.name,
-    hubSlug: hubRow?.slug ?? '',
-    destinationSlug: d?.slug ?? dest.slug,
-    modes: {
-      bus:
-        bus?.farePerPersonInr !== null && bus?.farePerPersonInr !== undefined
-          ? {
-              farePerPersonInr: bus.farePerPersonInr,
-              durationMinutes: bus.durationMinutes,
-              verified: bus.reviewStatus === 'verified',
-            }
-          : null,
-      train:
-        train?.farePerPersonInr !== null && train?.farePerPersonInr !== undefined
-          ? {
-              farePerPersonInr: train.farePerPersonInr,
-              durationMinutes: train.durationMinutes,
-              verified: train.reviewStatus === 'verified',
-            }
-          : null,
-      car: {
-        km: car?.distanceKm ?? 0,
-        durationMinutes: car?.durationMinutes ?? 0,
-        verified: (car?.reviewStatus ?? 'draft') === 'verified',
-      },
-    },
-    costRules: { ...costRules, verified: rules.every((r) => r.verified === 'verified') },
-    stay: {
-      budget: dest.stayBudgetInr,
-      mid: dest.stayMidInr,
-      premium: dest.stayPremiumInr,
-    },
-    costVerified: dest.costReviewStatus === 'verified',
-    foodPerDayInr: dest.foodPerDayInr ?? 0,
-    localPerDayInr: dest.localPerDayInr ?? 0,
-    places: pois.map((p): PlannerPlace => ({
-      key: `${d?.slug ?? dest.slug}/${p.poiKey}`,
-      name: p.name,
-      category: p.category,
-      typicalMinutes: p.typicalMinutes,
-      openTime: p.openTime,
-      closeTime: p.closeTime,
-      closedDays: p.closedDays,
-      entryFeeInr: p.entryFeeInr,
-      verified: p.reviewStatus === 'verified',
-    })),
-    groupInterests,
-  };
+  return toPackageInput({
+    trip: tripRow,
+    members,
+    hub: hubRow,
+    destination: { ...dest, name: d?.name ?? dest.name, slug: d?.slug ?? dest.slug },
+    fares,
+    rules,
+    pois,
+  });
 }
 
 /** T9 (0005 a): drafts before the lock; rows inside beforeDecide. */
