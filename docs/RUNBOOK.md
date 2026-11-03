@@ -432,7 +432,7 @@ The next phase starts only when its gate holds. Features freeze on 8 November; a
 | S5 | 29 Oct to 7 Nov | Could-haves beside S4: fairness across rounds, in-app reminders, voting on the shortlist, offline evaluation harness | R17, R18 |
 | Buffer | 8 to 10 Nov | Feature freeze; fixes, response-time check, demo data, report, submission | R15 |
 
-Out of scope for 10 November: email, travel-date reminders and the user study. R17, R18 and in-app reminders (C4) moved into Sprint 5 by the [29 October re-plan](sprints/replan-2026-10-29.md). R16 is met by the integrations module with the straight-line distance estimate; live routing (Google or openrouteservice) is added only if a key is ready by S2. If S3 slips, the cut order is decision 0005 k: itinerary Modify (I5), then package Change (I3), then live model wording. A Must Have is never cut.
+Out of scope for 10 November: email, travel-date reminders and the user study. R16 is met by the integrations module with the straight-line distance estimate; live routing (Google or openrouteservice) is added only if a key is ready by S2. If S3 slips, the cut order is decision 0005 k: itinerary Modify (I5), then package Change (I3), then live model wording. A Must Have is never cut.
 
 ## Appendix A: Agent prompts
 
@@ -611,8 +611,8 @@ These three tables are the contract between the documents and the code: every re
 | R14 | Cached or curated fallback, labelled by provenance | Should | External Data Integration | 3.5, Table 8 | 5.0 and D4 | S3 |
 | R15 | Screens within 3 s, shortlist within 10 s | Should | all modules | 3.3 | none | Buffer |
 | R16 | One mediating module with caching and quota control | Should | External Data Integration | 3.1.3 | 4.0, 5.0 and 6.0 | S2 |
-| R17 | Fairness across recommendation rounds | Could | Recommendation Engine | none | Recommend Destinations | after 10 Nov |
-| R18 | Voting on the shortlist | Could | Trip & Feedback | 2.5 | none yet | after 10 Nov |
+| R17 | Fairness across recommendation rounds | Could | Recommendation Engine | none | Recommend Destinations | S5 (29 Oct to 7 Nov) |
+| R18 | Voting on the shortlist | Could | Trip & Feedback | 2.5 | none yet | S5 (29 Oct to 7 Nov) |
 | R19 | Online payment and booking | Won't | none | 1.2 | none | none |
 | R20 | Nationwide real-time inventory | Won't | none | 2.4 | none | none |
 

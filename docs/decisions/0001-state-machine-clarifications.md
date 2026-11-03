@@ -22,7 +22,7 @@ The trip state machine follows the diagram and Appendix B with these clarificati
   | --- | --- | --- | --- |
   | T21 | `shortlisted` | `shortlistReopened` ("Ask again", organiser only, no guard, no action) | `ready_for_recommendation` |
 
-  The entry behaviour of `ready_for_recommendation` (`computeGroupProfile`) runs, as e) requires. From there members may revise (T5), the organiser may edit the trip (0004 j), and the next `recommendationRequested` stores a new run (round + 1). `shortlistReopened` from any other state is rejected like every other illegal event. The external rows are now 19 (T1 to T18 with T3b, T6 split, plus T21). No status is added. The diagram in `docs/design/` predates T21 and is not edited.
+  The entry behaviour of `ready_for_recommendation` (`computeGroupProfile`) runs, as e) requires. From there members may revise (T5), the organiser may edit the trip (0004 j), and the next `recommendationRequested` stores a new run (round + 1). `shortlistReopened` from any other state is rejected like every other illegal event. The external rows are now 19 (T1 to T18 with T3b, T6 split, plus T21). No status is added. The diagram in `docs/design/` predates T21 and is not edited. Confirmed 3 November 2026: a member excluded at T3b stays excluded after T21. T21 has no action that touches `trip_member.status`; an excluded member cannot rejoin through an invitation (`MEMBER_EXCLUDED`, 409) or submit preferences (`activeMember` access), and keeps read-only access to the trip.
 - h) I6, approved under decision E4, 29 October 2026 (`docs/sprints/sprint-5-plan.md`), added 30 October 2026. A new internal row:
 
   | # | State | Event \[guard\] / action |
