@@ -10,7 +10,7 @@
   - the round 2 fairness sentence, with no weight or number visible.
 
   The demo script's steps 1 to 5, including the new voting beat, matched line for line.
-- **Production:** not run end to end. It has no demo accounts, and its deployment URL is behind Vercel's login. The deployment at `7e28920` is READY (Vercel API). Preview shows migrations 6 of 6; this review has no record of production's migration status.
+- **Production:** not run end to end. It has no demo accounts, and its deployment URL is behind Vercel's login. The deployment at `7e28920` is READY (Vercel API), and production's migrations are 6 of 6 (`pnpm db:migrate:remote --target production --status`, 3 November), so 0004 and 0005 are there. Its day plans use the templates (no `GEMINI_DAILY_LIMIT` on production).
 - **Open:** three gaps go to after submission: #159, #163 and #165. See the [Buffer](#buffer-to-finish-before-submission).
 
 Sprint 5 was planned for Thursday 29 October to Saturday 7 November ([plan](sprint-5-plan.md), [re-plan](replan-2026-10-29.md)). Every item merged by 3 November at 22:35. This review was written on 3 November, earlier than the planned 7 November, in the same PR as the [Sprint 4 review](sprint-4-review.md) (E7: two reviews). Times are India time unless marked UTC.
@@ -45,7 +45,7 @@ Evidence comes from three sources:
 | Decision | How it was carried out |
 | --- | --- |
 | **M1**, build all four items in Sprint 5 | All four shipped (S5-2 to S5-5). |
-| **M2**, merge when CI is green; demo lines change with their PR | Every Sprint 5 PR has a green `ci` check (`gh pr view --json statusCheckRollup`). #153's check ran on 30 October; master's run after its merge on 2 November failed on the season dates (#154), fixed by #155. #161 added the voting beat to `docs/demo/sprint-3-demo.md` and updated `run-seed.test.ts` and `demo-season.test.ts` in the same PR. #155 did the same for the demo dates. **Not evidenced:** the planned Sunday 1 November demo re-run on preview. No result for it is recorded; the full run was on 3 November. The demo itself moved from 2 November. |
+| **M2**, merge when CI is green; demo lines change with their PR | Every Sprint 5 PR has a green `ci` check (`gh pr view --json statusCheckRollup`). #153's check ran on 30 October; master's run after its merge (3 November, 00:03) failed on the season dates (#154), fixed by #155. #161 added the voting beat to `docs/demo/sprint-3-demo.md` and updated `run-seed.test.ts` and `demo-season.test.ts` in the same PR. #155 did the same for the demo dates. **Done late:** the planned Sunday 1 November re-run happened on the morning of 3 November instead, on the preview for the Dependabot PR (master at #152 plus the bumps). Steps 1 to 5 matched apart from two findings, both recorded in #154 and fixed in #155: the demo dates had left Chakrata's season, and step 5.7 was ₹15 higher on a Friday window (entry fees). The full run on the final master followed the same evening. The demo itself moved from 2 November. |
 | **M3**, R17 never changes a trip's first shortlist | `scoring/golden.test.ts` (section 7 to 1e-6) and `run-seed.test.ts` (the Hills order) passed in `pnpm verify`. The demo's shortlists matched the script on preview. |
 | **M4**, reminders in-app only | No email or push was built, and no new outbound service. The bell and panel are in-app (S5-3). [known-limitations.md](../known-limitations.md) records it. |
 | **E1**, R17 rounds and formula | T21 `shortlistReopened` in #145, organiser only, in decision 0001's table. The deficit is on each earlier shortlist's top choice, with λ = 1 from configuration (#147). Returned `gfs`, `mean` and `sd` stay unweighted; the review run found only `run.weights` (the stored alpha, beta and gamma) in the round 2 response. |
@@ -81,7 +81,7 @@ Quoted from [results-2026-11-03.md](../evaluation/results-2026-11-03.md): 500 sc
 
 | Measure | λ = 0 | λ = 1 |
 | --- | --- | --- |
-| Cumulative spread, paired change against λ = 0 | — | lower for 7.12% (20/281), equal for 92.53% (260/281), higher for 0.36% (1/281); median change 0.0000 |
+| Cumulative spread, paired change against λ = 0 | baseline | lower for 7.12% (20/281), equal for 92.53% (260/281), higher for 0.36% (1/281); median change 0.0000 |
 | Same member uniquely least served in 2 or more rounds (strict) | 59.43% (167/281) | 59.07% (166/281) |
 
 **D. Budget recovery.**
@@ -111,7 +111,7 @@ The results file records no defect. This review's re-run (`--scenarios 100`, the
 
 **Defects found during the sprint:**
 
-- #154: master CI failed after #153 on 2 November, because demo dates fell out of season. Fixed in #155.
+- #154: master CI failed after #153 (3 November, 00:03), because demo dates fell out of season. Fixed in #155.
 - #132: the one-tap fix could leave fewer than 3 destinations. Fixed in #157.
 - The Dependabot group bump #75 broke lint: a second `@types/node` (26) gave the web tests a second Vitest copy. Fixed by #156, then #160.
 
@@ -144,22 +144,22 @@ The last column is the time from the previous merge to master, Sprint 4's merges
 | S5-2b-1 "Ask again" (T21) | #145 | 29 Oct 20:47 | 29 Oct 20:55 | 2 h | 24 min |
 | S5-2b-2 weights (0004) | #147 | 30 Oct 05:00 | 30 Oct 05:06 | 2 h | 30 min |
 | S5-3 API | #148 | 30 Oct 05:25 | 30 Oct 15:10 | 2.5 h | 10 h 4 min |
-| T16 fix | #149 | 30 Oct 15:22 | 30 Oct 15:45 | — | 36 min |
+| T16 fix | #149 | 30 Oct 15:22 | 30 Oct 15:45 | none | 36 min |
 | S5-3 web | #150 | 30 Oct 16:06 | 30 Oct 16:13 | 2.5 h | 28 min |
-| T16 from the dashboard | #151 | 30 Oct 16:27 | 30 Oct 18:59 | — | 2 h 46 min |
+| T16 from the dashboard | #151 | 30 Oct 16:27 | 30 Oct 18:59 | none | 2 h 46 min |
 | S5-4 API (0005) | #152 | 30 Oct 19:22 | 30 Oct 19:43 | 2.5 h | 44 min |
 | S5-5 step 0 (mapping move) | #153 | 30 Oct 19:56 | 3 Nov 00:03 | 2 h | 76 h 20 min |
-| Demo dates (#154) | #155 | 3 Nov 05:20 | 3 Nov 13:22 | — | 13 h 19 min |
-| `@types/node` in apps/web | #156 | 3 Nov 14:07 | 3 Nov 14:11 | — | 49 min |
-| One-tap rule (#132) | #157 | 3 Nov 14:32 | 3 Nov 14:50 | — | 39 min |
-| Dependabot group bump | #75 | 24 Oct 19:16 | 3 Nov 16:18 | — | 1 h 28 min |
-| One `@types/node` | #160 | 3 Nov 17:14 | 3 Nov 17:19 | — | 23 min |
+| Demo dates (#154) | #155 | 3 Nov 05:20 | 3 Nov 13:22 | none | 13 h 19 min |
+| `@types/node` in apps/web | #156 | 3 Nov 14:07 | 3 Nov 14:11 | none | 49 min |
+| One-tap rule (#132) | #157 | 3 Nov 14:32 | 3 Nov 14:50 | none | 39 min |
+| Dependabot group bump | #75 | 24 Oct 19:16 | 3 Nov 16:18 | none | 1 h 28 min |
+| One `@types/node` | #160 | 3 Nov 17:14 | 3 Nov 17:19 | none | 23 min |
 | S5-4 web | #161 | 3 Nov 18:27 | 3 Nov 18:57 | 2.5 h | 1 h 38 min |
 | S5-5 harness | #162 | 3 Nov 20:19 | 3 Nov 21:20 | 2 h | 2 h 23 min |
 | S5-6 evidence | #164 | 3 Nov 22:00 | 3 Nov 22:35 | 1 h | 1 h 15 min |
-| S5-7 review | this PR | 3 Nov | — | 1.5 h | — |
+| S5-7 review | this PR | 3 Nov | pending | 1.5 h | pending |
 
-#153 stayed open from 30 October to 2 November. #158 (catalogue, Sprint 4) merged between #75 and #160.
+#153 stayed open from 30 October to 3 November (00:03). #158 (catalogue, Sprint 4) merged between #75 and #160.
 
 ## Commands run for this review
 

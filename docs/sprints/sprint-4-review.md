@@ -3,7 +3,7 @@
 **Result: Sprint 4's hardening is in place, and model wording has now run on a deployment.** Nine of the twelve plan items are shipped or done, each with a test or a preview check. The demo fixes (item 1) wait for the demo, which moved. The catalogue (item 8) has B1 complete, but B2 and C are still partly draft. This review is item 12.
 
 - **Preview, 3 November:** the demo script's steps 1 to 5 matched line for line. Every Sprint 4 change checked on screen still holds (travel time on cards, the 44 px toggle, two-member budget hiding). With `LIVE_APIS=on`, one day plan was model-worded and passed validation, and two live failures fell back to the catalogue plan with every fact intact (S4-7, #122).
-- **Production:** not run end to end. It has no demo accounts, and its deployment URL is behind Vercel's login. The deployment at `7e28920` is READY with `LIVE_APIS` unset (templates).
+- **Production:** not run end to end. It has no demo accounts, and its deployment URL is behind Vercel's login. The deployment at `7e28920` is READY, with migrations 6 of 6 (`pnpm db:migrate:remote --target production --status`, 3 November). Its day plans use the templates: production has no `GEMINI_DAILY_LIMIT`, so the quota guard allows no model call (`env.ts` defaults the limit to 0), whatever `LIVE_APIS` says there.
 - **Not yet done:** the Monday demo moved from 2 November to later this week or next, so item 1 (S4-4) has nothing to fix yet and goes to the Buffer. `catalogue:check` still shows 2 B2 fares and 62 places as draft (#126, #39); they show in the app as "Not verified".
 
 Sprint 4 was planned for Tuesday 3 to Saturday 7 November ([plan](sprint-4-plan.md)). Most of it shipped on 28 and 29 October, ahead of the plan ([re-plan of 29 October](replan-2026-10-29.md)), beside Sprint 5. This review was written on 3 November, earlier than the planned 7 November, from the two run files and the commands below. Times are India time unless marked UTC.
@@ -40,7 +40,7 @@ Evidence comes from three sources:
 | **D1**, two-member groups (#116) | #129: below 3 contributing members the group profile, recommendation runs and the diagnostic carry no budget figure, only whether budgets overlap. Packages against a member-set cap carry no amount. The date window is unchanged. Checked on preview on 3 November (item 5). |
 | **D2**, #20 | #129's body closes #20 together with #116. An evidence comment followed on 29 October. |
 | **D3**, #23 | #23's text follows decision 0005 h. It closed on 29 October with an evidence comment (S4-9). |
-| **D4**, model wording on deployments | Built in #133 (#121) and checked on preview on 3 November (#122). Not cut. Maulik decided on 3 November that production stays on templates for submission. Preview is back to `LIVE_APIS` off for the demo, with `GEMINI_MODEL=gemini-3.5-flash-lite` kept. |
+| **D4**, model wording on deployments | Built in #133 (#121) and checked on preview on 3 November (#122). Not cut. Maulik decided on 3 November that production stays on templates for submission; production has no `GEMINI_DAILY_LIMIT`, so the guard allows no model call there. Preview is back to `LIVE_APIS` off for the demo, with `GEMINI_MODEL=gemini-3.5-flash-lite` kept. |
 | **D5**, catalogue criteria | #38's check became `--require b1`; #144 met it and closed #38. The 31 B2 fares went to #126; the Gurugram trains to Mathura and Vrindavan, first in line, were deleted in #158 because no train runs on either pair. 2 rows remain. |
 | **D6**, R17 and R18 out of Sprint 4 | **Superseded on 29 October by M1** ([re-plan](replan-2026-10-29.md)): R17, R18 and in-app reminders moved into Sprint 5 and shipped there ([Sprint 5 review](sprint-5-review.md)). They stayed out of Sprint 4's items. |
 
@@ -49,8 +49,8 @@ Evidence comes from three sources:
 | Issue | Defect | Fix |
 | --- | --- | --- |
 | #132 | The one-tap budget fix could raise the budget to an amount that still gave fewer than 3 destinations | #157, 3 November (a test in the same PR) |
-| #154 | Demo trip dates could fall outside a place's season. Master CI failed on 2 November after #153: `run-seed.test.ts` expected Chakrata first and got Dhanaulti, because the reset date had moved | #155, 3 November |
-| — | S4-7: the first live model call (20.1 s) exceeds the app's 20 s wording timeout. The plan falls back to templates and the cached repeat is model-worded. Two phrases overstate ("Spend the day trekking to Moila Top meadow and Tiger Falls."; "historic" Deoban forest), with no number, time, price or new place. | #165, after submission |
+| #154 | Demo trip dates could fall outside a place's season. Master CI failed just after midnight on 3 November, after #153: `run-seed.test.ts` expected Chakrata first and got Dhanaulti, because the reset date had moved | #155, 3 November |
+| #165 | S4-7: the first live model call (20.1 s) exceeds the app's 20 s wording timeout. The plan falls back to templates and the cached repeat is model-worded. Two phrases overstate ("Spend the day trekking to Moila Top meadow and Tiger Falls."; "historic" Deoban forest), with no number, time, price or new place. | after submission |
 
 No defect was found in the demo script on preview.
 
@@ -58,7 +58,7 @@ No defect was found in the demo script on preview.
 
 | Stage | 28 October (start) | 3 November (now) | Change |
 | --- | --- | --- | --- |
-| A (hubs, destination identity) | 50/50 | 50/50 | — |
+| A (hubs, destination identity) | 50/50 | 50/50 | none |
 | B1 (cost rules, destination costs, car rows) | 136/137 | **137/137** | +1, Sariska costs (#144) |
 | B2 (bus and train fares, best effort) | 85/116 | **102/104** | +17 verified; 12 rows deleted (10 trains with no service, 2 Gurugram buses with none), #158 |
 | C (places of interest) | 202/276 | **214/276** | +10 (#146), +2 (#158) |
@@ -78,11 +78,12 @@ No defect was found in the demo script on preview.
 | Preview | Choose a destination (packages built) | 212 to 539 ms | Review run |
 | Preview | Plan the days, templates | 609 ms | Review run |
 | Preview | Plan the days, model live | 20.5 s (timeout fallback); 0.4 s from cache | S4-7 file |
+| Preview | Load check: 300 reads at 20 in flight; 400 at 40 | p95 229 ms and 334 ms; max 393 ms and 1,816 ms; all under 3 s | Review run, "Load check" |
 | Local | `pnpm perf:recommend`, 5 runs, 33 feasible each | **min 80 ms, median 133 ms, max 226 ms** | This review |
 | Local, in-process | Full journey: recommend, choose, plan | 113 ms, 69 ms, 94 ms | Integration run, this review |
-| Production | — | **not measured** | Production has no demo accounts and its deployment URL is behind Vercel's login, so no run was made (review run, "Production"). The last production measurement is 250 ms to the shortlist on 28 October (#94, [Sprint 3 review](sprint-3-review.md)). |
+| Production | n/a | **not measured** | Production has no demo accounts and its deployment URL is behind Vercel's login, so no run was made (review run, "Production"). The last production measurement is 250 ms to the shortlist on 28 October (#94, [Sprint 3 review](sprint-3-review.md)). |
 
-Every screen measured on preview is under 3 s, and every shortlist is under 10 s. The one exception is the live model plan, which falls under the 30 s itinerary target. #25 (R15) also asks for 95% of requests under 3 s under load, and for a model-worded plan for eight members. Neither has been measured, so #25 stays open (see the comment on #25).
+Every screen measured on preview is under 3 s, and every shortlist is under 10 s. The one exception is the live model plan, which falls under the 30 s itinerary target. #25 (R15) also asks for 95% of requests under 3 s under load: a read-only load check on preview gave 100% under 3 s, with p95 229 ms at 20 requests in flight and 334 ms at 40 (review run, "Load check"). Its other criterion, a model-worded plan for eight members, does not apply while production uses the templates (D4); the live model's first-call time is #165. #25 is closed with this evidence.
 
 ## Velocity
 
@@ -93,22 +94,22 @@ The last column is the time from the previous merge to master, Sprint 5's merges
 | Prompt | PR | Created | Merged | Time box | Time between merges |
 | --- | --- | --- | --- | --- | --- |
 | S4-1 plan | #117 | 28 Oct 20:46 | 28 Oct 21:04 | 1 h + 30 min | 48 min |
-| Prompts and the approved plan | #127 | 28 Oct 21:08 | 28 Oct 21:12 | — | 8 min |
+| Prompts and the approved plan | #127 | 28 Oct 21:08 | 28 Oct 21:12 | none | 8 min |
 | S4-2 stage counts | #128 | 28 Oct 21:28 | 28 Oct 21:39 | 45 min | 26 min |
 | S4-3 two-member budget | #129 | 28 Oct 22:07 | 28 Oct 22:21 | 1.5 h | 42 min |
 | S4-5 package cards (items 3 and 4) | #130 | 28 Oct 22:45 | 28 Oct 22:55 | 1.5 h | 34 min |
-| Prune removes fares (refs #126) | #131 | 28 Oct 23:24 | 28 Oct 23:42 | — | 47 min |
+| Prune removes fares (refs #126) | #131 | 28 Oct 23:24 | 28 Oct 23:42 | none | 47 min |
 | S4-6 model on deployments | #133 | 29 Oct 00:03 | 29 Oct 00:11 | 4 h | 30 min |
 | S4-10 packages note | #134 | 29 Oct 01:54 | 29 Oct 02:00 | 45 min | 1 h 48 min |
 | S4-11 bundle split | #135 | 29 Oct 02:15 | 29 Oct 02:26 | 45 min | 26 min |
-| S4-9 close issues | no PR | — | issues closed 29 Oct 14:27 | 1 h | — |
+| S4-9 close issues | no PR | n/a | issues closed 29 Oct 14:27 | 1 h | n/a |
 | S4-8 B1 (Sariska) | #144 | 29 Oct 15:30 | 29 Oct 15:57 | M to L (Maulik) | 1 h 17 min |
 | S4-8 C batch 1 | #146 | 30 Oct 02:11 | 30 Oct 04:36 | | 7 h 41 min |
 | S4-8 no-service trains, B2 batch 2, C batch 2 | #158 | 3 Nov 16:39 | 3 Nov 16:56 | | 38 min |
-| S4-7 preview check | no PR | — | run 3 Nov, about 22:35 to 23:15 | 1 h | — |
-| S4-12 review | this PR | 3 Nov | — | 1.5 h | — |
+| S4-7 preview check | no PR | n/a | run 3 Nov, about 22:35 to 23:15 | 1 h | n/a |
+| S4-12 review | this PR | 3 Nov | pending | 1.5 h | pending |
 
-Every master CI run since 28 October passed except one: the run after #153 on 2 November, which was #154 (above).
+Every master CI run since 28 October passed except one: the run after #153 (3 November, 00:03), which was #154 (above).
 
 ## Commands run for this review
 
@@ -149,7 +150,7 @@ All were run on 3 November on `7e28920` (master after #164), with Node 24.21.0.
 - **`gh issue view` for #18 to #25:**
   - #18, #19, #20, #21, #23 and #24 are closed.
   - #22 (R12) was open for #122; it is closed by this review.
-  - #25 (R15) stays open in the Buffer milestone.
+  - #25 (R15) was open; it is closed with the evidence under [Speed](#speed-r15).
 
 ## Buffer: to finish before submission
 
@@ -170,6 +171,5 @@ After submission:
 
 Still open and Maulik's call:
 
-- #25 (R15): load and eight-member model timings are not measured;
 - #126 (2 B2 fares) and #39 (62 places);
 - closing the Sprint 3 and Sprint 4 milestones.

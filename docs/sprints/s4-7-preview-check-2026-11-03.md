@@ -35,7 +35,7 @@ Steps 0 and 6 (create and delete an account) are Maulik's, by hand.
 
 ## Decision (Maulik, 3 November 2026)
 
-- Production: templates for submission (`LIVE_APIS` unset).
+- Production: templates for submission. Production has no `GEMINI_DAILY_LIMIT`, so the quota guard allows no model call there (`apps/api/src/env.ts` defaults the limit to 0), whatever `LIVE_APIS` says.
 - Preview: `LIVE_APIS` off again before the demo, so step 4 is instant and reads "Planned from the BonVoyage catalogue" as the script says. `GEMINI_MODEL=gemini-3.5-flash-lite` stays set for later checks.
 - Follow-up after submission: the 20 s wording timeout against the model's first-call latency, and the two overstated phrases.
 

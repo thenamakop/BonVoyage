@@ -45,7 +45,18 @@ A new 2-member trip, "Pair check" (Asha organiser, Meera joined by the invite li
 
 ## Production
 
-Production deployment `dpl_H1DKdfp2HhqWQaSyEfr2rpDkM34F` is READY at `7e28920` (Vercel API). Its catalogue was imported with `--prune` on 3 November (192 fares, 0 left to prune). `LIVE_APIS` is unset there. Production has no demo accounts and the deployment URL is behind Vercel's login, so no end-to-end run was made on production.
+Production deployment `dpl_H1DKdfp2HhqWQaSyEfr2rpDkM34F` is READY at `7e28920` (Vercel API). Its catalogue was imported with `--prune` on 3 November (192 fares, 0 left to prune). Its day plans use the catalogue templates: Vercel lists `LIVE_APIS`, `GEMINI_API_KEY` and `GEMINI_MODEL` for Production (set 9 October; values not read) but no `GEMINI_DAILY_LIMIT`, which `apps/api/src/env.ts` defaults to 0, so the quota guard allows no model call there. Migrations: 6 of 6 (`pnpm db:migrate:remote --target production --status`, run by Maulik on 3 November). Production has no demo accounts and the deployment URL is behind Vercel's login, so no end-to-end run was made on production.
+
+## Load check (R15, #25)
+
+Read-only GET requests from Asha's browser on preview, about 18:30 UTC, after Maulik's reset (fresh demo trips). The 19 endpoints were `/api/me`, `/api/me/trips`, `/api/notifications`, and each demo trip's detail, group profile, activity and latest recommendation. Each request was timed in the page.
+
+| Run | Requests | In flight | Throughput | p50 | p95 | p99 | Max | Under 3 s | Statuses |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 300 | 20 | 132 per s | 136 ms | 229 ms | 253 ms | 393 ms | 100% | 300 x 200 |
+| 2 | 400 | 40 | 196 per s | 139 ms | 334 ms | 1,760 ms | 1,816 ms | 100% | 400 x 200 |
+
+The slowest requests of run 2 (about 1.8 s) arrived together, which fits new function instances starting. One browser was the only client, so this is a modest load, not a capacity test. An earlier attempt used trip ids the reset had removed (220 of 260 were 404) and is not counted.
 
 ## Clean-up
 
