@@ -11,6 +11,15 @@ importers:
 
   .:
     devDependencies:
+      '@bonvoyage/db':
+        specifier: workspace:*
+        version: link:packages/db
+      '@bonvoyage/engine':
+        specifier: workspace:*
+        version: link:packages/engine
+      '@bonvoyage/shared':
+        specifier: workspace:*
+        version: link:packages/shared
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.14.0(jiti@2.7.0))

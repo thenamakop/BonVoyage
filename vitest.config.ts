@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
 const envFile = resolve(import.meta.dirname, '.env');
-if (existsSync(envFile)) {
+if (process.env.BONVOYAGE_SKIP_DOTENV !== '1' && existsSync(envFile)) {
   for (const [key, value] of Object.entries(parseEnv(readFileSync(envFile, 'utf8')))) {
     if (process.env[key] === undefined && value !== undefined) process.env[key] = value;
   }

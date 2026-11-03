@@ -59,6 +59,49 @@ const source: PackageSource = {
 };
 
 describe('toPackageInput', () => {
+  it('maps train fares, verified car and places, and ignores unshared interests', () => {
+    const input = toPackageInput({
+      ...source,
+      members: source.members.map((m, i) => ({ ...m, activities: i ? ['trekking'] : ['museums'] })),
+      fares: [
+        {
+          mode: 'train',
+          farePerPersonInr: 300,
+          distanceKm: 200,
+          durationMinutes: 180,
+          reviewStatus: 'draft',
+        },
+        {
+          mode: 'car',
+          farePerPersonInr: null,
+          distanceKm: 210,
+          durationMinutes: 250,
+          reviewStatus: 'verified',
+        },
+      ],
+      pois: source.pois.map((p) => ({ ...p, reviewStatus: 'verified' })),
+    });
+    expect(input.modes.train).toEqual({
+      farePerPersonInr: 300,
+      durationMinutes: 180,
+      verified: false,
+    });
+    expect(input.modes.car.verified).toBe(true);
+    expect(input.places[0]?.verified).toBe(true);
+    expect(input.groupInterests).toEqual([]);
+  });
+  it('retains the trip date and historical fallback for a disjoint common window', () => {
+    const members = source.members.map((m, i) => ({
+      ...m,
+      dateStart: i ? '2026-12-01' : m.dateStart,
+      dateEnd: i ? '2026-12-03' : m.dateEnd,
+    }));
+    expect(
+      toPackageInput({ ...source, members, trip: { ...source.trip, startDate: '2026-11-20' } })
+        .startDate,
+    ).toBe('2026-11-20');
+    expect(toPackageInput({ ...source, members }).startDate).toBe('2026-11-01');
+  });
   it('maps catalogue facts, caps, seasons and shared interests without I/O', () => {
     const input = toPackageInput(source);
     expect(input).toMatchObject({
