@@ -26,6 +26,6 @@ Source: `docs/evaluation/results-2026-11-03.md` and `docs/evaluation/README.md`.
 
 Reminders are in-app only (M4): there is no email or push. There is also no user study: the synopsis's subjective axis (perceived satisfaction and fairness from participating student groups) stays out of the 10 November scope. Source: `docs/RUNBOOK.md` Appendix B out-of-scope line, decision E3.
 
-## Live model wording not yet checked on a deployment
+## Live model wording: the first call exceeds the 20 s timeout (#165)
 
-S4-7's `LIVE_APIS=on` preview check (model wording on a deployment, #122) has not run; itinerary wording is verified only with the fixture client. Source: issue #122.
+S4-7 (#122) ran on preview on 3 November 2026 with `LIVE_APIS=on`. The first call to the model took about 20.1 s, over the app's 20 s wording timeout, so a fresh plan falls back to the catalogue templates; the repeat came from the cache, model-worded, in 121 ms. Two phrases the validator accepted overstate (a visit note naming the next item's place, and "historic" added to a reason); neither is a number, time, price or new place. Production stays on templates for submission (Maulik, 3 November). Source: `docs/sprints/s4-7-preview-check-2026-11-03.md`; issue #165.
