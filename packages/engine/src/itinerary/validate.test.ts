@@ -55,6 +55,16 @@ const facts: FactSheet = {
       closedDays: [1],
       entryFeeInr: 600,
     },
+    {
+      id: 'tiger-falls',
+      name: 'Tiger Falls',
+      category: 'nature',
+      typicalMinutes: 180,
+      openTime: null,
+      closeTime: null,
+      closedDays: [],
+      entryFeeInr: 0,
+    },
   ],
   costs: {
     totalInr: 12800,
@@ -152,6 +162,39 @@ describe('validateItinerary', () => {
     const item = result.items.find((entry) => entry.day === 2 && entry.index === 0);
     expect(item?.verified).toBe(false);
     expect(item?.reasons.join()).toContain('9,999');
+  });
+
+  it("flags a note naming another item's place as unverified (S4-7, #165)", () => {
+    const output = mutate((draft) => {
+      // The real S4-7 phrase, on a Moila Top visit (09:00 to 12:00): it named
+      // the next item's place and implied a full day.
+      draft.days[0]!.items[1]!.note = 'Spend the day trekking to Moila Top meadow and Tiger Falls.';
+    });
+    const result = validateItinerary(output, facts);
+    const item = result.items.find((entry) => entry.day === 1 && entry.index === 1);
+    expect(item?.verified).toBe(false);
+    expect(item?.reasons.join()).toContain('names another place "Tiger Falls"');
+    expect(result.ok).toBe(true);
+  });
+
+  it('keeps a note that names only its own place verified', () => {
+    const output = mutate((draft) => {
+      draft.days[0]!.items[1]!.note = 'An hour at Laxman Jhula at your own pace.';
+    });
+    const result = validateItinerary(output, facts);
+    const item = result.items.find((entry) => entry.day === 1 && entry.index === 1);
+    expect(item?.verified).toBe(true);
+  });
+
+  it('does not flag a place name inside a larger word', () => {
+    const output = mutate((draft) => {
+      // "Tiger Falls" must not match inside "Tiger Fallsview"; the own-place
+      // name stays the only allowed mention.
+      draft.days[0]!.items[1]!.note = 'Walk the Laxman Jhula bridge.';
+      draft.days[1]!.items[0]!.note = 'Murals at The Beatles Ashram gallery.';
+    });
+    const result = validateItinerary(output, facts);
+    expect(result.items.every((entry) => entry.verified)).toBe(true);
   });
 
   it('flags an unknown time in a note as unverified', () => {

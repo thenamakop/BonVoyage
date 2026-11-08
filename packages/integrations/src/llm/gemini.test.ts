@@ -86,7 +86,7 @@ describe('GeminiLlmClient', () => {
     expect((error as IntegrationError).retryable).toBe(true);
   });
 
-  it('sends no sampling parameters and thinking level low', async () => {
+  it('sends no sampling parameters and the default minimal thinking level (#165)', async () => {
     const captured: { request?: { config?: Record<string, unknown> } } = {};
     const client = new GeminiLlmClient({
       apiKey: 'unused',
@@ -98,9 +98,22 @@ describe('GeminiLlmClient', () => {
     expect(config).not.toHaveProperty('temperature');
     expect(config).not.toHaveProperty('topP');
     expect(config).not.toHaveProperty('topK');
-    expect(config['thinkingConfig']).toEqual({ thinkingLevel: 'low' });
+    expect(config['thinkingConfig']).toEqual({ thinkingLevel: 'minimal' });
     expect(config['responseMimeType']).toBe('application/json');
     expect(config['responseJsonSchema']).toBeTypeOf('object');
+  });
+
+  it('honours an explicit thinking level', async () => {
+    const captured: { request?: { config?: Record<string, unknown> } } = {};
+    const client = new GeminiLlmClient({
+      apiKey: 'unused',
+      model: 'm',
+      sdk: fakeSdk(() => Promise.resolve({ text: '{"answer":"yes"}' }), captured),
+      thinkingLevel: 'low',
+    });
+    await client.generateStructured({ system: 's', prompt: 'p', schema: Answer, schemaName: 'a' });
+    const config = captured.request?.config ?? {};
+    expect(config['thinkingConfig']).toEqual({ thinkingLevel: 'low' });
   });
 });
 

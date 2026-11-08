@@ -564,7 +564,7 @@ describe('fare facts on the fact sheet', () => {
     await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
     expect(prompts.length).toBe(1);
     const facts = JSON.parse(
-      prompts[0]!.slice(prompts[0]!.indexOf('{'), prompts[0]!.indexOf('Planned skeleton')),
+      prompts[0]!.slice(prompts[0]!.indexOf('{'), prompts[0]!.indexOf('Wording rules')),
     ) as { legs: { id: string; farePerPersonInr: number }[] };
     for (const leg of facts.legs) expect(leg.farePerPersonInr).toBe(300);
   });

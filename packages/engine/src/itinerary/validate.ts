@@ -54,6 +54,19 @@ function extractTokens(text: string): Token[] {
   return tokens;
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * 0005 (8 Nov 2026): true when the note names a place from the fact sheet.
+ * Letter lookarounds, not \b, so names ending in punctuation still match.
+ */
+function namesPlace(placeName: string, note: string): boolean {
+  const pattern = new RegExp(`(?<![A-Za-z])${escapeRegExp(placeName)}(?![A-Za-z])`, 'i');
+  return pattern.test(note);
+}
+
 function addDays(isoDate: string, days: number): string {
   const date = new Date(`${isoDate}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -154,6 +167,17 @@ export function validateItinerary(output: ItineraryOutput, facts: FactSheet): Va
         }
       } else if (item.kind === 'activity') {
         reasons.push('activity without a poiId');
+      }
+
+      // #165: a note may name only its own item's place. Naming another
+      // catalogue place (S4-7: a Moila Top note naming Tiger Falls) marks the
+      // item unverified, so the service restores the template note.
+      const ownPlace = item.poiId !== undefined ? poisById.get(item.poiId)?.name : undefined;
+      for (const poi of facts.pois) {
+        if (poi.name === ownPlace) continue;
+        if (namesPlace(poi.name, item.note)) {
+          reasons.push(`names another place "${poi.name}"`);
+        }
       }
 
       for (const token of extractTokens(item.note)) {

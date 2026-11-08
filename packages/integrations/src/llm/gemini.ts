@@ -19,7 +19,7 @@ export interface GeminiSdkLike {
         systemInstruction?: string;
         responseMimeType?: string;
         responseJsonSchema?: unknown;
-        thinkingConfig?: { thinkingLevel?: string };
+        thinkingConfig?: { thinkingLevel?: string; thinkingBudget?: number };
       };
     }): Promise<{ text?: string; usageMetadata?: GeminiUsageMetadata }>;
   };
@@ -38,13 +38,21 @@ function statusOf(error: unknown): number | undefined {
 export class GeminiLlmClient implements LlmClient {
   private readonly model: string;
   private readonly sdk: GeminiSdkLike;
+  private readonly thinkingLevel: string;
 
   get modelId(): string {
     return this.model;
   }
 
-  constructor(options: { apiKey: string; model: string; sdk?: GeminiSdkLike }) {
+  constructor(options: {
+    apiKey: string;
+    model: string;
+    sdk?: GeminiSdkLike;
+    /** #165: gemini-3 thinking effort; 'minimal' is fastest for wording-only calls. */
+    thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
+  }) {
     this.model = options.model;
+    this.thinkingLevel = options.thinkingLevel ?? 'minimal';
     // Structural typing: the real SDK accepts a superset of our request shape.
     this.sdk =
       options.sdk ?? (new GoogleGenAI({ apiKey: options.apiKey }) as unknown as GeminiSdkLike);
@@ -69,7 +77,7 @@ export class GeminiLlmClient implements LlmClient {
           systemInstruction: request.system,
           responseMimeType: 'application/json',
           responseJsonSchema: jsonSchema,
-          thinkingConfig: { thinkingLevel: 'low' },
+          thinkingConfig: { thinkingLevel: this.thinkingLevel },
         },
       });
     } catch (error) {

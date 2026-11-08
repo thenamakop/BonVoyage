@@ -141,4 +141,25 @@ describe('composeItineraryWording', () => {
     expect(prompts[0]).toContain('Triveni Ghat');
     expect(prompts[0]).toContain('write words only');
   });
+
+  it('the prompt bans the two S4-7 overstatements (#165)', async () => {
+    const prompts: string[] = [];
+    const spy: LlmClient = {
+      generateStructured<T>(request: { prompt: string }): Promise<LlmResult<T>> {
+        prompts.push(request.prompt);
+        return Promise.resolve({
+          data: { summary: 's', reasons: ['r'], notes: [] } as T,
+          usage: { inputTokens: 0, outputTokens: 0 },
+          latencyMs: 1,
+          model: 'spy',
+        });
+      },
+    };
+    await composeItineraryWording(spy, factSheet, skeleton);
+    // S4-7: "Spend the day trekking to Moila Top meadow and Tiger Falls." and
+    // an invented "historic" both reached users.
+    expect(prompts[0]).toContain('spend the day');
+    expect(prompts[0]).toContain('historic');
+    expect(prompts[0]).toContain("its own item's place");
+  });
 });
