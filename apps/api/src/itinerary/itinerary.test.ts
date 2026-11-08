@@ -415,6 +415,48 @@ describe('model path (FixtureLlmClient)', () => {
     expect(bad.note).not.toContain('Rs');
   });
 
+  it('a note naming another place reverts to the template and the item stays verified', async () => {
+    // #165: build the bad note from the skeleton the service sends, so the
+    // target is a real activity item whichever place the planner scheduled.
+    const spy: LlmClient = {
+      generateStructured<T>(request: { prompt: string }): Promise<LlmResult<T>> {
+        const days = JSON.parse(
+          request.prompt.slice(request.prompt.indexOf('Planned skeleton')).split(':\n', 2)[1]!,
+        ) as { day: number; items: { kind: string; placeKey?: string }[] }[];
+        const target = days
+          .flatMap((d) => d.items.map((item, index) => ({ day: d.day, index, item })))
+          .find(({ item }) => item.kind === 'activity' && item.placeKey !== undefined);
+        const other = target!.item.placeKey!.endsWith('/fort') ? 'Ghat' : 'Fort';
+        return Promise.resolve({
+          data: {
+            summary: 'Fine days.',
+            reasons: ['It fits.'],
+            notes: [
+              {
+                day: target!.day,
+                index: target!.index,
+                note: `Spend the day at ${other}.`,
+              },
+            ],
+          } as T,
+          usage: { inputTokens: 0, outputTokens: 0 },
+          latencyMs: 1,
+          model: 'spy',
+        });
+      },
+    };
+    const { tripId, organiser } = await selectedTrip(makeApp(spy));
+    const res = await organiser.agent.post(`/api/trips/${tripId}/itinerary`).set(H).send({});
+    const view = ItineraryResponse.parse(res.body).itinerary!;
+    const item = view.days.flatMap((d) => d.items).find((i) => i.place !== null)!;
+    // The template note is back and the verified place keeps verified: true.
+    expect(item.note).toBe(`Visit ${item.place!.name} (sight). Entry ₹100 per person.`);
+    expect(item.verified).toBe(true);
+    expect(item.unverifiedReason).toBeNull();
+    expect(JSON.stringify(view.days)).not.toContain('Spend the day');
+    expect(view.source).toBe('model');
+  });
+
   it('malformed reply keeps the whole plan on templates', async () => {
     const bad = makeApp(new FixtureLlmClient({ ItineraryWording: { nope: 1 } }));
     const { tripId, organiser } = await selectedTrip(bad);
