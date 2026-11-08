@@ -15,22 +15,21 @@ type Reader = Db | Tx;
 
 /** The catalogue rows a PackageInput is built from (0005 c/d). */
 export async function loadPackageSource(db: Reader, originHubId: string, destinationId: string) {
-  const [dest, fares, rules, pois] = await Promise.all([
-    db.query.destination.findFirst({ where: (d, { eq }) => eq(d.id, destinationId) }),
-    db
-      .select()
-      .from(fareFallback)
-      .where(
-        and(
-          eq(fareFallback.originHubId, originHubId),
-          eq(fareFallback.destinationId, destinationId),
-        ),
-      ),
-    db
-      .select({ key: costRule.key, value: costRule.value, verified: costRule.reviewStatus })
-      .from(costRule),
-    db.select().from(poi).where(eq(poi.destinationId, destinationId)),
-  ]);
+  // Sequential: #159 runs this inside a transaction, and parallel queries on
+  // one transaction client trip pg's deprecation warning (#118's rule).
+  const dest = await db.query.destination.findFirst({
+    where: (d, { eq }) => eq(d.id, destinationId),
+  });
+  const fares = await db
+    .select()
+    .from(fareFallback)
+    .where(
+      and(eq(fareFallback.originHubId, originHubId), eq(fareFallback.destinationId, destinationId)),
+    );
+  const rules = await db
+    .select({ key: costRule.key, value: costRule.value, verified: costRule.reviewStatus })
+    .from(costRule);
+  const pois = await db.select().from(poi).where(eq(poi.destinationId, destinationId));
   return { dest, fares, rules, pois };
 }
 

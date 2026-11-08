@@ -122,11 +122,23 @@ async function planningContext(
   const pkg = await findAcceptedPackage(db, tripId);
   if (!pkg) throw new AppError(409, ERROR_CODES.ILLEGAL_TRANSITION, 'Choose a package first.');
   const members = await loadMembers(db, tripId);
-  const dest = await db.query.destination.findFirst({
-    where: (d, { eq }) => eq(d.id, pkg.destinationId),
-  });
-  if (!dest) throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
-  const input = await packageInput(db, tripRow, members, dest);
+  // #159: the destination row, package source rows and the places used for
+  // verified flags all come from one read-only REPEATABLE READ snapshot, so a
+  // catalogue import committing mid-planning cannot mix old and new rows.
+  const { dest, input, pois } = await db.transaction(
+    async (tx) => {
+      const dest = await tx.query.destination.findFirst({
+        where: (d, { eq }) => eq(d.id, pkg.destinationId),
+      });
+      if (!dest) throw new AppError(500, ERROR_CODES.INTERNAL, 'Something went wrong.');
+      return {
+        dest,
+        input: await packageInput(tx, tripRow, members, dest),
+        pois: await listActivePois(tx, pkg.destinationId),
+      };
+    },
+    { isolationLevel: 'repeatable read', accessMode: 'read only' },
+  );
 
   const legMinutes = durationMinutes(input, pkg.transportMode);
   // A destination with no real fare row yields a fabricated zero car leg.
@@ -170,7 +182,7 @@ async function planningContext(
     },
   });
 
-  return { pkg, dest, input, planInput, plan, facts };
+  return { pkg, dest, input, planInput, plan, facts, pois };
 }
 
 export async function planItinerary(
@@ -184,7 +196,7 @@ export async function planItinerary(
   requireActiveMember(membership);
   requireOrganiser(membership);
   assertEventLegal(tripRow.status, 'generateItinerary', indiaDate(clock()));
-  const { pkg, dest, input, plan, facts } = await planningContext(db, tripId, tripRow);
+  const { pkg, dest, input, plan, facts, pois } = await planningContext(db, tripId, tripRow);
   const summary = `${tripRow.durationNights}-night trip to ${dest.name} for ${input.n} people.`;
   let output = toOutput(plan.days, summary, TEMPLATE.reasons);
   let model = TEMPLATE.model;
@@ -249,7 +261,6 @@ export async function planItinerary(
     throw new AppError(500, ERROR_CODES.INTERNAL, 'We could not plan these days. Try again.');
   }
 
-  const pois = await listActivePois(db, pkg.destinationId);
   const poiIdOf = new Map(pois.map((p) => [`${dest.slug}/${p.poiKey}`, p]));
   // The accepted package row carries no updated_at, so the stamp is its
   // changeable fields: a Change (I3) or a re-accept changes this string.

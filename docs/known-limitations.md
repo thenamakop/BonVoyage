@@ -6,10 +6,6 @@ Open gaps the team accepts for the 10 November 2026 submission, each with its so
 
 When the group cap is `min(trip budget, n × lowest member maximum)`, raising only the side the engine suggests cannot always reach a shortlist. In the offline evaluation, 116 of the 119 F5 diagnostics without a one-tap suggestion were dropped for this reason. The other 3 had too few budget-only misses. The synthetic member maxima sit close to the trip target, so the rate is likely overstated. Source: `docs/evaluation/results-2026-11-03.md`, "Why F5 diagnostics have no actionable suggestion"; issue #163.
 
-## Catalogue import while a package is being drafted (#159)
-
-A catalogue import can change facts under a package being drafted. Imports are run by hand, so the risk is low; revisit after submission. Source: issue #159, raised by Sourcery on #158.
-
 ## What the evaluation harness does not show
 
 - Date clashes (F3) are not sampled: every generated group shares a common November–February window long enough for the trip.
