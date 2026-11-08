@@ -8,11 +8,12 @@ import {
   SavePreferenceResponse,
   type ErrorEnvelope,
 } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { createTestUser, createTripAs, ensureHub, setTripStatus } from '../test/helpers';
+import { api } from '../test/helpers';
 
 // S1-4: GET and PUT /api/trips/:id/preferences/me. Every state-machine case
 // asserts the trip_transition row it wrote. The clock is fixed at 1 Nov 2026
@@ -235,7 +236,7 @@ describe('PUT /api/trips/:id/preferences/me: field errors', () => {
 describe('PUT /api/trips/:id/preferences/me: access', () => {
   it('401 without a session on GET and PUT; no transition', async () => {
     const { tripId } = await openTrip(0);
-    const anon = request(app);
+    const anon = api(app);
     expect(
       (await anon.put(`/api/trips/${tripId}/preferences/me`).set(H).send(prefs())).status,
     ).toBe(401);

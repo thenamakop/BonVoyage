@@ -10,11 +10,12 @@ import {
   TripsResponse,
   type ErrorEnvelope,
 } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { createTestUser, createTripAs, ensureHub, setTripStatus } from '../test/helpers';
+import { api } from '../test/helpers';
 
 // S1-3: leaving and removing members. The removal test writes the preference
 // row directly because PUT preferences/me arrives in S1-4.
@@ -95,7 +96,7 @@ describe('DELETE /api/trips/:id/members/me', () => {
 
   it('401 without a session, 400 for a bad id, 404 for a non-member', async () => {
     const { tripId } = await tripWithMember();
-    expect((await request(app).delete(`/api/trips/${tripId}/members/me`).set(H)).status).toBe(401);
+    expect((await api(app).delete(`/api/trips/${tripId}/members/me`).set(H)).status).toBe(401);
     const outsider = await createTestUser(app);
     expect((await leave(outsider.agent, 'not-a-uuid')).status).toBe(400);
     const res = await leave(outsider.agent, tripId);
@@ -171,7 +172,7 @@ describe('DELETE /api/trips/:id/members/:userId', () => {
   it('401 without a session, 400 for a bad id, 404 for a non-member caller', async () => {
     const { member, tripId } = await tripWithMember();
     expect(
-      (await request(app).delete(`/api/trips/${tripId}/members/${member.userId}`).set(H)).status,
+      (await api(app).delete(`/api/trips/${tripId}/members/${member.userId}`).set(H)).status,
     ).toBe(401);
     const outsider = await createTestUser(app);
     const bad = await remove(outsider.agent, 'not-a-uuid', member.userId);

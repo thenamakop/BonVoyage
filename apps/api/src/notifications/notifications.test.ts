@@ -15,7 +15,7 @@ import {
 } from '@bonvoyage/shared';
 import { count, eq } from 'drizzle-orm';
 import { pino } from 'pino';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
@@ -27,6 +27,7 @@ import {
   ensureHubAt,
 } from '../test/helpers';
 import { NOTIFYING_TRANSITIONS, notifyTransition } from './notify';
+import { api } from '../test/helpers';
 
 // S5-3 (decisions E3 and M4): in-app notifications and the organiser's Remind.
 // A fixture hub at (37, 70) is far from every other test's hub and from the
@@ -681,7 +682,7 @@ describe('reading and marking notifications', () => {
       ['get', '/api/notifications'],
       ['post', '/api/notifications/read-all'],
     ] as const) {
-      const res = await request(app)[method](path).set(H).send({});
+      const res = await api(app)[method](path).set(H).send({});
       expect(res.status, path).toBe(401);
     }
   });

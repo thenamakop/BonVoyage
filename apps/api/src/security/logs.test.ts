@@ -2,11 +2,11 @@ import { Writable } from 'node:stream';
 import { createDb } from '@bonvoyage/db';
 import { pino } from 'pino';
 import { InvitationResponse } from '@bonvoyage/shared';
-import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { ensureHub } from '../test/helpers';
+import { liveAgent } from '../test/helpers';
 
 // S1-6 step 4 (SRS 3.5): request logs never hold a password, a cookie, an
 // email or a budget. The log is captured into memory at info level.
@@ -42,7 +42,7 @@ let userId = '';
 
 beforeAll(async () => {
   await ensureHub(db, 'test-hub');
-  const agent = request.agent(app);
+  const agent = liveAgent(app);
   await agent
     .post('/api/auth/sign-up/email')
     .set(H)

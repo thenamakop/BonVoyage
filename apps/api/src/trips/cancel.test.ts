@@ -3,10 +3,11 @@ import { hub, trip, tripMember, tripTransition } from '@bonvoyage/db/schema';
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import { indiaDate, type ErrorEnvelope } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
+import { liveAgent } from '../test/helpers';
 
 // POST /api/trips/:id/cancel (RUNBOOK B3: T15/T16). Sign-up goes through the
 // real auth route; trip rows are written directly to arrange states.
@@ -27,7 +28,7 @@ const tomorrow = () => indiaDate(new Date(Date.now() + 86_400_000));
 const today = () => indiaDate(new Date());
 
 async function signUp() {
-  const a = request.agent(app);
+  const a = liveAgent(app);
   const email = `cancel-${seq++}@test.bv`;
   await a
     .post('/api/auth/sign-up/email')

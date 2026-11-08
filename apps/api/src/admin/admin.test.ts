@@ -13,11 +13,12 @@ import {
   type CatalogueFiles,
   type ErrorEnvelope,
 } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { createTestUser } from '../test/helpers';
+import { api } from '../test/helpers';
 
 // S1-7: POST /api/admin/catalogue/import and GET /api/admin/catalogue/status.
 // The tests import the real catalogue first, so they do not depend on what
@@ -98,7 +99,7 @@ describe('who may use the administrator routes', () => {
       ['post', '/api/admin/catalogue/import'],
     ] as const) {
       const body = { files: REAL, dryRun: true };
-      const anon = await request(app)[method](path).set(H).send(body);
+      const anon = await api(app)[method](path).set(H).send(body);
       expect(anon.status, `${path} anonymous`).toBe(401);
       const denied = await other[method](path).set(H).send(body);
       expect(denied.status, `${path} non-admin`).toBe(403);

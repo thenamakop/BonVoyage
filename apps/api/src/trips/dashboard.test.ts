@@ -8,11 +8,12 @@ import {
   TripDetail,
   type ErrorEnvelope,
 } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { createTestUser, createTripAs, ensureHub } from '../test/helpers';
+import { api } from '../test/helpers';
 
 // S1-5: the enriched TripDetail, POST /api/trips/:id/close-submissions (T3b)
 // and GET /api/trips/:id/activity. The clock is fixed at 1 Nov 2026 (India).
@@ -134,7 +135,7 @@ describe('POST /api/trips/:id/close-submissions (T3b)', () => {
     const outsider = await createTestUser(app);
     expect((await close(outsider.agent, tripId)).status).toBe(404);
     expect(
-      (await request(app).post(`/api/trips/${tripId}/close-submissions`).set(H).send({})).status,
+      (await api(app).post(`/api/trips/${tripId}/close-submissions`).set(H).send({})).status,
     ).toBe(401);
     expect((await close(asha.agent, 'not-a-uuid')).status).toBe(400);
     const body = await close(asha.agent, tripId, { force: true });
@@ -224,7 +225,7 @@ describe('GET /api/trips/:id/activity', () => {
     const { tripId } = await threeMembers();
     const outsider = await createTestUser(app);
     expect((await outsider.agent.get(`/api/trips/${tripId}/activity`).set(H)).status).toBe(404);
-    expect((await request(app).get(`/api/trips/${tripId}/activity`).set(H)).status).toBe(401);
+    expect((await api(app).get(`/api/trips/${tripId}/activity`).set(H)).status).toBe(401);
     expect((await outsider.agent.get('/api/trips/nope/activity').set(H)).status).toBe(400);
   });
 });

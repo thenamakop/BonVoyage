@@ -36,10 +36,14 @@ import { createAuth } from '../auth/auth';
 import {
   createTestUser,
   createTripAs,
+  catalogueImportDate,
   ensureCostRules,
   ensureDestination,
   ensureHubAt,
 } from '../test/helpers';
+
+/** Newest catalogue collected_on (or today); one CSV read, file scope (#143). */
+const importDate = catalogueImportDate();
 
 // S3-6: T12 plans and stores a validated day plan; GET reads the latest;
 // accept and reject fire T14 and T13. Templates path (LIVE_APIS=off) plus the
@@ -635,7 +639,7 @@ describe('model wording plan-level fallback', () => {
 describe('whole-plan validity on the real catalogue', () => {
   it('every costable package from gurugram produces a plan the validator accepts', async () => {
     const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
-    await importCatalogue(db, dir, { today: '2026-11-03' });
+    await importCatalogue(db, dir, { today: importDate });
     const hub = await db.query.hub.findFirst({ where: (h, { eq }) => eq(h.slug, 'gurugram') });
     const dests = await db.select().from(destination).where(eq(destination.active, true));
     const failures: string[] = [];
@@ -752,7 +756,7 @@ catalogue loop: ${planned} destinations planned, ${failures.length} failures
 describe('speed on the real catalogue (templates path)', () => {
   it('planning a Gurugram trip stays under 2000 ms', async () => {
     const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
-    await importCatalogue(db, dir, { today: '2026-11-03' });
+    await importCatalogue(db, dir, { today: importDate });
     const members = await Promise.all([
       createTestUser(app, 'Sp A'),
       createTestUser(app, 'Sp B'),

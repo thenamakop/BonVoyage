@@ -22,11 +22,15 @@ import { createAuth } from '../auth/auth';
 import {
   createTestUser,
   createTripAs,
+  catalogueImportDate,
   ensureCostRules,
   ensureDestination,
   ensureHubAt,
   type FixtureDestination,
 } from '../test/helpers';
+
+/** Newest catalogue collected_on (or today); one CSV read, file scope (#143). */
+const importDate = catalogueImportDate();
 import type { RecommendationHooks } from './service';
 
 // S2-6 step 5: recommendation runs (T4, T6>T7, T6>T8), staleness, a second
@@ -867,7 +871,7 @@ describe('fairness across rounds (R17)', () => {
 describe('speed on the real catalogue (R15)', () => {
   it('one recommendation for 3 members from gurugram takes under 2000 ms', async () => {
     const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
-    await importCatalogue(db, dir, { today: '2026-11-03' });
+    await importCatalogue(db, dir, { today: importDate });
     const members: Member[] = [];
     for (const name of ['Speed A', 'Speed B', 'Speed C']) {
       members.push(await createTestUser(app, name));

@@ -4,11 +4,12 @@ import { and, eq } from 'drizzle-orm';
 import { pino } from 'pino';
 import type { ErrorEnvelope } from '@bonvoyage/shared';
 import { HubsResponse, TripDetail, TripsResponse } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, assert, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { createTestUser, createTripAs, ensureHub, setTripStatus } from '../test/helpers';
+import { api } from '../test/helpers';
 
 // S1-2: trips and hubs endpoints, the conventions rule-10 matrix. Sign-up goes
 // through the real auth route; non-draft states are arranged with setTripStatus.
@@ -46,7 +47,7 @@ describe('GET /api/hubs', () => {
   });
 
   it('401 without a session', async () => {
-    const res = await request(app).get('/api/hubs').set(H);
+    const res = await api(app).get('/api/hubs').set(H);
     expect(res.status).toBe(401);
   });
 });
@@ -143,7 +144,7 @@ describe('POST /api/trips', () => {
   });
 
   it('401 without a session', async () => {
-    const res = await request(app).post('/api/trips').set(H).send({
+    const res = await api(app).post('/api/trips').set(H).send({
       title: 'T',
       originHubSlug: 'test-hub',
       durationNights: 2,
@@ -174,7 +175,7 @@ describe('GET /api/me/trips', () => {
   });
 
   it('401 without a session', async () => {
-    const res = await request(app).get('/api/me/trips').set(H);
+    const res = await api(app).get('/api/me/trips').set(H);
     expect(res.status).toBe(401);
   });
 });
@@ -247,7 +248,7 @@ describe('GET /api/trips/:id', () => {
   it('401 without a session', async () => {
     const { agent } = await createTestUser(app);
     const detail = await createTripAs(agent);
-    const res = await request(app).get(`/api/trips/${detail.id}`).set(H);
+    const res = await api(app).get(`/api/trips/${detail.id}`).set(H);
     expect(res.status).toBe(401);
   });
 
@@ -361,7 +362,7 @@ describe('PATCH /api/trips/:id', () => {
   it('401 without a session', async () => {
     const { agent } = await createTestUser(app);
     const detail = await createTripAs(agent);
-    const res = await request(app).patch(`/api/trips/${detail.id}`).set(H).send({ title: 'Nope' });
+    const res = await api(app).patch(`/api/trips/${detail.id}`).set(H).send({ title: 'Nope' });
     expect(res.status).toBe(401);
   });
 });
