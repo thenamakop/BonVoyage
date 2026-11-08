@@ -93,7 +93,7 @@ export function NotificationBell() {
           <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
         </svg>
         {unread > 0 ? (
-          <span className="rounded-full border-2 border-ink bg-accent px-1.5 text-xs font-bold leading-5 text-ink">
+          <span className="animate-badge-bounce rounded-full border-2 border-ink bg-accent px-1.5 text-xs font-bold leading-5 text-ink">
             {unread > 99 ? '99+' : unread}
           </span>
         ) : null}

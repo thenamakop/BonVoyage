@@ -20,6 +20,7 @@ import { ProgressCard } from './dashboard/ProgressCard';
 import { RecentActivity } from './dashboard/RecentActivity';
 import { Roster } from './dashboard/Roster';
 import { StatusBanner } from './dashboard/StatusBanner';
+import { StepTracker } from './dashboard/StepTracker';
 import { TripParameters } from './dashboard/TripParameters';
 
 // The trip dashboard (wireframe 06, S1-5). The trip is polled every 8 s while
@@ -75,6 +76,7 @@ export function TripPage() {
         title={t.title}
         actions={<Badge tone={statusTone(t.status)}>{TRIP_STATUS_LABELS[t.status].label}</Badge>}
       />
+      <StepTracker status={t.status} />
       <StatusAnnouncer status={t.status} />
       <StatusBanner trip={t} />
       <NextStep trip={t} myUserId={me.data?.id} />

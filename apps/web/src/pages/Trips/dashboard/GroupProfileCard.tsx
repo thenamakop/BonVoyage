@@ -53,8 +53,14 @@ function Profile({
   const n = profile.memberCount;
   const conflict = dateConflictText(profile.conflicts, profile.commonWindow, durationNights);
   const interests = [
-    ...profile.typeVotes.map((v) => voteText(DESTINATION_TYPE_LABELS[v.value], v.count, n)),
-    ...profile.activityVotes.map((v) => voteText(ACTIVITY_LABELS[v.value], v.count, n)),
+    ...profile.typeVotes.map((v) => ({
+      text: voteText(DESTINATION_TYPE_LABELS[v.value], v.count, n),
+      count: v.count,
+    })),
+    ...profile.activityVotes.map((v) => ({
+      text: voteText(ACTIVITY_LABELS[v.value], v.count, n),
+      count: v.count,
+    })),
   ];
   const more = moreInterestsText(profile.otherInterestCount);
   const band = budgetBandText(profile);
@@ -81,9 +87,21 @@ function Profile({
       )}
       <Row label="Shared interests">
         {interests.length > 0 ? (
-          <ul className="list-inside list-disc">
-            {interests.map((text) => (
-              <li key={text}>{text}</li>
+          <ul className="space-y-2">
+            {interests.map(({ text, count }) => (
+              <li key={text}>
+                <span>{text}</span>
+                {/* The count as a bar, for sighted readers; the words say the same. */}
+                <span
+                  aria-hidden="true"
+                  className="mt-1 block h-2.5 max-w-xs rounded-full border-2 border-ink bg-white"
+                >
+                  <span
+                    className="animate-grow block h-full rounded-full bg-mint"
+                    style={{ width: `${Math.round((count / n) * 100)}%` }}
+                  />
+                </span>
+              </li>
             ))}
           </ul>
         ) : (
