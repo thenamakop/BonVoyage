@@ -26,15 +26,13 @@ export function RadioGroup({
 
   return (
     <fieldset aria-describedby={describedBy || undefined}>
-      <legend className="mb-1 text-sm font-medium text-slate-900">{legend}</legend>
+      <legend className="mb-1 text-sm font-semibold text-ink">{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => (
           <label
             key={opt.value}
-            className={`flex min-h-11 cursor-pointer flex-col justify-center rounded-md border px-4 py-1 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-[#808080] ${
-              value === opt.value
-                ? 'border-brand-700 bg-brand-700 text-white'
-                : 'border-slate-300 bg-white text-slate-900'
+            className={`flex min-h-11 cursor-pointer flex-col justify-center rounded-2xl border-2 bg-white px-4 py-1 text-sm text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-[#808080] ${
+              value === opt.value ? 'border-accent font-semibold shadow-sticker-chip' : 'border-ink'
             }`}
           >
             <input
@@ -45,16 +43,12 @@ export function RadioGroup({
               onChange={() => onChange(opt.value)}
             />
             <span>{opt.label}</span>
-            {opt.description ? (
-              <span className={`text-xs ${value === opt.value ? 'text-white' : 'text-slate-600'}`}>
-                {opt.description}
-              </span>
-            ) : null}
+            {opt.description ? <span className="text-xs text-muted">{opt.description}</span> : null}
           </label>
         ))}
       </div>
       {hint ? (
-        <p id={hintId} className="mt-1 text-xs text-slate-600">
+        <p id={hintId} className="mt-1 text-xs text-muted">
           {hint}
         </p>
       ) : null}

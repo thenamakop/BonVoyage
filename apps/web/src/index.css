@@ -1,20 +1,39 @@
 @import 'tailwindcss';
 
+/* The bold redesign: ink outlines, offset "sticker" shadows, cream pages.
+   Body text on cream is ink or muted only (both pass 4.5:1). */
 @theme {
+  --color-ink: #0a1c26;
+  /* Kept as an alias so existing brand-900 classes still read as ink. */
   --color-brand-900: #0a1c26;
   --color-brand-700: #0d3a3d;
   --color-accent: #f4a340;
   --color-accent-strong: #d9832a;
   --color-mint: #7fe3d8;
+  --color-mint-soft: #d9f7f3;
+  --color-cream: #fff6e6;
+  --color-muted: #4a5a63;
   --color-danger: #b91c1c;
   --color-success: #15803d;
   --color-warning: #b45309;
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'DM Sans Variable', system-ui, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', sans-serif;
+  --shadow-sticker: 6px 6px 0 var(--color-ink);
+  --shadow-sticker-button: 5px 5px 0 var(--color-ink);
+  --shadow-sticker-lift: 7px 7px 0 var(--color-ink);
+  --shadow-sticker-press: 2px 2px 0 var(--color-ink);
+  --shadow-sticker-chip: 3px 3px 0 var(--color-ink);
+  --shadow-sticker-accent: 6px 6px 0 var(--color-accent);
 }
 
 @layer base {
   body {
-    @apply bg-slate-50 font-sans text-slate-900;
+    @apply bg-cream font-sans text-ink;
+  }
+
+  h1,
+  h2 {
+    @apply font-display font-extrabold tracking-tight;
   }
 
   :focus-visible {
@@ -29,6 +48,147 @@
       transition-duration: 0.01ms;
       animation-duration: 0.01ms;
       animation-iteration-count: 1;
+    }
+  }
+}
+
+@layer utilities {
+  @keyframes bv-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  /* `translate`, not `transform`, so a card's `rotate` tilt is kept. */
+  @keyframes bv-float {
+    from {
+      translate: 0 0;
+    }
+    to {
+      translate: 0 -10px;
+    }
+  }
+  @keyframes bv-rise {
+    from {
+      translate: 0 28px;
+      opacity: 0;
+    }
+    to {
+      translate: 0 0;
+      opacity: 1;
+    }
+  }
+  @keyframes bv-pop {
+    0% {
+      scale: 0.6;
+    }
+    60% {
+      scale: 1.08;
+    }
+    100% {
+      scale: 1;
+    }
+  }
+  @keyframes bv-march {
+    to {
+      stroke-dashoffset: -12;
+    }
+  }
+  @keyframes bv-ring {
+    0%,
+    100% {
+      box-shadow:
+        var(--shadow-sticker-chip),
+        0 0 0 0 color-mix(in srgb, var(--color-accent) 70%, transparent);
+    }
+    50% {
+      box-shadow:
+        var(--shadow-sticker-chip),
+        0 0 0 6px color-mix(in srgb, var(--color-accent) 0%, transparent);
+    }
+  }
+  @keyframes bv-bounce {
+    0%,
+    88%,
+    100% {
+      translate: 0 0;
+    }
+    92% {
+      translate: 0 -4px;
+    }
+    96% {
+      translate: 0 1px;
+    }
+  }
+  @keyframes bv-grow {
+    from {
+      scale: 0 1;
+    }
+    to {
+      scale: 1 1;
+    }
+  }
+
+  .animate-marquee {
+    animation: bv-marquee 38s linear infinite;
+  }
+  .animate-marquee:hover {
+    animation-play-state: paused;
+  }
+  .animate-float {
+    animation: bv-float 6s ease-in-out infinite alternate;
+  }
+  .animate-rise {
+    animation: bv-rise 0.7s ease-out both;
+  }
+  .animate-pop {
+    animation: bv-pop 0.7s ease-out 0.3s both;
+  }
+  .animate-march {
+    animation: bv-march 1.2s linear infinite;
+  }
+  .animate-ring {
+    animation: bv-ring 2.4s ease-in-out infinite;
+  }
+  .animate-badge-bounce {
+    animation: bv-bounce 4s ease-in-out infinite;
+  }
+  /* Grows from the left edge: scale keeps the bar's width in the layout. */
+  .animate-grow {
+    transform-origin: left;
+    animation: bv-grow 1s ease-out both;
+  }
+
+  /* Scroll reveal (useReveal): a section rises in once it is in view. */
+  .reveal {
+    opacity: 0;
+    translate: 0 32px;
+    transition:
+      opacity 0.7s ease-out,
+      translate 0.7s ease-out;
+  }
+  .reveal[data-revealed] {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-marquee,
+    .animate-float,
+    .animate-rise,
+    .animate-pop,
+    .animate-march,
+    .animate-ring,
+    .animate-badge-bounce,
+    .animate-grow {
+      animation: none;
+    }
+    .reveal {
+      opacity: 1;
+      translate: none;
+      transition: none;
     }
   }
 }
