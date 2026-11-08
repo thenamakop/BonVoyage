@@ -184,4 +184,6 @@ After submission:
 
 - #159, a catalogue import while a package is being drafted;
 - #163, the one-tap budget fix when both caps bind;
-- #165, the first live model call exceeding the 20 s wording timeout, and the two overstated phrases.
+- #165, the first live model call exceeding the 20 s wording timeout, and the two overstated phrases;
+- one test server per file, for the Windows `ENOBUFS` failures in long local runs;
+- deriving the test import date from the catalogue.
