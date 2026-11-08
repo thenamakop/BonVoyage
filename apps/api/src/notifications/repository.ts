@@ -130,6 +130,38 @@ export async function lockReminder(tx: Tx, tripId: string, userId: string): Prom
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${tripId}), hashtext(${userId}))`);
 }
 
+/**
+ * Serialises budget-review requests on one trip until the transaction ends,
+ * sharing the reminder's advisory-lock shape (#163).
+ */
+export async function lockBudgetReview(tx: Tx, tripId: string): Promise<void> {
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtext(${tripId}), hashtext('budget_review'))`,
+  );
+}
+
+/** The newest budget-review request on this trip at or after `since` (#163). */
+export async function findRecentBudgetReview(
+  tx: Db | Tx,
+  tripId: string,
+  since: Date,
+): Promise<Date | undefined> {
+  const rows = await tx
+    .select({ createdAt: notification.createdAt })
+    .from(notification)
+    .where(
+      and(
+        eq(notification.tripId, tripId),
+        eq(notification.type, 'budget_review_requested'),
+        // Strictly after: a request exactly 24 hours old no longer counts.
+        gt(notification.createdAt, since),
+      ),
+    )
+    .orderBy(desc(notification.createdAt))
+    .limit(1);
+  return rows[0]?.createdAt;
+}
+
 /** Each member's newest reminder on this trip after `since`, in one query. */
 export async function listRecentReminders(
   db: Db,

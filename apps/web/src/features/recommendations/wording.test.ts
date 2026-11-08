@@ -324,6 +324,34 @@ describe('diagnostic', () => {
     expect(unlocksText([], misses)).toBeNull();
   });
 
+  it('a raisesBoth suggestion reads cleanly in both shapes, and sends no one-tap PATCH', () => {
+    // 3+ members: the amount stays (it cannot leak a maximum; it comes from
+    // catalogue costs). A members-set raisesBoth names the trip budget too.
+    const full = {
+      constraint: 'F5' as const,
+      raisesBoth: true as const,
+      newGroupCapInr: 15000,
+      capSource: 'trip' as const,
+      unlocks: ['auli'],
+    };
+    // Below 3 members the API strips every figure: the flag alone survives.
+    const stripped = { constraint: 'F5' as const, raisesBoth: true as const };
+    expect(suggestionText(full)).toBe(
+      'Raise the group budget to ₹15,000 and ask members to review their budgets',
+    );
+    expect(
+      suggestionText({ ...full, capSource: 'members' as const, newPerPersonMaxInr: 5000 }),
+    ).toBe('Members need to raise their maximum to ₹5,000 per person and the trip budget');
+    expect(suggestionText(stripped)).toBe(
+      'Raise the trip budget and ask members to review their budgets',
+    );
+    for (const s of [full, stripped]) {
+      expect(suggestionText(s)).not.toMatch(/undefined|NaN/);
+      expect(suggestionText(s)).not.toMatch(/₹\s*(undefined|NaN|and|$)/);
+      expect(suggestionPatch(s)).toBeNull();
+    }
+  });
+
   it('words the dashboard line after a diagnostic', () => {
     expect(lastRoundText({ bindingConstraint: 'F3', feasibleCount: 0 })).toBe(
       'The last round found a date clash.',

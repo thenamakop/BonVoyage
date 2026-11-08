@@ -59,6 +59,12 @@ export type Suggestion =
       newGroupCapInr: number;
       capSource: 'trip' | 'members';
       newPerPersonMaxInr?: number;
+      /**
+       * #163 (option A): the cap reaching a shortlist crosses the side this
+       * suggestion does not raise, so the trip budget and the members' maxima
+       * must both move. Set instead of dropping the suggestion.
+       */
+      raisesBoth?: true;
       unlocks: string[];
     };
 

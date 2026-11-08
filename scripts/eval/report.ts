@@ -237,9 +237,10 @@ ${table(
   ['Budget diagnostic recovery', 'Result'],
   [
     [
-      'F5 diagnostics with a one-tap suggestion that reach a shortlist on re-run',
+      'F5 diagnostics whose suggestion reaches a shortlist on re-run',
       percent(m.checks.budgetRerun.passed, m.checks.budgetRerun.total),
     ],
+    ['of which raisesBoth: the cap must move on both sides (#163)', m.f5RaisesBoth],
     [
       'F5 diagnostics without an actionable suggestion',
       m.bindings.filter(([b]) => b === 'F5').reduce((sum, [, count]) => sum + count, 0) -
@@ -248,7 +249,7 @@ ${table(
   ],
 )}
 
-**How to read this.** Recovery is measured only when the engine supplies an F5 suggestion. A trip-side raise changes the trip budget only; a member-side raise changes only member maxima below the suggested maximum, leaving the trip cap unchanged. All candidates are evaluated again, rather than trusting the suggestion's unlock list. No suggestion can be tested when the other cap or too few near misses prevents one.
+**How to read this.** Recovery is measured only when the engine supplies an F5 suggestion. A trip-side raise changes the trip budget only; a member-side raise changes only member maxima below the suggested maximum, leaving the trip cap unchanged. A raisesBoth suggestion (#163) is re-run with both sides raised: the trip budget to the suggested cap and every member's maximum to at least its per-person share rounded up to ₹500. All candidates are evaluated again, rather than trusting the suggestion's unlock list. No suggestion can be tested only when too few near misses prevent one; a suggestion that would cross the other cap is now offered as raisesBoth instead of dropped.
 
 ### Why F5 diagnostics have no actionable suggestion
 

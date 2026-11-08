@@ -255,7 +255,16 @@ function toRunView(run: RunRow, doc: RunDocument, favoursLessServed: boolean): R
         feasible: doc.diagnostic.feasible,
         nearMisses: doc.diagnostic.nearMisses.map(evaluationView),
         alternatives: doc.diagnostic.alternatives.map(evaluationView),
-        suggestions: doc.diagnostic.suggestions,
+        // D1, #116: below 3 contributing members a raisesBoth suggestion would
+        // bound a member's private maximum, so only the flag survives (F5 stays
+        // the constraint the one-tap button cannot raise alone).
+        suggestions: hidesBudgetFigures(doc.groupProfile.memberCount)
+          ? doc.diagnostic.suggestions.map((s) =>
+              s.constraint === 'F5' && s.raisesBoth === true
+                ? { constraint: 'F5' as const, raisesBoth: true as const }
+                : s,
+            )
+          : doc.diagnostic.suggestions,
         incomplete: doc.diagnostic.incomplete,
       }
     : null;

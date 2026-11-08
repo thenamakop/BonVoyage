@@ -1,11 +1,13 @@
 import type { Db } from '@bonvoyage/db';
 import {
+  budgetReviewAgainText,
   ERROR_CODES,
   notificationMessage,
   NotificationPayload,
   NOTIFICATIONS_PAGE,
   remindAgainText,
   REMIND_WINDOW_HOURS,
+  type BudgetReviewResponse,
   type NotificationItem,
   type NotificationsResponse,
   type NotificationType,
@@ -13,17 +15,21 @@ import {
 } from '@bonvoyage/shared';
 import { AppError, RateLimitError } from '../http/errors';
 import { findMembership } from '../invitations/repository';
+import { findLatestRun } from '../recommendations/repository';
 import { loadTripForMember, requireActiveMember, requireOrganiser } from '../trips/access';
 import { buildPayload } from './notify';
 import {
   countUnread,
+  findRecentBudgetReview,
   findRecentReminder,
   findTripHeader,
   findUserName,
   findUserNames,
   insertNotifications,
   listForUser,
+  listMemberUserIds,
   listRecentReminders,
+  lockBudgetReview,
   lockReminder,
   markAllRead,
   markRead,
@@ -183,4 +189,102 @@ export async function remindMember(
       canRemindAgainAt: new Date(now.getTime() + REMIND_WINDOW_MS).toISOString(),
     };
   });
+}
+
+/** The run document's suggestions, read loosely: only raisesBoth matters here. */
+export function latestRunOffersRaisesBoth(doc: unknown): boolean {
+  const suggestions = (
+    doc as { diagnostic?: { suggestions?: { constraint?: string; raisesBoth?: boolean }[] } | null }
+  )?.diagnostic?.suggestions;
+  return (
+    Array.isArray(suggestions) &&
+    suggestions.some((s) => s.constraint === 'F5' && s.raisesBoth === true)
+  );
+}
+
+/**
+ * POST /api/trips/:id/budget-review (#163, option A): the organiser asks every
+ * member to review their budget maximum when a raisesBoth suggestion is live.
+ * One request per trip per rolling 24 hours, behind the same advisory-lock and
+ * notification-row check as the per-member reminder. The notification names no
+ * figure, so the organiser never learns a member's maximum.
+ */
+export async function requestBudgetReview(
+  deps: { db: Db; clock: () => Date },
+  tripId: string,
+  organiserUserId: string,
+): Promise<BudgetReviewResponse> {
+  const { db, clock } = deps;
+  const { membership } = await loadTripForMember(db, tripId, organiserUserId);
+  requireActiveMember(membership);
+  requireOrganiser(membership);
+
+  return db.transaction(async (tx) => {
+    await lockBudgetReview(tx, tripId);
+
+    // Read under the lock: the run and the status may have moved since the
+    // organiser's page loaded.
+    const header = await findTripHeader(tx, tripId);
+    // Members can only edit preferences in these two statuses (actions.ts).
+    if (
+      header?.status !== 'collecting_preferences' &&
+      header?.status !== 'ready_for_recommendation'
+    ) {
+      throw new AppError(
+        409,
+        ERROR_CODES.ILLEGAL_TRANSITION,
+        'Members can no longer review their budgets.',
+      );
+    }
+    const run = await findLatestRun(tx, tripId);
+    if (run?.kind !== 'diagnostic' || !latestRunOffersRaisesBoth(run.diagnostic)) {
+      throw new AppError(
+        409,
+        ERROR_CODES.ILLEGAL_TRANSITION,
+        'There is no suggestion that needs both budgets to move.',
+      );
+    }
+
+    const now = clock();
+    const last = await findRecentBudgetReview(
+      tx,
+      tripId,
+      new Date(now.getTime() - REMIND_WINDOW_MS),
+    );
+    if (last) {
+      const again = new Date(last.getTime() + REMIND_WINDOW_MS);
+      throw new RateLimitError(
+        budgetReviewAgainText(again),
+        Math.max(1, Math.ceil((again.getTime() - now.getTime()) / 1000)),
+      );
+    }
+
+    const recipients = (await listMemberUserIds(tx, tripId, 'active')).filter(
+      (id) => id !== organiserUserId,
+    );
+    await insertNotifications(
+      tx,
+      recipients.map((userId) => ({
+        userId,
+        tripId,
+        type: 'budget_review_requested',
+        payload: buildPayload('budget_review_requested', tripId, header.title, organiserUserId),
+        createdAt: now,
+      })),
+    );
+    return {
+      requestedAt: now.toISOString(),
+      canRequestAgainAt: new Date(now.getTime() + REMIND_WINDOW_MS).toISOString(),
+    };
+  });
+}
+
+/** When the organiser may next send a budget-review request; null means now (#163). */
+export async function nextBudgetReviewAt(
+  db: Db,
+  tripId: string,
+  now: Date,
+): Promise<string | null> {
+  const last = await findRecentBudgetReview(db, tripId, new Date(now.getTime() - REMIND_WINDOW_MS));
+  return last ? new Date(last.getTime() + REMIND_WINDOW_MS).toISOString() : null;
 }

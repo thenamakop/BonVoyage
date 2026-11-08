@@ -166,6 +166,11 @@ export const TripDetail = z.object({
     .nullable(),
   /** The newest itinerary version (S3-6), or null before T12. */
   latestItinerary: z.object({ version: z.number().int(), status: z.string() }).nullable(),
+  /**
+   * #163: when the acting organiser may next ask members to review their
+   * budgets; only present while a raisesBoth suggestion is live. Null = now.
+   */
+  canRequestBudgetReviewAt: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

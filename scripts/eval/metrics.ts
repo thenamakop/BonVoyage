@@ -92,6 +92,8 @@ export function aggregate(run: EvaluationRun) {
     fairness,
     pairedFairness,
     recoveryReasons,
+    // #163: F5 suggestions that need both caps raised, re-run with both raised.
+    f5RaisesBoth: run.results.filter((r) => r.f5RaisesBoth).length,
     counts: [...counts].sort(([a], [b]) => a - b),
     bindings: [...bindings].sort(([a], [b]) => a.localeCompare(b)),
     diagnostics: run.results.filter((r) => r.feasibleCount < SHORTLIST_SIZE).length,

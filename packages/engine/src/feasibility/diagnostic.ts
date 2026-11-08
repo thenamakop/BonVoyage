@@ -72,16 +72,19 @@ function buildSuggestions(
       const covered = [...actuals].sort((a, b) => a - b)[needed - 1] as number;
       const newGroupCapInr = Math.ceil(covered / 500) * 500;
       // The cap is min(trip budget, n × per-person cap) (0004 b) and a suggestion
-      // raises one side only, so the other side is as far as it can go.
+      // raises one side only, so the other side is as far as it can go. #163:
+      // crossing it no longer drops the suggestion; it is marked raisesBoth and
+      // the organiser can ask members to review their maxima.
       const ceiling = ctx.capSource === 'trip' ? ctx.n * ctx.perPersonCapInr : ctx.tripBudgetInr;
-      if (newGroupCapInr > ceiling) continue;
+      const raisesBoth = newGroupCapInr > ceiling;
       // 0004 c: the organiser cannot raise members' maxima, so show the new per-person cap.
       const newPerPersonMaxInr =
         ctx.capSource === 'members' ? Math.ceil(newGroupCapInr / ctx.n / 500) * 500 : undefined;
-      // "This adds" lists what the change really reaches: rounding the per-person
-      // maximum up can carry the cap past newGroupCapInr, up to the trip budget.
+      // "This adds" lists what the change really reaches: raisesBoth reaches the
+      // whole newGroupCapInr once both sides allow it; rounding the per-person
+      // maximum up can carry the cap past it otherwise, up to the trip budget.
       const reached =
-        newPerPersonMaxInr === undefined
+        raisesBoth || newPerPersonMaxInr === undefined
           ? newGroupCapInr
           : Math.min(ctx.tripBudgetInr, ctx.n * newPerPersonMaxInr);
       const suggestion: Suggestion = {
@@ -90,6 +93,7 @@ function buildSuggestions(
         capSource: ctx.capSource,
         unlocks: slugs(misses.filter((e) => failureOf(e).actual <= reached)),
       };
+      if (raisesBoth) suggestion.raisesBoth = true;
       if (newPerPersonMaxInr !== undefined) suggestion.newPerPersonMaxInr = newPerPersonMaxInr;
       out.push(suggestion);
     }

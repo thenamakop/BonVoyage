@@ -35,6 +35,7 @@ const NAMES_ACTOR: ReadonlySet<NotificationType> = new Set([
   'shortlist_reopened',
   'package_chosen',
   'trip_cancelled',
+  'budget_review_requested',
 ]);
 
 /**

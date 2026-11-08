@@ -100,10 +100,17 @@ export const Suggestion = z.discriminatedUnion('constraint', [
   z.object({ constraint: z.literal('F4'), shiftMonths: z.number(), unlocks: z.array(z.string()) }),
   z.object({
     constraint: z.literal('F5'),
-    newGroupCapInr: z.number(),
-    capSource: z.enum(['trip', 'members']),
+    /** #163: both caps must move; the organiser may ask members to review theirs. */
+    raisesBoth: z.literal(true).optional(),
+    /**
+     * D1, #116: below 3 contributing members a raisesBoth suggestion carries
+     * only {constraint, raisesBoth}, because a figure or unlocks would bound a
+     * member's private maximum. Set on every other suggestion.
+     */
+    newGroupCapInr: z.number().optional(),
+    capSource: z.enum(['trip', 'members']).optional(),
     newPerPersonMaxInr: z.number().optional(),
-    unlocks: z.array(z.string()),
+    unlocks: z.array(z.string()).optional(),
   }),
 ]);
 export type Suggestion = z.infer<typeof Suggestion>;

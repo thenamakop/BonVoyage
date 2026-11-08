@@ -250,10 +250,18 @@ export function suggestionText(s: Suggestion): string {
     case 'F4':
       return `Shift the dates by ${plural(s.shiftMonths, 'month')}`;
     case 'F5':
-      if (s.capSource === 'trip') return `Raise the group budget to ${formatInr(s.newGroupCapInr)}`;
+      // #163 stripped shape (below 3 contributors): the flag only, no figure.
+      if (s.newGroupCapInr === undefined || s.capSource === undefined)
+        return 'Raise the trip budget and ask members to review their budgets';
+      if (s.capSource === 'trip')
+        return s.raisesBoth === true
+          ? `Raise the group budget to ${formatInr(s.newGroupCapInr)} and ask members to review their budgets`
+          : `Raise the group budget to ${formatInr(s.newGroupCapInr)}`;
       return s.newPerPersonMaxInr === undefined
         ? 'Members need to raise their maximum budgets'
-        : `Members need to raise their maximum to ${formatInr(s.newPerPersonMaxInr)} per person`;
+        : `Members need to raise their maximum to ${formatInr(s.newPerPersonMaxInr)} per person${
+            s.raisesBoth === true ? ' and the trip budget' : ''
+          }`;
   }
 }
 
@@ -274,7 +282,10 @@ export function unlocksText(
 export function suggestionPatch(s: Suggestion): UpdateTripInput | null {
   if (s.constraint === 'F1') return { radiusKm: s.newRadiusKm };
   if (s.constraint === 'F2') return { durationNights: s.newNights };
-  if (s.constraint === 'F5' && s.capSource === 'trip') return { budgetTotalInr: s.newGroupCapInr };
+  // #163: a raisesBoth suggestion has no one-tap patch; members must act too.
+  if (s.constraint === 'F5' && s.raisesBoth === true) return null;
+  if (s.constraint === 'F5' && s.capSource === 'trip' && s.newGroupCapInr !== undefined)
+    return { budgetTotalInr: s.newGroupCapInr };
   return null;
 }
 

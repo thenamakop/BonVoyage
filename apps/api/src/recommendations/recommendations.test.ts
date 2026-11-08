@@ -4,9 +4,11 @@ import { recommendationItem, recommendationRun } from '@bonvoyage/db/schema';
 import { estimateRoadKm, fairnessWeights, groupFit, memberDeficits } from '@bonvoyage/engine';
 import {
   ActivityResponse,
+  BudgetReviewResponse,
   GroupProfileResponse,
   InvitationResponse,
   LatestRecommendationResponse,
+  NotificationsResponse,
   PackagesResponse,
   RequestRecommendationsResponse,
   TripDetail,
@@ -914,5 +916,144 @@ describe('speed on the real catalogue (R15)', () => {
       `\nR15 speed: ${ms} ms for ${body.run!.kind} (feasible ${body.run!.feasibleCount})\n`,
     );
     expect(ms).toBeLessThan(2000);
+  });
+});
+
+// #163: when the needed cap crosses the side a suggestion does not raise, the
+// suggestion is marked raisesBoth and the organiser can ask members to review
+// their budgets. Below 3 contributing members it carries no figure (D1, #116).
+describe('a suggestion that needs both caps to move (#163)', () => {
+  const BR_HUB = { slug: 'br-hub', lat: 24, lng: 84 };
+  const BR_DESTS: FixtureDestination[] = [
+    { slug: 'br-a', lat: 24.2, lng: 84 },
+    { slug: 'br-b', lat: 23.8, lng: 84 },
+    { slug: 'br-c', lat: 24, lng: 84.3 },
+  ];
+  const lowMax = () => prefs({ budgetMinInr: 500, budgetMaxInr: 1000 });
+  const review = (m: Member, tripId: string) =>
+    m.agent.post(`/api/trips/${tripId}/budget-review`).set(H).send({});
+  const notices = async (m: Member) =>
+    NotificationsResponse.parse((await m.agent.get('/api/notifications').set(H)).body);
+
+  beforeAll(async () => {
+    await ensureHubAt(db, BR_HUB.slug, BR_HUB.lat, BR_HUB.lng);
+    for (const d of BR_DESTS) await ensureDestination(db, d);
+  });
+
+  it('marks the suggestion, then budget-review notifies members once per 24 hours', async () => {
+    // Trip budget 2000 binds (3 x 1000 = 3000 allows more); every fixture place
+    // costs well over 3000, so the cap reaching a shortlist crosses both sides.
+    const { tripId, members } = await readyTrip([lowMax(), lowMax(), lowMax()], {
+      originHubSlug: BR_HUB.slug,
+      budgetTotalInr: 2000,
+    });
+    const [organiser, member] = members as [Member, Member, Member];
+    const res = await recommend(organiser, tripId);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const run = RequestRecommendationsResponse.parse(res.body).run!;
+    expect(run.kind).toBe('diagnostic');
+    const f5 = run.diagnostic!.suggestions.find((s) => s.constraint === 'F5')!;
+    expect(f5).toMatchObject({ raisesBoth: true, capSource: 'trip' });
+    expect(
+      'newGroupCapInr' in f5 ? f5.newGroupCapInr : 0,
+      "the amount reaching a shortlist crosses the members' maxima",
+    ).toBeGreaterThan(3000);
+
+    // A plain member cannot send the request.
+    expect((await review(member, tripId)).status).toBe(403);
+
+    const first = await review(organiser, tripId);
+    expect(first.status, JSON.stringify(first.body)).toBe(201);
+    const sent = BudgetReviewResponse.parse(first.body);
+
+    // Every member but the organiser hears it, by name and with no figure.
+    const items = (await notices(member)).items.filter((n) => n.tripId === tripId);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      type: 'budget_review_requested',
+      message: 'Rec Member 0 asked everyone to review their budget',
+    });
+    expect(items[0]!.message).not.toMatch(/\d{2,}/);
+    expect(items[0]).not.toHaveProperty('payload');
+    expect(
+      (await notices(organiser)).items.filter((n) => n.type === 'budget_review_requested'),
+    ).toHaveLength(0);
+
+    // The trip detail shows when the organiser may ask again.
+    const detail = await tripOf(organiser, tripId);
+    expect(detail.canRequestBudgetReviewAt).toBe(sent.canRequestAgainAt);
+
+    const again = await review(organiser, tripId);
+    expect(again.status).toBe(429);
+    expect((again.body as ErrorEnvelope).error.code).toBe('TOO_MANY_REQUESTS');
+    expect((again.body as ErrorEnvelope).error.message).toMatch(
+      /^You can ask everyone to review their budget again after /,
+    );
+    expect(again.headers['retry-after']).toBeDefined();
+  });
+
+  it('refuses when the latest run offers no raisesBoth suggestion', async () => {
+    const radiusKm = Math.max(roadKm('rec-a'), roadKm('rec-c'));
+    const { tripId, members } = await readyTrip([prefs(), prefs({ climate: 'cold' })], {
+      radiusKm,
+    });
+    expect((await recommend(members[0]!, tripId)).status).toBe(200);
+    const res = await review(members[0]!, tripId);
+    expect(res.status).toBe(409);
+    expect((res.body as ErrorEnvelope).error.message).toBe(
+      'There is no suggestion that needs both budgets to move.',
+    );
+  });
+
+  it('skips a member who left, and refuses once members can no longer edit', async () => {
+    const { tripId, members } = await readyTrip([lowMax(), lowMax(), lowMax(), lowMax()], {
+      originHubSlug: BR_HUB.slug,
+      budgetTotalInr: 2000,
+    });
+    const [organiser, member, , gone] = members as [Member, Member, Member, Member];
+    expect((await recommend(organiser, tripId)).status).toBe(200);
+    // T6>T8 lands the trip back in collecting_preferences, where the roster is
+    // still open: the organiser removes the fourth member (excluded, not active).
+    const removed = await organiser.agent
+      .delete(`/api/trips/${tripId}/members/${gone.userId}`)
+      .set(H);
+    expect(removed.status, JSON.stringify(removed.body)).toBe(204);
+    expect((await review(organiser, tripId)).status).toBe(201);
+    for (const p of [member]) {
+      expect(
+        (await notices(p)).items.filter((n) => n.type === 'budget_review_requested'),
+      ).toHaveLength(1);
+    }
+    expect(
+      (await notices(gone)).items.filter((n) => n.type === 'budget_review_requested'),
+    ).toHaveLength(0);
+
+    // A shortlisted trip is past the point where members can edit preferences.
+    const { tripId: doneId, members: done } = await readyTrip([
+      prefs(),
+      prefs({ climate: 'cold' }),
+      prefs({ destinationTypes: ['heritage'], activities: ['museums'], climate: 'warm' }),
+    ]);
+    const res = await recommend(done[0]!, doneId);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(RequestRecommendationsResponse.parse(res.body).run?.kind).toBe('shortlist');
+    const refused = await review(done[0]!, doneId);
+    expect(refused.status).toBe(409);
+    expect((refused.body as ErrorEnvelope).error.message).toBe(
+      'Members can no longer review their budgets.',
+    );
+  });
+
+  it('below 3 contributing members the suggestion carries no figure (D1)', async () => {
+    const { tripId, members } = await readyTrip([lowMax(), lowMax()], {
+      originHubSlug: BR_HUB.slug,
+      budgetTotalInr: 1500,
+    });
+    expect((await recommend(members[0]!, tripId)).status).toBe(200);
+    const body = await latest(members[0]!, tripId);
+    const f5 = body.run!.diagnostic!.suggestions.find((s) => s.constraint === 'F5');
+    expect(f5).toEqual({ constraint: 'F5', raisesBoth: true });
+    // The organiser may still send the request; it carries no figure either.
+    expect((await review(members[0]!, tripId)).status).toBe(201);
   });
 });

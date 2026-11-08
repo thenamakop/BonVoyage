@@ -15,6 +15,7 @@ export const NOTIFICATION_TYPES = [
   'plan_ready',
   'trip_finalised',
   'trip_cancelled',
+  'budget_review_requested',
 ] as const;
 export const NotificationType = z.enum(NOTIFICATION_TYPES);
 export type NotificationType = z.infer<typeof NotificationType>;
@@ -68,6 +69,9 @@ export function notificationMessage(
       return 'The trip is finalised';
     case 'trip_cancelled':
       return `${actor} cancelled the trip`;
+    // #163: deliberately no figure; the organiser never sees a member's maximum.
+    case 'budget_review_requested':
+      return `${actor} asked everyone to review their budget`;
   }
 }
 
@@ -107,3 +111,16 @@ export const RemindResponse = z.object({
   canRemindAgainAt: z.string(),
 });
 export type RemindResponse = z.infer<typeof RemindResponse>;
+
+/** #163: the budget-review request shares the reminder's rolling 24-hour window. */
+export function budgetReviewAgainText(at: Date): string {
+  return `You can ask everyone to review their budget again after ${indiaDateTime(at)}`;
+}
+
+/** POST /api/trips/:id/budget-review (#163). */
+export const BudgetReviewResponse = z.object({
+  requestedAt: z.string(),
+  /** When the organiser may send the request again. */
+  canRequestAgainAt: z.string(),
+});
+export type BudgetReviewResponse = z.infer<typeof BudgetReviewResponse>;
