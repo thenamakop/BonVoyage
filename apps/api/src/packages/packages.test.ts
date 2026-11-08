@@ -1,4 +1,5 @@
-import { createDb, importCatalogue } from '@bonvoyage/db';
+import { createDb, importCatalogue, importParsedCatalogue } from '@bonvoyage/db';
+import type { Catalogue } from '@bonvoyage/db';
 import { costItem, fareFallback, poi, tripPackage } from '@bonvoyage/db/schema';
 import { eq } from 'drizzle-orm';
 import { resolve } from 'node:path';
@@ -21,6 +22,7 @@ import {
   ensureDestination,
   ensureHubAt,
 } from '../test/helpers';
+import { draftPackages } from './service';
 
 // S3-3: migration 0002 and the packages API (T9 to T11, I3, I4), against a
 // small fixture catalogue around a hub far from the real one.
@@ -563,5 +565,101 @@ describe('GET /api/trips/:id/packages costs nothing', () => {
     expect(PackagesResponse.parse(res.body).packages.length).toBeGreaterThanOrEqual(3);
     expect(engine.generatePackages).not.toHaveBeenCalled();
     expect(engine.costPackage).not.toHaveBeenCalled();
+  });
+});
+
+// #159: a catalogue import commits while generation reads. The draft must
+// come entirely from before the import or entirely after it, never a mix.
+describe('catalogue snapshot during package generation', () => {
+  const newDest: Catalogue['destinations'][number] = {
+    slug: 'pkg-dest',
+    name: 'Name of pkg-dest',
+    state: 'Testland',
+    lat: 30.2,
+    lng: 85,
+    types: ['mountain'],
+    activities: ['trekking'],
+    climate: 'mild',
+    best_months: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    min_nights: 1,
+    stay_budget_inr: 1500,
+    stay_mid_inr: 5000,
+    stay_premium_inr: 6000,
+    food_per_day_inr: 500,
+    local_per_day_inr: 300,
+    source_url: undefined,
+    collected_on: '2026-10-12',
+    review_status: 'draft',
+    cost_source_url: undefined,
+    cost_collected_on: undefined,
+    cost_review_status: 'draft',
+  };
+  const newFare: Catalogue['fares'][number] = {
+    origin_hub: 'pkg-hub',
+    destination_slug: 'pkg-dest',
+    mode: 'train',
+    fare_per_person_inr: 900,
+    duration_minutes: 240,
+    distance_km: 90,
+    source_url: undefined,
+    collected_on: '2026-10-12',
+    review_status: 'verified',
+  };
+  const oldDest = { ...newDest, stay_mid_inr: 3000 };
+  const oldFare = { ...newFare, fare_per_person_inr: 300 };
+  const commitImport = (
+    destination: Catalogue['destinations'][number],
+    fare: Catalogue['fares'][number],
+  ) =>
+    db.transaction((tx) =>
+      importParsedCatalogue(tx, {
+        hubs: [],
+        destinations: [destination],
+        fares: [fare],
+        pois: [],
+        costRules: undefined,
+      }),
+    );
+
+  it('a mid-read import cannot mix old and new catalogue rows', async () => {
+    const organiser = await createTestUser(app, 'Snap A');
+    const { id: tripId } = await createTripAs(organiser.agent, {
+      originHubSlug: 'pkg-hub',
+      radiusKm: 200,
+      budgetTotalInr: 120000,
+      durationNights: 2,
+    });
+    const tripRow = (await db.query.trip.findFirst({
+      where: (t, { eq: e }) => e(t.id, tripId),
+    }))!;
+    const members = [engine.toMemberInput('m1', prefs(), [])];
+    const dest = (await db.query.destination.findFirst({
+      where: (d, { eq: e }) => e(d.slug, 'pkg-dest'),
+    }))!;
+
+    // Balanced = cheapest mode (train) + mid stay: the two values the import changes.
+    const balancedLines = async (betweenReads?: () => Promise<void>) => {
+      const { drafts } = await draftPackages(db, tripRow, members, dest.id, betweenReads);
+      const balanced = drafts.find((d) => d.label === 'Balanced')!;
+      const amount = (category: string) =>
+        balanced.lines.find((l) => l.category === category)?.amountInr;
+      return { stay: amount('stay'), onward: amount('onward') };
+    };
+
+    try {
+      const before = await balancedLines();
+      // The import lands between the destination read and the source rows.
+      const mid = await balancedLines(async () => {
+        await commitImport(newDest, newFare);
+      });
+      const after = await balancedLines();
+
+      expect(before).not.toEqual(after); // the import really changed the costing
+      // Every line comes from one catalogue state: the snapshot predates the
+      // commit, so the draft is the all-old costing, never stay-old + fare-new.
+      expect(mid).toEqual(before);
+    } finally {
+      await commitImport(oldDest, oldFare);
+    }
   });
 });

@@ -85,12 +85,24 @@ export async function draftPackages(
   tripRow: TripRow,
   members: MemberInput[],
   destinationId: string,
+  /** #159: test seam — runs between the catalogue reads of one generation. */
+  betweenReads?: () => Promise<void>,
 ): Promise<{ input: PackageInput; drafts: PackageDraft[]; note: string | null }> {
-  const dest = await db.query.destination.findFirst({
-    where: (d, { eq }) => eq(d.id, destinationId),
-  });
-  if (!dest) throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Destination not found.');
-  const input = await packageInput(db, tripRow, members, dest);
+  // #159: one consistent catalogue state — the destination row and the source
+  // rows (fares, rules, places, hub) all come from the same snapshot, so an
+  // import committing mid-generation cannot mix old and new rows. Read-only
+  // REPEATABLE READ takes no locks.
+  const input = await db.transaction(
+    async (tx) => {
+      const dest = await tx.query.destination.findFirst({
+        where: (d, { eq }) => eq(d.id, destinationId),
+      });
+      if (!dest) throw new AppError(404, ERROR_CODES.NOT_FOUND, 'Destination not found.');
+      await betweenReads?.();
+      return packageInput(tx, tripRow, members, dest);
+    },
+    { isolationLevel: 'repeatable read', accessMode: 'read only' },
+  );
   const { packages, note } = generatePackages(input);
   return { input, drafts: packages, note };
 }
@@ -354,10 +366,16 @@ export async function changePackage(
   if (!pkg) throw PACKAGE_ERROR.notFound();
   if (pkg.status !== 'proposed') throw PACKAGE_ERROR.notProposed();
   const members = await loadMembers(db, tripId);
-  const dest = await db.query.destination.findFirst({
-    where: (d, { eq }) => eq(d.id, tripRow.selectedDestinationId!),
-  });
-  const engineInput = await packageInput(db, tripRow, members, dest!);
+  // #159: the rebuild reads the same catalogue snapshot as a fresh draft.
+  const engineInput = await db.transaction(
+    async (tx) => {
+      const dest = await tx.query.destination.findFirst({
+        where: (d, { eq }) => eq(d.id, tripRow.selectedDestinationId!),
+      });
+      return packageInput(tx, tripRow, members, dest!);
+    },
+    { isolationLevel: 'repeatable read', accessMode: 'read only' },
+  );
   const spec = {
     mode: input.transportMode ?? pkg.transportMode,
     tier: input.stayTier ?? pkg.stayTier,
