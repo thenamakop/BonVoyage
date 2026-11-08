@@ -17,20 +17,18 @@ function Row({ item, onOpen }: { item: NotificationItem; onOpen: () => void }) {
   const body = (
     <>
       <span className="flex items-start justify-between gap-2">
-        <span className="text-sm font-semibold text-slate-900">{item.tripTitle}</span>
+        <span className="text-sm font-semibold text-ink">{item.tripTitle}</span>
         {item.readAt === null ? <Badge>New</Badge> : null}
       </span>
-      <span className="block text-sm text-slate-900">{item.message}</span>
-      <span className="block text-xs text-slate-600">
-        {indiaDateTime(new Date(item.createdAt))}
-      </span>
+      <span className="block text-sm text-ink">{item.message}</span>
+      <span className="block text-xs text-muted">{indiaDateTime(new Date(item.createdAt))}</span>
     </>
   );
   return item.tripId ? (
     <Link
       to={`/trips/${item.tripId}`}
       onClick={onOpen}
-      className="block min-h-11 rounded px-3 py-2 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+      className="block min-h-11 rounded-xl px-3 py-2 hover:bg-cream focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
     >
       {body}
     </Link>
@@ -79,7 +77,7 @@ export function NotificationBell() {
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-md px-2 text-sm font-semibold text-white hover:bg-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-xl px-2 text-sm font-semibold text-white hover:bg-ink/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
         <svg
           aria-hidden="true"
@@ -94,16 +92,20 @@ export function NotificationBell() {
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
           <path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
         </svg>
-        {unread > 0 ? <span>{unread > 99 ? '99+' : unread}</span> : null}
+        {unread > 0 ? (
+          <span className="rounded-full border-2 border-ink bg-accent px-1.5 text-xs font-bold leading-5 text-ink">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        ) : null}
       </button>
       {open ? (
         <section
           id={panelId}
           aria-label="Notifications"
-          className="absolute inset-x-4 top-full z-10 mt-1 rounded-md border border-slate-200 bg-white p-2 text-slate-900 shadow-lg sm:inset-x-auto sm:right-0 sm:w-96"
+          className="absolute inset-x-4 top-full z-10 mt-2 rounded-2xl border-[2.5px] border-ink bg-white p-2 text-ink shadow-sticker sm:inset-x-auto sm:right-0 sm:w-96"
         >
           <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 px-1">
-            <h2 className="px-2 text-sm font-semibold">Notifications</h2>
+            <h2 className="px-2 text-base">Notifications</h2>
             {unread > 0 ? (
               <Button variant="ghost" loading={markAll.isPending} onClick={() => markAll.mutate()}>
                 Mark all as read
@@ -111,18 +113,18 @@ export function NotificationBell() {
             ) : null}
           </div>
           {notifications.isPending ? (
-            <p className="px-3 py-2 text-sm text-slate-600">Loading…</p>
+            <p className="px-3 py-2 text-sm text-muted">Loading…</p>
           ) : notifications.isError && items.length === 0 ? (
             <div className="space-y-1 px-3 py-2">
-              <p className="text-sm text-slate-900">Your notifications could not be loaded.</p>
+              <p className="text-sm text-ink">Your notifications could not be loaded.</p>
               <Button variant="secondary" onClick={() => void notifications.refetch()}>
                 Retry
               </Button>
             </div>
           ) : items.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-slate-600">Nothing yet.</p>
+            <p className="px-3 py-2 text-sm text-muted">Nothing yet.</p>
           ) : (
-            <ul className="max-h-[60vh] divide-y divide-slate-200 overflow-y-auto">
+            <ul className="max-h-[60vh] divide-y divide-ink/15 overflow-y-auto">
               {items.map((item) => (
                 <li key={item.id}>
                   <Row
