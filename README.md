@@ -187,11 +187,13 @@ curl http://localhost:5173/api/health
 | `TEST_DATABASE_URL` | integration tests (they wipe this database) | Docker URL on port 5433, already set |
 | `BETTER_AUTH_SECRET` | signing sessions | **secret**: 32 random bytes, command below |
 | `GEMINI_API_KEY` | itinerary generation | **secret**: a Google AI Studio key |
+| `GEMINI_DAILY_LIMIT` | model calls allowed per India day; 0 = none, the catalogue templates word the day plan | `0` |
 | `SEED_DEMO_PASSWORD` | demo accounts from `pnpm db:seed` | **secret**: any 12+ characters |
 | `GEMINI_MODEL` | which Gemini model to call | `gemini-3.8-flash` |
 | `LIVE_APIS` | `off` answers from fixtures and curated data, spending no quota | `off` |
 | `APP_URL`, `PORT`, `LOG_LEVEL` | URLs, API port, log detail | `http://localhost:5173`, `4000`, `info` |
 | `ADMIN_EMAILS` | who may open `/admin/catalogue` (comma-separated sign-in emails) | empty (nobody), or your own email |
+| `BONVOYAGE_SKIP_DOTENV` | `1` stops vitest loading `.env`; for agent sessions that must not read it | empty |
 
 ```bash
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
