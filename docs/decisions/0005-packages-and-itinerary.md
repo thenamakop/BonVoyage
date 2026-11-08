@@ -87,10 +87,16 @@ The engine builds the plan from catalogue facts. It is deterministic and pure.
 ### f) Words from the language model (optional, R12)
 
 - With `LIVE_APIS=off` (every test, and any deployment without a key) the itinerary uses the template notes and records `model = 'catalogue-planner'`. The screen says "Planned from the BonVoyage catalogue".
-- With `LIVE_APIS=on`, Gemini (`GEMINI_MODEL`; the spike recommends gemini-3.5-flash-lite) receives the fact sheet and the planned skeleton and returns **wording only**: a summary (up to 600 characters), 1 to 5 reasons and one note per item (up to 200 characters). Times, places and amounts never come from the model. The call has a 20-second timeout and one attempt.
+- With `LIVE_APIS=on`, Gemini (`GEMINI_MODEL`; the spike recommends gemini-3.5-flash-lite) receives the fact sheet and the planned skeleton and returns **wording only**: a summary (up to 600 characters), 1 to 5 reasons and one note per item (up to 200 characters). Times, places and amounts never come from the model. The call has a 20-second timeout (raised to `WORDING_TIMEOUT_MS` = 25 s on 8 November 2026, below) and one attempt.
 - The assembled itinerary goes through `validateItinerary`. An item whose model note fails (for example an unverified number) gets its template note back. If the call fails, times out or its output fails the zod schema, the whole itinerary uses the templates. `model` records the model id actually used. The screen says "Written with <model> from catalogue facts".
 - Prompts carry facts only: no member names, emails, ids or personal budgets (`assertNoPersonalData`).
 - **Item verified** = the validator's verdict for that item and, for an activity, the place's row being verified. An unverified item shows "Not verified" with its reason.
+
+**8 November 2026 (#165).** S4-7 found two overstatements the validator let through: a Moila Top note worded "Spend the day trekking to Moila Top meadow and Tiger Falls." (it named the next item's place and implied a full day) and "historic" added to a reason. Three clarifications now hold:
+
+- The validator also marks a note that names a catalogue place other than its own item's place unverified, so the service restores that item's template note. This is a hard rule, like the number and time checks.
+- The wording prompt bans duration claims ("spend the day", "all day", "half a day", hour counts), adjectives the fact sheet does not support (for example "historic", "famous", "scenic") and notes that name another item's place; it asks for notes on activity items only. The prompt is a mitigation, not a guarantee — the validator rule above is the guarantee.
+- The wording timeout is `WORDING_TIMEOUT_MS` = 25 s, keeping planning plus wording plus saving inside the 30-second plan limit (P10) with about 5 s of headroom; the function's `maxDuration` is already 60 s. Measured on 8 November 2026 (`pnpm spike:wording --live`, `gemini-3.5-flash-lite`), every config returned in about 2 s and validated; `thinkingLevel: 'minimal'` is the default.
 
 ### g) Package decisions (R8 with T9 to T11, I3, I4)
 

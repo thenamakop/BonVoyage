@@ -48,6 +48,20 @@ Each `generateStructured` request:
 
 `composeItineraryWording` catches every failure and returns a fixed code (`quota`, `timeout`, `invalid` or `error`), never a raw message. The itinerary service logs it as `wordingFallback`, with `wordingCache: 'hit' | 'miss' | null`, on its "itinerary planned" line. Prompts stay limited to verified destination facts (`assertNoPersonalData` runs before the client is called), and no trip-state lock is held while awaiting the model.
 
+### Wording latency and overstatement guards (#165)
+
+The wording call uses `gemini-3.5-flash-lite` (`GEMINI_MODEL`), `thinkingLevel: 'minimal'` (the lowest the SDK 2.32.0 accepts; `GeminiLlmClient` takes a `thinkingLevel` option) and `WORDING_TIMEOUT_MS` = 25 s, exported from `src/itinerary/wording.ts`. Twenty-five seconds keeps the whole plan — planning, wording, validating and saving — inside the 30-second plan limit (SRS 3.3, P10) with about 5 s of headroom; the Vercel function's `maxDuration` is 60 s (`scripts/vercel-build.ts`), so the limit is the plan's own budget, not the function's.
+
+Measured with `pnpm spike:wording --live` (the app's real words-only prompt for the demo's Chakrata plan, gemini-3.5-flash-lite, 8 November 2026; `spikes/itinerary/wording-run.ts`):
+
+| Config | Run | Latency ms | Output tokens | Validated |
+| --- | --- | --- | --- | --- |
+| A: current (`thinkingLevel` low) | 1 / 2 / 3 | 2489 / 1834 / 1862 | 207 / 196 / 201 | 1.000 each |
+| B: `thinkingLevel` minimal | 1 / 2 / 3 | 2272 / 2068 / 2228 | 220 / 205 / 209 | 1.000 each |
+| C: minimal + tighter prompt | 1 / 2 / 3 | 2308 / 2179 / 2334 | 354 / 321 / 347 | 1.000 each |
+
+Every config is far inside 25 s; the 20.1 s seen in S4-7 was the model's cold first call, not its steady-state latency. `minimal` is the default anyway (cheapest) and the prompt carries the tighter wording rules: notes only for activity items, no duration claims ("spend the day", "all day", hour counts), no adjectives the fact sheet does not support (for example "historic"), and a note may name only its own item's place. Independently of the prompt, `validateItinerary` marks a note that names another item's place unverified, so the service restores the template note for that item.
+
 ## API wiring and package exports
 
 `createApp` builds one routing instance per application, using curated then estimate, the injected clock/logger/database and a 30-day TTL. Tests can supply `AppDeps.routing`. The instance is passed into API dependencies; no endpoint consumes it until S2-6.

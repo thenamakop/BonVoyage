@@ -10,7 +10,7 @@ import {
   unusedPlacesFitting,
   type TripPlan,
 } from '@bonvoyage/engine';
-import { composeItineraryWording } from '@bonvoyage/integrations';
+import { composeItineraryWording, WORDING_TIMEOUT_MS } from '@bonvoyage/integrations';
 import type { LlmClient, WordingFailure } from '@bonvoyage/integrations';
 import { and, eq } from 'drizzle-orm';
 import type { Logger } from 'pino';
@@ -46,7 +46,7 @@ interface Deps {
   clock: () => Date;
   /** Present only when LIVE_APIS=on; absent means the template path. */
   llm?: LlmClient;
-  /** Model wording timeout; tests shorten it (P10 default is 20 s). */
+  /** Model wording timeout; tests shorten it (P10 default is WORDING_TIMEOUT_MS, 25 s). */
   wordingTimeoutMs?: number;
 }
 
@@ -195,7 +195,7 @@ export async function planItinerary(
 
   if (deps.llm) {
     const wording = await composeItineraryWording(deps.llm, facts, plan, {
-      timeoutMs: deps.wordingTimeoutMs ?? 20000,
+      timeoutMs: deps.wordingTimeoutMs ?? WORDING_TIMEOUT_MS,
     });
     if (wording.ok) {
       output = toOutput(plan.days, wording.wording.summary, wording.wording.reasons);

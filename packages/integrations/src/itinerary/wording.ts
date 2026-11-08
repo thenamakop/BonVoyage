@@ -43,6 +43,27 @@ function failureOf(error: unknown): WordingFailure {
 }
 
 /**
+ * #165: planning plus wording plus saving must finish inside the 30-second
+ * plan limit (SRS 3.3, P10); the wording call gets 25 of them so the rest of
+ * the pipeline keeps about 5 seconds of headroom.
+ */
+export const WORDING_TIMEOUT_MS = 25000;
+
+/**
+ * #165: two overstatements reached users on preview (a note claiming "Spend
+ * the day" and naming the next item's place, and an invented "historic").
+ * The prompt now bans duration claims and adjectives the fact sheet does not
+ * support, and the validator independently rejects a note naming another
+ * item's place.
+ */
+const WORDING_RULES =
+  ' Wording rules: write a notes entry only for items whose kind is "activity".' +
+  ' Never claim a duration: no "spend the day", "all day", "half a day" or hour counts.' +
+  ' Use only adjectives grounded in the fact sheet (category, entry fee, opening times);' +
+  ' never add qualities such as "historic", "famous" or "scenic".' +
+  " A note may name only its own item's place, never another item's.";
+
+/**
  * One model call with a timeout; never throws to the caller. The prompt pins
  * the skeleton (times and places are fixed) and asks for words only.
  */
@@ -50,11 +71,11 @@ export async function composeItineraryWording(
   llm: LlmClient,
   factSheet: FactSheet,
   skeleton: TripPlan,
-  { timeoutMs = 20000 }: { timeoutMs?: number } = {},
+  { timeoutMs = WORDING_TIMEOUT_MS }: { timeoutMs?: number } = {},
 ): Promise<WordingResult> {
   try {
     const { system, prompt } = buildItineraryPrompt(factSheet);
-    const skeletonPrompt = `${prompt}\n\nPlanned skeleton (times and places are fixed; write words only, no new numbers, times or places):\n${JSON.stringify(skeleton.days)}`;
+    const skeletonPrompt = `${prompt}${WORDING_RULES}\n\nPlanned skeleton (times and places are fixed; write words only, no new numbers, times or places):\n${JSON.stringify(skeleton.days)}`;
     assertNoPersonalData(skeletonPrompt);
 
     let timer: NodeJS.Timeout | undefined;
