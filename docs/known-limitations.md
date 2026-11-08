@@ -1,10 +1,6 @@
 # Known limitations
 
-Open gaps the team accepts for the 10 November 2026 submission, each with its source. Updated 3 November 2026 (S5-6, #141).
-
-## One-tap budget fix unavailable when both caps bind (#163)
-
-When the group cap is `min(trip budget, n × lowest member maximum)`, raising only the side the engine suggests cannot always reach a shortlist. In the offline evaluation, 116 of the 119 F5 diagnostics without a one-tap suggestion were dropped for this reason. The other 3 had too few budget-only misses. The synthetic member maxima sit close to the trip target, so the rate is likely overstated. Source: `docs/evaluation/results-2026-11-03.md`, "Why F5 diagnostics have no actionable suggestion"; issue #163.
+Open gaps the team accepts for the 10 November 2026 submission, each with its source. Updated 8 November 2026 (#163).
 
 ## What the evaluation harness does not show
 

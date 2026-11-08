@@ -466,7 +466,13 @@ describe('the F5 suggestion reaches a shortlist (#132)', () => {
     expect(f5Of([over('a', 9000), over('b', 9500), over('c', 12000)], capped)).toMatchObject({
       newGroupCapInr: 12000,
     });
-    expect(f5Of([over('a', 9000), over('b', 9500), over('c', 12100)], capped)).toBeUndefined();
+    // #163: crossing the members' side is marked, not dropped.
+    expect(f5Of([over('a', 9000), over('b', 9500), over('c', 12100)], capped)).toMatchObject({
+      newGroupCapInr: 12500,
+      capSource: 'trip',
+      raisesBoth: true,
+      unlocks: ['a', 'b', 'c'],
+    });
   });
 
   it('a members cap: never above the trip budget; "adds" follows the cap really reached', () => {
@@ -482,8 +488,31 @@ describe('the F5 suggestion reaches a shortlist (#132)', () => {
     });
     // A trip budget of 15800 stops it there, so d stays out.
     expect(f5Of(four, members(15800))).toMatchObject({ unlocks: ['a', 'b', 'c'] });
-    // Below the new cap: raising maxima cannot reach it, so no budget suggestion.
-    expect(f5Of(four, members(15000))).toBeUndefined();
+    // #163: below the new cap both sides must rise; the per-person target stays.
+    expect(f5Of(four, members(15000))).toMatchObject({
+      newGroupCapInr: 15500,
+      capSource: 'members',
+      newPerPersonMaxInr: 4000,
+      raisesBoth: true,
+      unlocks: ['a', 'b', 'c'],
+    });
+  });
+
+  it("raisesBoth: the trip budget binds and members' maxima would be crossed (#163)", () => {
+    const capped = { ctx: ctx({ capSource: 'trip', n: 3, perPersonCapInr: 4000 }) };
+    const s = f5Of([over('a', 9000), over('b', 9500), over('c', 12100)], capped);
+    expect(s).toMatchObject({
+      newGroupCapInr: 12500,
+      capSource: 'trip',
+      raisesBoth: true,
+      unlocks: ['a', 'b', 'c'],
+    });
+  });
+
+  it('fewer budget misses than the shortlist needs: still no suggestion (#163)', () => {
+    const capped = { ctx: ctx({ capSource: 'trip', n: 3, perPersonCapInr: 4000 }) };
+    expect(f5Of([over('a', 99000)], capped)).toBeUndefined();
+    expect(f5Of([over('a', 9000), over('b', 9500)], capped)).toBeUndefined();
   });
 
   it('members set the cap: the per-person maximum follows the new group cap', () => {

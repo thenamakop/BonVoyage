@@ -45,7 +45,7 @@ function SuggestionButton({
 }) {
   const update = useUpdateTrip(trip.id);
   const unlocksId = useId();
-  const unlocks = unlocksText(suggestion.unlocks, nearMisses);
+  const unlocks = unlocksText(suggestion.unlocks ?? [], nearMisses);
   // Only called for suggestions with a PATCH (see the caller).
   const patch = suggestionPatch(suggestion) ?? {};
   const field = suggestionField(suggestion);
@@ -85,7 +85,7 @@ function SuggestionTextItem({
   suggestion: Suggestion;
   nearMisses: readonly DiagnosticEvaluation[];
 }) {
-  const unlocks = unlocksText(suggestion.unlocks, nearMisses);
+  const unlocks = unlocksText(suggestion.unlocks ?? [], nearMisses);
   return (
     <p className="text-sm text-slate-900">
       {suggestionText(suggestion)}

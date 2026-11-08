@@ -9,6 +9,7 @@ import {
   InvitationResponse,
   ItineraryResponse,
   LatestRecommendationResponse,
+  NotificationsResponse,
   PackagesResponse,
   TripDetail,
 } from '@bonvoyage/shared';
@@ -1148,6 +1149,64 @@ describe('two-member groups: no budget figure gives the other member away (D1, #
       expect(profile.perPersonCapInr).toBeNull();
       expect(profile.groupCapInr).toBe(30000);
     }
+  });
+
+  // #163: a raisesBoth suggestion would bound the other member's maximum, so
+  // below 3 contributing members it carries only the constraint and the flag;
+  // the organiser's request notification names no figure either.
+  it('a raisesBoth suggestion and its request carry no budget figure', async () => {
+    // Both maxima are 1,000: the 1,500 trip budget binds, and the cap reaching
+    // a shortlist of these dear places crosses the members' side (2 x 1,000).
+    await ensureHubAt(db, 'both-hub', 16, 83);
+    await ensureDestination(db, { slug: 'both-a', lat: 16.2, lng: 83 });
+    await ensureDestination(db, { slug: 'both-b', lat: 15.8, lng: 83 });
+    await ensureDestination(db, { slug: 'both-c', lat: 16, lng: 83.3 });
+    const org = await createTestUser(app, 'Both Org');
+    const mem = await createTestUser(app, 'Both Mem');
+    const id = (
+      await createTripAs(org.agent, {
+        originHubSlug: 'both-hub',
+        radiusKm: 150,
+        budgetTotalInr: 1500,
+        durationNights: 2,
+      })
+    ).id;
+    const tok = InvitationResponse.parse(
+      (await org.agent.post(`/api/trips/${id}/invitations`).set(H).send({})).body,
+    ).token;
+    await mem.agent.post(`/api/invitations/${tok}/accept`).set(H).send({});
+    for (const agent of [org.agent, mem.agent]) {
+      await agent.put(`/api/trips/${id}/preferences/me`).set(H).send(twoPrefs(500, 1000));
+    }
+    const run = await org.agent.post(`/api/trips/${id}/recommendations`).set(H).send({});
+    expect(run.status, JSON.stringify(run.body)).toBe(200);
+
+    for (const agent of [org.agent, mem.agent]) {
+      const latest = LatestRecommendationResponse.parse(
+        (await agent.get(`/api/trips/${id}/recommendations/latest`).set(H)).body,
+      );
+      const f5 = latest.run?.diagnostic?.suggestions?.find((s) => s.constraint === 'F5');
+      expect(f5, 'the stripped suggestion carries the flag only').toEqual({
+        constraint: 'F5',
+        raisesBoth: true,
+      });
+    }
+
+    const asked = await org.agent.post(`/api/trips/${id}/budget-review`).set(H).send({});
+    expect(asked.status, JSON.stringify(asked.body)).toBe(201);
+    const items = NotificationsResponse.parse(
+      (await mem.agent.get('/api/notifications').set(H)).body,
+    ).items.filter((n) => n.type === 'budget_review_requested' && n.tripId === id);
+    expect(items).toHaveLength(1);
+    for (const secret of [500, 1000, 1500]) {
+      expect(items[0]!.message, `the request named ${secret}`).not.toContain(`${secret}`);
+    }
+    expect(numbersIn(items[0])).toEqual([]);
+    // The organiser is never notified about their own request.
+    const own = NotificationsResponse.parse(
+      (await org.agent.get('/api/notifications').set(H)).body,
+    ).items.filter((n) => n.type === 'budget_review_requested' && n.tripId === id);
+    expect(own).toHaveLength(0);
   });
 });
 

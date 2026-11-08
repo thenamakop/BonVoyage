@@ -44,6 +44,8 @@ export interface ScenarioResult {
   feasibleCount: number;
   binding: string | null;
   budgetNoSuggestionReason: BudgetNoSuggestionReason | null;
+  /** #163: the F5 suggestion needs both caps to move; re-run raises both. */
+  f5RaisesBoth: boolean;
   checks: {
     constraints: Check;
     packages: Check;
@@ -187,6 +189,7 @@ export function evaluateScenario(
     feasibleCount: feasible.length,
     binding: shortlisted ? null : diagnostic.bindingConstraint,
     budgetNoSuggestionReason: budgetNoSuggestionReason(diagnostic, ctx),
+    f5RaisesBoth: false,
     checks: {
       constraints: { passed: 0, total: 0 },
       packages: { passed: 0, total: 0 },
@@ -291,18 +294,29 @@ export function evaluateScenario(
   } else if (diagnostic.bindingConstraint === 'F5') {
     const suggestion = diagnostic.suggestions.find((s) => s.constraint === 'F5');
     if (suggestion?.constraint === 'F5') {
+      // #163: a raisesBoth suggestion is re-run with both sides raised — the
+      // trip budget to the suggested cap and every member's maximum to at
+      // least the per-person share of it, rounded up to ₹500.
+      const both = suggestion.raisesBoth === true;
+      const perPerson = Math.ceil(suggestion.newGroupCapInr / scenario.members.length / 500) * 500;
       const revised = {
         ...scenario,
         budgetTotalInr:
-          suggestion.capSource === 'trip' ? suggestion.newGroupCapInr : scenario.budgetTotalInr,
+          suggestion.capSource === 'trip' || both
+            ? suggestion.newGroupCapInr
+            : scenario.budgetTotalInr,
         members: scenario.members.map((m) => ({
           ...m,
           budgetMaxInr:
-            suggestion.capSource === 'members'
-              ? Math.max(m.budgetMaxInr, suggestion.newPerPersonMaxInr ?? m.budgetMaxInr)
+            suggestion.capSource === 'members' || both
+              ? Math.max(
+                  m.budgetMaxInr,
+                  both ? perPerson : (suggestion.newPerPersonMaxInr ?? m.budgetMaxInr),
+                )
               : m.budgetMaxInr,
         })),
       };
+      result.f5RaisesBoth = both;
       const revisedCtx = feasibilityContext(revised, groupProfile(revised.members, revised));
       const count = revisedCtx
         ? candidates.filter((c) => evaluateCandidate(c.facts, revisedCtx).feasible).length

@@ -263,6 +263,21 @@ const CASES: Case[] = [
       '404 NOT_FOUND',
     ],
   },
+  // #163: the fixture has no raisesBoth diagnostic, so the organiser is refused.
+  {
+    method: 'POST',
+    path: '/api/trips/:id/budget-review',
+    url: (f) => `/api/trips/${f.tripId}/budget-review`,
+    body: {},
+    expected: [
+      '401',
+      '404 NOT_FOUND',
+      '403 FORBIDDEN',
+      '403 FORBIDDEN',
+      '409 ILLEGAL_TRANSITION',
+      '404 NOT_FOUND',
+    ],
+  },
 
   {
     method: 'GET',

@@ -84,6 +84,7 @@ function handmade(): EvaluationRun {
       feasibleCount: index === 0 ? 0 : 3,
       binding: index === 0 ? 'F5' : null,
       budgetNoSuggestionReason: null,
+      f5RaisesBoth: index === 0,
       checks: {
         constraints: { passed: index, total: index },
         packages: { passed: 1, total: 1 },

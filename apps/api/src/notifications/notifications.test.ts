@@ -179,10 +179,12 @@ describe('the notification types and the state machine agree', () => {
     for (const id of notifying) expect(NOTIFYING_TRANSITIONS, id).toHaveProperty([id]);
     const ids = TRANSITIONS.map((t) => t.id);
     for (const id of Object.keys(NOTIFYING_TRANSITIONS)) expect(ids, id).toContain(id);
-    // E3: every type but the two written outside transitions has a transition.
+    // E3: every type but the ones written outside transitions has a transition
+    // (member_joined, preferences_reminder and #163's budget_review_requested).
     expect([...new Set(Object.values(NOTIFYING_TRANSITIONS))].sort()).toEqual(
       NOTIFICATION_TYPES.filter(
-        (t) => t !== 'member_joined' && t !== 'preferences_reminder',
+        (t) =>
+          t !== 'member_joined' && t !== 'preferences_reminder' && t !== 'budget_review_requested',
       ).sort(),
     );
   });
@@ -412,7 +414,11 @@ describe('a trip from joining to cancelled', () => {
       ...(await typesOf(rohan)),
       ...(await typesOf(kabir)),
     ]);
-    expect([...seen].sort()).toEqual([...NOTIFICATION_TYPES].sort());
+    // #163's budget_review_requested needs a raisesBoth diagnostic; its
+    // recipients are asserted in recommendations.test.ts.
+    expect([...seen].sort()).toEqual(
+      [...NOTIFICATION_TYPES.filter((t) => t !== 'budget_review_requested')].sort(),
+    );
   });
 
   it('V2: no body holds a budget, an email, a score or another member’s answers', async () => {

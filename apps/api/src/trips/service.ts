@@ -45,7 +45,11 @@ import {
   type MemberWithName,
   type Tx,
 } from './repository';
-import { nextReminderTimes } from '../notifications/service';
+import {
+  latestRunOffersRaisesBoth,
+  nextBudgetReviewAt,
+  nextReminderTimes,
+} from '../notifications/service';
 import { findLatestRun } from '../recommendations/repository';
 import { latestItinerarySummary } from '../itinerary/repository';
 import { tripActions } from './actions';
@@ -93,6 +97,7 @@ function toDetail(
   latestItinerary: TripDetail['latestItinerary'],
   reminders: ReadonlyMap<string, string> | null,
   today: string,
+  canRequestBudgetReviewAt?: string | null,
 ): TripDetail {
   const organiser = members.find((m) => m.member.role === 'organiser');
   const progress = progressOf(members);
@@ -138,6 +143,7 @@ function toDetail(
       today,
     }),
     lastActivityAt: lastActivityAt ? iso(lastActivityAt) : null,
+    ...(canRequestBudgetReviewAt !== undefined ? { canRequestBudgetReviewAt } : {}),
     latestRecommendation,
     selectedPackage,
     latestItinerary,
@@ -199,6 +205,16 @@ async function detailFor(
     row.status === 'collecting_preferences'
       ? await nextReminderTimes(db, row.id, now)
       : null;
+  // #163: the organiser sees when they may next ask for budget reviews, but only
+  // while a raisesBoth suggestion is live and members can still edit.
+  const canRequestBudgetReviewAt =
+    caller.role === 'organiser' &&
+    caller.status === 'active' &&
+    (row.status === 'collecting_preferences' || row.status === 'ready_for_recommendation') &&
+    latestRun?.kind === 'diagnostic' &&
+    latestRunOffersRaisesBoth(latestRun.diagnostic)
+      ? await nextBudgetReviewAt(db, row.id, now)
+      : undefined;
   const latestRecommendation = latestRun
     ? {
         round: latestRun.round,
@@ -219,6 +235,7 @@ async function detailFor(
     latestItinerary,
     reminders,
     indiaDate(now),
+    canRequestBudgetReviewAt,
   );
 }
 
