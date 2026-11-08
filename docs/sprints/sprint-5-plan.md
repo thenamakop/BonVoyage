@@ -355,7 +355,7 @@ Never cut: S5-2 (R17), S5-5 (the harness), S5-6, S5-7, and Sprint 4's items 1, 9
 
 **`docs/RUNBOOK.md` line 434, its first sentence becomes:**
 
-> Out of scope for 10 November: email, travel-date reminders and the user study. R17, R18 and in-app reminders (C4) moved into Sprint 5 by the [29 October re-plan](sprints/replan-2026-10-29.md).
+> Out of scope for 10 November: email, travel-date reminders and the user study. R17, R18 and in-app reminders (C4) moved into Sprint 5 by the [29 October re-plan](replan-2026-10-29.md).
 
 **`docs/traceability.md` lines 23 and 24:** status `deferred` becomes `Sprint 5`. The issue column keeps #27 and #28 and adds the new issues. S5-6 fills in the tests.
 
