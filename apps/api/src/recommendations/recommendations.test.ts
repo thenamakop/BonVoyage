@@ -1005,6 +1005,45 @@ describe('a suggestion that needs both caps to move (#163)', () => {
     );
   });
 
+  it('skips a member who left, and refuses once members can no longer edit', async () => {
+    const { tripId, members } = await readyTrip([lowMax(), lowMax(), lowMax(), lowMax()], {
+      originHubSlug: BR_HUB.slug,
+      budgetTotalInr: 2000,
+    });
+    const [organiser, member, , gone] = members as [Member, Member, Member, Member];
+    expect((await recommend(organiser, tripId)).status).toBe(200);
+    // T6>T8 lands the trip back in collecting_preferences, where the roster is
+    // still open: the organiser removes the fourth member (excluded, not active).
+    const removed = await organiser.agent
+      .delete(`/api/trips/${tripId}/members/${gone.userId}`)
+      .set(H);
+    expect(removed.status, JSON.stringify(removed.body)).toBe(204);
+    expect((await review(organiser, tripId)).status).toBe(201);
+    for (const p of [member]) {
+      expect(
+        (await notices(p)).items.filter((n) => n.type === 'budget_review_requested'),
+      ).toHaveLength(1);
+    }
+    expect(
+      (await notices(gone)).items.filter((n) => n.type === 'budget_review_requested'),
+    ).toHaveLength(0);
+
+    // A shortlisted trip is past the point where members can edit preferences.
+    const { tripId: doneId, members: done } = await readyTrip([
+      prefs(),
+      prefs({ climate: 'cold' }),
+      prefs({ destinationTypes: ['heritage'], activities: ['museums'], climate: 'warm' }),
+    ]);
+    const res = await recommend(done[0]!, doneId);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(RequestRecommendationsResponse.parse(res.body).run?.kind).toBe('shortlist');
+    const refused = await review(done[0]!, doneId);
+    expect(refused.status).toBe(409);
+    expect((refused.body as ErrorEnvelope).error.message).toBe(
+      'Members can no longer review their budgets.',
+    );
+  });
+
   it('below 3 contributing members the suggestion carries no figure (D1)', async () => {
     const { tripId, members } = await readyTrip([lowMax(), lowMax()], {
       originHubSlug: BR_HUB.slug,

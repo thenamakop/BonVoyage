@@ -660,7 +660,7 @@ describe('after two shortlists no body holds a weight, a deficit or lambda (R17)
 // fields only. After a join, a reminder, T3b, a shortlist and "Ask again", no
 // body holds a budget, an email, a score or an answer, and nobody can read, or
 // even confirm, another user's notification (404, not 403). The notifications
-// test covers all nine types the same way.
+// test covers all ten types the same way.
 describe('notifications hold no preference, budget, score or email', () => {
   it('each caller reads only their own, with nothing private in them', async () => {
     await ensureHubAt(db, 'leak-hub', 32, 85);
