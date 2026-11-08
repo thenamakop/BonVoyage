@@ -8,11 +8,12 @@ import {
   ProfileResponse,
   type ErrorEnvelope,
 } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { createTestUser, createTripAs, ensureHub } from '../test/helpers';
+import { api } from '../test/helpers';
 
 // S1-4: the caller's profile (home city, past trips) and GET /api/destinations.
 // The clock is fixed at 1 Nov 2026 (India) for the visited-date rule.
@@ -87,9 +88,9 @@ describe('GET and PATCH /api/me/profile', () => {
   });
 
   it('401 without a session on GET and PATCH', async () => {
-    expect((await request(app).get('/api/me/profile').set(H)).status).toBe(401);
+    expect((await api(app).get('/api/me/profile').set(H)).status).toBe(401);
     expect(
-      (await request(app).patch('/api/me/profile').set(H).send({ homeHubSlug: null })).status,
+      (await api(app).patch('/api/me/profile').set(H).send({ homeHubSlug: null })).status,
     ).toBe(401);
   });
 });
@@ -174,7 +175,7 @@ describe('POST and DELETE /api/me/past-trips', () => {
     expect((await other.agent.delete('/api/me/past-trips/not-a-uuid').set(H)).status).toBe(404);
     expect((await owner.agent.delete(`/api/me/past-trips/${id}`).set(H)).status).toBe(204);
     expect((await owner.agent.delete(`/api/me/past-trips/${id}`).set(H)).status).toBe(404);
-    expect((await request(app).delete(`/api/me/past-trips/${id}`).set(H)).status).toBe(401);
+    expect((await api(app).delete(`/api/me/past-trips/${id}`).set(H)).status).toBe(401);
   });
 });
 
@@ -189,7 +190,7 @@ describe('GET /api/destinations', () => {
     expect(slugs).not.toContain('test-closed');
     const names = destinations.map((d) => d.name);
     expect([...names].sort((x, y) => x.localeCompare(y))).toEqual(names);
-    expect((await request(app).get('/api/destinations').set(H)).status).toBe(401);
+    expect((await api(app).get('/api/destinations').set(H)).status).toBe(401);
   });
 });
 
@@ -263,6 +264,6 @@ describe('DELETE /api/me/profile', () => {
     expect(badEmail.status).toBe(400);
     expect(fieldsOf(badEmail).confirmEmail).toBe('Type your email to confirm.');
     expect((await u.agent.get('/api/me').set(H)).status).toBe(200);
-    expect((await request(app).delete('/api/me/profile').set(H)).status).toBe(401);
+    expect((await api(app).delete('/api/me/profile').set(H)).status).toBe(401);
   });
 });

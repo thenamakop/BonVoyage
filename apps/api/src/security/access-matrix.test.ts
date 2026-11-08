@@ -10,12 +10,16 @@ import {
   PastTrip,
   type ErrorEnvelope,
 } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { ENDPOINTS } from '../test/endpoint-inventory';
-import { createTestUser, createTripAs, ensureHub } from '../test/helpers';
+import { createTestUser, createTripAs, ensureHub, catalogueImportDate } from '../test/helpers';
+
+/** Newest catalogue collected_on (or today); one CSV read, file scope (#143). */
+const importDate = catalogueImportDate();
+import { api } from '../test/helpers';
 
 // S1-6 step 2: every endpoint, tried by every kind of caller, against a fresh
 // trip in collecting_preferences. The expected cells are written by hand; they
@@ -35,7 +39,7 @@ const app = createApp({
   logger: pino({ level: 'silent' }),
   auth,
   adminEmails: [ADMIN_EMAIL],
-  clock: () => new Date('2026-11-03T06:30:00Z'),
+  clock: () => new Date(`${importDate}T06:30:00Z`),
 });
 const H = { Host: 'localhost:5173', Origin: 'http://localhost:5173' };
 
@@ -651,7 +655,7 @@ async function freshTrip(): Promise<Fixture> {
 }
 
 function call(actor: Actor, c: Case, f: Fixture) {
-  const base = actor === 'anonymous' ? request(app) : users[actor].agent;
+  const base = actor === 'anonymous' ? api(app) : users[actor].agent;
   const m = c.method.toLowerCase() as 'get' | 'post' | 'put' | 'patch' | 'delete';
   const req = base[m](c.url(f)).set(H);
   return c.body ? req.send(c.body) : req;

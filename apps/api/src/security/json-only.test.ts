@@ -1,11 +1,12 @@
 import { createDb } from '@bonvoyage/db';
 import { pino } from 'pino';
 import { TripDetail, type ErrorEnvelope } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { createTestUser, createTripAs, ensureHub } from '../test/helpers';
+import { api } from '../test/helpers';
 
 // S1-6 step 5: POST, PUT and PATCH under /api accept only JSON, before any
 // route or session check, so a cross-site form post never reaches a handler.
@@ -66,9 +67,7 @@ describe('JSON-only writes', () => {
   });
 
   it('runs before the session check: an anonymous text/plain POST is 415, not 401', async () => {
-    expect415(
-      await request(app).post('/api/trips').set(H).set('Content-Type', 'text/plain').send('x'),
-    );
+    expect415(await api(app).post('/api/trips').set(H).set('Content-Type', 'text/plain').send('x'));
   });
 
   it('accepts JSON, with or without a charset, and DELETE without a body', async () => {
@@ -89,7 +88,7 @@ describe('JSON-only writes', () => {
   });
 
   it('leaves /api/auth to Better Auth (it takes form posts, which this rule would refuse)', async () => {
-    const res = await request(app)
+    const res = await api(app)
       .post('/api/auth/sign-in/email')
       .set(H)
       .type('form')

@@ -10,11 +10,12 @@ import {
   InvitationResponse,
   type ErrorEnvelope,
 } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
 import { createTestUser, createTripAs, ensureHub, setTripStatus } from '../test/helpers';
+import { api, liveAgent } from '../test/helpers';
 
 // S1-3: invitation link, preview and accept. Sign-up goes through the real
 // auth route; extra roster rows and non-draft states are arranged directly.
@@ -106,7 +107,7 @@ describe('POST /api/trips/:id/invitations', () => {
 
   it('two concurrent first POSTs give one T2 row and the same token', async () => {
     const org = await organiserWithTrip();
-    const second = request.agent(app);
+    const second = liveAgent(app);
     await second.post('/api/auth/sign-in/email').set(H).send({
       email: org.email,
       password: PASSWORD,
@@ -156,9 +157,9 @@ describe('POST /api/trips/:id/invitations', () => {
     const bad = await invite(outsider.agent, 'not-a-uuid');
     expect(bad.status).toBe(400);
     expect((bad.body as ErrorEnvelope).error.fields).toEqual({ id: 'must be a uuid' });
-    expect(
-      (await request(app).post(`/api/trips/${tripId}/invitations`).set(H).send({})).status,
-    ).toBe(401);
+    expect((await api(app).post(`/api/trips/${tripId}/invitations`).set(H).send({})).status).toBe(
+      401,
+    );
     const nonMember = await invite(outsider.agent, tripId);
     expect(nonMember.status).toBe(404);
     expect(codeOf(nonMember)).toBe('NOT_FOUND');
@@ -191,7 +192,7 @@ describe('GET and DELETE /api/trips/:id/invitations/active', () => {
 
   it('an expired link is not active', async () => {
     const { tripId, email } = await openTrip();
-    const agent = request.agent(later);
+    const agent = liveAgent(later);
     await agent.post('/api/auth/sign-in/email').set(H).send({ email, password: PASSWORD });
     const res = await agent.get(`/api/trips/${tripId}/invitations/active`).set(H);
     expect(ActiveInvitationResponse.parse(res.body)).toEqual({ invitation: null });
@@ -200,8 +201,8 @@ describe('GET and DELETE /api/trips/:id/invitations/active', () => {
   it('401, 400, 404 for a non-member and 403 for a member on both verbs', async () => {
     const { tripId, token } = await openTrip();
     const path = `/api/trips/${tripId}/invitations/active`;
-    expect((await request(app).get(path).set(H)).status).toBe(401);
-    expect((await request(app).delete(path).set(H)).status).toBe(401);
+    expect((await api(app).get(path).set(H)).status).toBe(401);
+    expect((await api(app).delete(path).set(H)).status).toBe(401);
     const outsider = await createTestUser(app);
     expect((await outsider.agent.get('/api/trips/nope/invitations/active').set(H)).status).toBe(
       400,
@@ -218,7 +219,7 @@ describe('GET /api/invitations/:token', () => {
   it('previews an open link signed out, with no budget, dates, emails or member names', async () => {
     const { tripId, token, email } = await openTrip();
     await addMembers(tripId, 1, 'Zephyrine Quill');
-    const res = await request(app).get(`/api/invitations/${token}`).set(H);
+    const res = await api(app).get(`/api/invitations/${token}`).set(H);
     expect(res.status).toBe(200);
     expect(InvitationPreview.parse(res.body)).toEqual({
       tripTitle: 'Test trip',
@@ -253,27 +254,27 @@ describe('GET /api/invitations/:token', () => {
   it('states: revoked, expired, closed and full', async () => {
     const revoked = await openTrip();
     await revoked.agent.delete(`/api/trips/${revoked.tripId}/invitations/active`).set(H);
-    const r1 = await request(app).get(`/api/invitations/${revoked.token}`).set(H);
+    const r1 = await api(app).get(`/api/invitations/${revoked.token}`).set(H);
     expect(InvitationPreview.parse(r1.body).state).toBe('revoked');
 
     const expired = await openTrip();
-    const r2 = await request(later).get(`/api/invitations/${expired.token}`).set(H);
+    const r2 = await api(later).get(`/api/invitations/${expired.token}`).set(H);
     expect(InvitationPreview.parse(r2.body).state).toBe('expired');
 
     const closed = await openTrip();
     await setTripStatus(db, closed.tripId, 'ready_for_recommendation');
-    const r3 = await request(app).get(`/api/invitations/${closed.token}`).set(H);
+    const r3 = await api(app).get(`/api/invitations/${closed.token}`).set(H);
     expect(InvitationPreview.parse(r3.body).state).toBe('closed');
 
     const full = await openTrip();
     await addMembers(full.tripId, 7);
-    const r4 = await request(app).get(`/api/invitations/${full.token}`).set(H);
+    const r4 = await api(app).get(`/api/invitations/${full.token}`).set(H);
     expect(InvitationPreview.parse(r4.body)).toMatchObject({ state: 'full', memberCount: 8 });
   });
 
   it('404 "This invitation link is not valid." for an unknown or malformed token', async () => {
     for (const token of ['A'.repeat(32), 'bad token!']) {
-      const res = await request(app)
+      const res = await api(app)
         .get(`/api/invitations/${encodeURIComponent(token)}`)
         .set(H);
       expect(res.status).toBe(404);
@@ -316,7 +317,7 @@ describe('POST /api/invitations/:token/accept', () => {
     });
 
     const expired = await openTrip();
-    const lateGuest = request.agent(later);
+    const lateGuest = liveAgent(later);
     await lateGuest
       .post('/api/auth/sign-in/email')
       .set(H)
@@ -366,9 +367,9 @@ describe('POST /api/invitations/:token/accept', () => {
 
   it('401 without a session and 404 for an unknown token', async () => {
     const { token } = await openTrip();
-    expect(
-      (await request(app).post(`/api/invitations/${token}/accept`).set(H).send({})).status,
-    ).toBe(401);
+    expect((await api(app).post(`/api/invitations/${token}/accept`).set(H).send({})).status).toBe(
+      401,
+    );
     const guest = await createTestUser(app);
     const res = await accept(guest.agent, 'B'.repeat(32));
     expect(res.status).toBe(404);

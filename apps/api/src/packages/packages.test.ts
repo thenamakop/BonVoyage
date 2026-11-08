@@ -18,10 +18,14 @@ import { createAuth } from '../auth/auth';
 import {
   createTestUser,
   createTripAs,
+  catalogueImportDate,
   ensureCostRules,
   ensureDestination,
   ensureHubAt,
 } from '../test/helpers';
+
+/** Newest catalogue collected_on (or today); one CSV read, file scope (#143). */
+const importDate = catalogueImportDate();
 import { draftPackages } from './service';
 
 // S3-3: migration 0002 and the packages API (T9 to T11, I3, I4), against a
@@ -498,7 +502,7 @@ describe('budget flag and re-choose', () => {
 describe('speed on the real catalogue (R15, P10)', () => {
   it('a 3-member Gurugram destination choice completes under 1000 ms', async () => {
     const dir = resolve(import.meta.dirname, '../../../../packages/db/catalogue');
-    await importCatalogue(db, dir, { today: '2026-11-03' });
+    await importCatalogue(db, dir, { today: importDate });
     const members = await Promise.all([
       createTestUser(app, 'Speed A'),
       createTestUser(app, 'Speed B'),

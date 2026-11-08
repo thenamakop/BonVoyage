@@ -1,14 +1,82 @@
 import type { Db } from '@bonvoyage/db';
+import { loadCatalogue } from '@bonvoyage/db/catalogue';
 import { costRule, destination, hub, trip } from '@bonvoyage/db/schema';
 import { eq } from 'drizzle-orm';
 import type { Express } from 'express';
+import type { Server } from 'node:http';
+import { resolve } from 'node:path';
 import request from 'supertest';
+import { afterAll } from 'vitest';
 import type { TripDetail, TripStatus } from '@bonvoyage/shared';
 
 // Shared integration-test helpers (S1-2, reused by S1-3 to S1-7). Sign-up goes
 // through the real Better Auth route with the Host/Origin headers it expects.
 
 let seq = 0;
+
+// ENOBUFS hygiene: request(app) starts a fresh HTTP server for every request,
+// and Windows exhausts loopback sockets across a full run. One listening
+// server per Express app per file: the first request against an app starts it
+// (listen(0)) and every later call, from any test or helper, reuses it. All
+// servers close when the file's tests finish.
+const appServers = new Map<Express, Server>();
+
+afterAll(async () => {
+  for (const server of appServers.values()) {
+    await new Promise<void>((resolveClose, rejectClose) =>
+      server.close((error) => (error ? rejectClose(error) : resolveClose())),
+    );
+  }
+  appServers.clear();
+});
+
+function serverFor(app: Express): Server {
+  let server = appServers.get(app);
+  if (!server) {
+    server = app.listen(0);
+    appServers.set(app, server);
+  }
+  return server;
+}
+
+/** supertest against the file's shared server (not a fresh server per call). */
+export function api(app: Express) {
+  return request(serverFor(app));
+}
+
+/** A session-cookie agent on the file's shared server. */
+export function liveAgent(app: Express) {
+  return request.agent(serverFor(app));
+}
+
+/**
+ * The newest collected_on across the catalogue files, or today if that is
+ * later. Tests that import the real catalogue use this instead of a fixed
+ * date so a batch with a newer collected_on stays valid.
+ */
+// One catalogue read per test file: calling it inside a 5-second test would
+// eat the budget, so callers keep the result in a file-scope constant.
+let importDateCache: string | undefined;
+
+export function catalogueImportDate(today = new Date().toISOString().slice(0, 10)): string {
+  if (importDateCache !== undefined) return importDateCache;
+  const dir = resolve(import.meta.dirname, '../../../packages/db/catalogue');
+  const catalogue = loadCatalogue(dir, { today });
+  let latest = today;
+  const rows = [
+    ...catalogue.hubs,
+    ...catalogue.destinations,
+    ...catalogue.fares,
+    ...catalogue.pois,
+    ...Object.values(catalogue.costRules ?? {}),
+  ];
+  for (const row of rows) {
+    const collected = row.collected_on;
+    if (collected !== undefined && collected > latest) latest = collected;
+  }
+  importDateCache = latest;
+  return latest;
+}
 
 /** Headers Better Auth's origin checks accept in tests (same as the auth tests). */
 const AUTH_HEADERS = { Host: 'localhost:5173', Origin: 'http://localhost:5173' };
@@ -23,7 +91,7 @@ export async function createTestUser(
   /** Defaults to a fresh address; pass one when the app must know it up front (ADMIN_EMAILS). */
   email = `t${Date.now().toString(36)}-${seq++}@test.bv`,
 ): Promise<{ agent: request.Agent; userId: string; email: string }> {
-  const agent = request.agent(app);
+  const agent = liveAgent(app);
   await agent
     .post('/api/auth/sign-up/email')
     .set(AUTH_HEADERS)

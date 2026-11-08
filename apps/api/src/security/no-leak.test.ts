@@ -12,7 +12,7 @@ import {
   PackagesResponse,
   TripDetail,
 } from '@bonvoyage/shared';
-import request from 'supertest';
+import type request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from '../auth/auth';
@@ -25,6 +25,7 @@ import {
   ensureHub,
   ensureHubAt,
 } from '../test/helpers';
+import { api } from '../test/helpers';
 
 // S1-6 step 3 (R10, SRS 3.4): every GET endpoint, called by every kind of
 // caller, is searched as raw text for anything private to another user.
@@ -122,7 +123,7 @@ const urlOf = (path: string) => path.replace(':id', tripId).replace(':token', to
 async function fetchAll(agent: Agent | null) {
   const out: { path: string; status: number; text: string }[] = [];
   for (const e of GETS) {
-    const res = await (agent ?? request(app)).get(urlOf(e.path)).set(H);
+    const res = await (agent ?? api(app)).get(urlOf(e.path)).set(H);
     out.push({ path: e.path, status: res.status, text: res.text });
   }
   return out;
@@ -181,7 +182,7 @@ describe('no response leaks another user’s private data', () => {
   });
 
   it('the invitation preview has no budgets, dates, member names or emails', async () => {
-    const res = await request(app).get(`/api/invitations/${token}`).set(H);
+    const res = await api(app).get(`/api/invitations/${token}`).set(H);
     expect(res.status).toBe(200);
     const text = res.text;
     for (const p of people) {
@@ -605,7 +606,7 @@ describe('after two shortlists no body holds a weight, a deficit or lambda (R17)
         ...(await Promise.all(
           gets.map(async (path) => ({
             path,
-            text: (await (agent ?? request(app)).get(path).set(H)).text,
+            text: (await (agent ?? api(app)).get(path).set(H)).text,
           })),
         )),
       ];
@@ -889,7 +890,7 @@ describe('votes: nobody can read who voted for what', () => {
       const bodies = await Promise.all(
         paths.map(async (path) => ({
           path,
-          res: await (agent ?? request(app)).get(path).set(H),
+          res: await (agent ?? api(app)).get(path).set(H),
         })),
       );
       for (const { path, res } of bodies) {

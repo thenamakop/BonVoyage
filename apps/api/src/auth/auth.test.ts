@@ -3,10 +3,10 @@ import { account, user } from '@bonvoyage/db/schema/auth';
 import { ERROR_CODES, MeResponse } from '@bonvoyage/shared';
 import { eq } from 'drizzle-orm';
 import { pino } from 'pino';
-import request from 'supertest';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createApp } from '../app';
 import { createAuth } from './auth';
+import { liveAgent } from '../test/helpers';
 
 // S0-5: auth round trip through the same allowedHosts the server uses; the
 // Host/Origin pair matches what the Vite proxy sends.
@@ -22,7 +22,7 @@ const app = createApp({ db, pool, logger, auth });
 
 const PASSWORD = 'test-password-12+';
 const agent = () => {
-  const a = request.agent(app);
+  const a = liveAgent(app);
   return {
     post: (path: string) =>
       a.post(path).set('Host', 'localhost:5173').set('Origin', 'http://localhost:5173'),

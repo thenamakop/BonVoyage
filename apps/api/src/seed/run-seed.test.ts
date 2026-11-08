@@ -76,57 +76,64 @@ afterAll(async () => {
 });
 
 describe('runSeed', () => {
-  it('runs twice with identical row counts and the expected trip shape', async () => {
-    await runSeed({ db, auth, catalogueDir, password: PASSWORD, log: () => {} });
-    const first = await Promise.all(
-      [trip, tripMember, preference, tripTransition, pastTrip].map(async (t) => {
-        const rows = await db.select({ n: sql<number>`count(*)::int` }).from(t);
-        return rows[0]!.n;
-      }),
-    );
-    await runSeed({ db, auth, catalogueDir, password: PASSWORD, log: () => {} });
-    const second = await Promise.all(
-      [trip, tripMember, preference, tripTransition, pastTrip].map(async (t) => {
-        const rows = await db.select({ n: sql<number>`count(*)::int` }).from(t);
-        return rows[0]!.n;
-      }),
-    );
-    expect(second).toEqual(first);
-    const past = await db
-      .select({ placeName: pastTrip.placeName })
-      .from(pastTrip)
-      .innerJoin(destination, eq(destination.id, pastTrip.destinationId))
-      .where(eq(destination.slug, 'rishikesh'));
-    expect(past).toEqual([{ placeName: null }]);
+  // Two full seeds plus a catalogue import: over the 5 s default on Windows.
+  it(
+    'runs twice with identical row counts and the expected trip shape',
+    { timeout: 30000 },
+    async () => {
+      await runSeed({ db, auth, catalogueDir, password: PASSWORD, log: () => {} });
+      const first = await Promise.all(
+        [trip, tripMember, preference, tripTransition, pastTrip].map(async (t) => {
+          const rows = await db.select({ n: sql<number>`count(*)::int` }).from(t);
+          return rows[0]!.n;
+        }),
+      );
+      await runSeed({ db, auth, catalogueDir, password: PASSWORD, log: () => {} });
+      const second = await Promise.all(
+        [trip, tripMember, preference, tripTransition, pastTrip].map(async (t) => {
+          const rows = await db.select({ n: sql<number>`count(*)::int` }).from(t);
+          return rows[0]!.n;
+        }),
+      );
+      expect(second).toEqual(first);
+      const past = await db
+        .select({ placeName: pastTrip.placeName })
+        .from(pastTrip)
+        .innerJoin(destination, eq(destination.id, pastTrip.destinationId))
+        .where(eq(destination.slug, 'rishikesh'));
+      expect(past).toEqual([{ placeName: null }]);
 
-    const demo = await db.select().from(trip).where(eq(trip.title, 'Long weekend in the hills'));
-    expect(demo).toHaveLength(1);
-    expect(demo[0]!.status).toBe('collecting_preferences');
+      const demo = await db.select().from(trip).where(eq(trip.title, 'Long weekend in the hills'));
+      expect(demo).toHaveLength(1);
+      expect(demo[0]!.status).toBe('collecting_preferences');
 
-    const members = await db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(tripMember)
-      .where(eq(tripMember.tripId, demo[0]!.id));
-    expect(members[0]!.n).toBe(3);
+      const members = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(tripMember)
+        .where(eq(tripMember.tripId, demo[0]!.id));
+      expect(members[0]!.n).toBe(3);
 
-    const prefs = await db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(tripMember)
-      .where(sql`${tripMember.tripId} = ${demo[0]!.id} and ${tripMember.submittedAt} is not null`);
-    expect(prefs[0]!.n).toBe(2);
+      const prefs = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(tripMember)
+        .where(
+          sql`${tripMember.tripId} = ${demo[0]!.id} and ${tripMember.submittedAt} is not null`,
+        );
+      expect(prefs[0]!.n).toBe(2);
 
-    const transitions = await db
-      .select({ id: tripTransition.transitionId, event: tripTransition.event })
-      .from(tripTransition)
-      .where(eq(tripTransition.tripId, demo[0]!.id))
-      .orderBy(asc(tripTransition.createdAt));
-    expect(transitions).toEqual([
-      { id: 'T1', event: 'createTrip' },
-      { id: 'T2', event: 'inviteMembers' },
-      { id: 'I1', event: 'preferenceSubmitted' },
-      { id: 'I1', event: 'preferenceSubmitted' },
-    ]);
-  });
+      const transitions = await db
+        .select({ id: tripTransition.transitionId, event: tripTransition.event })
+        .from(tripTransition)
+        .where(eq(tripTransition.tripId, demo[0]!.id))
+        .orderBy(asc(tripTransition.createdAt));
+      expect(transitions).toEqual([
+        { id: 'T1', event: 'createTrip' },
+        { id: 'T2', event: 'inviteMembers' },
+        { id: 'I1', event: 'preferenceSubmitted' },
+        { id: 'I1', event: 'preferenceSubmitted' },
+      ]);
+    },
+  );
 });
 
 // S2-8: each demo trip gives its outcome AND keeps its margin with today's
