@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { NotificationsResponse, RemindResponse } from '@bonvoyage/shared';
+import { BudgetReviewResponse, NotificationsResponse, RemindResponse } from '@bonvoyage/shared';
 import { z } from 'zod';
 import { fetchJson } from '../../lib/api';
 
@@ -54,6 +54,17 @@ export function useRemindMember(tripId: string) {
         EMPTY_JSON_POST,
       ),
     // Also on a 409 or 429: the trip's canRemindAt then matches what just happened.
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: ['trip', tripId] }),
+  });
+}
+
+/** #163: the organiser asks every member to review their budget, once per 24 h. */
+export function useRequestBudgetReview(tripId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      fetchJson(`/api/trips/${tripId}/budget-review`, BudgetReviewResponse, EMPTY_JSON_POST),
+    // Also on 409 or 429: canRequestBudgetReviewAt then matches what happened.
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ['trip', tripId] }),
   });
 }

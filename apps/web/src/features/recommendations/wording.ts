@@ -2,6 +2,7 @@ import {
   ACTIVITY_LABELS,
   DESTINATION_TYPE_LABELS,
   TRANSPORT_MODE_LABELS,
+  indiaDateTime,
   type DiagnosticEvaluation,
   type DiagnosticFailure,
   type GroupConflict,
@@ -282,11 +283,47 @@ export function unlocksText(
 export function suggestionPatch(s: Suggestion): UpdateTripInput | null {
   if (s.constraint === 'F1') return { radiusKm: s.newRadiusKm };
   if (s.constraint === 'F2') return { durationNights: s.newNights };
-  // #163: a raisesBoth suggestion has no one-tap patch; members must act too.
-  if (s.constraint === 'F5' && s.raisesBoth === true) return null;
-  if (s.constraint === 'F5' && s.capSource === 'trip' && s.newGroupCapInr !== undefined)
+  // #163: a raisesBoth suggestion PATCHes the trip budget to the needed cap
+  // whichever side set it; the stripped shape (2 members) carries no amount.
+  if (
+    s.constraint === 'F5' &&
+    s.newGroupCapInr !== undefined &&
+    (s.capSource === 'trip' || s.raisesBoth === true)
+  )
     return { budgetTotalInr: s.newGroupCapInr };
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// #163 (option A): a suggestion that needs both caps to move has its own block:
+// the trip-budget raise, the "members limit this too" line and the organiser's
+// ask-for-review button.
+
+export const MEMBERS_MAXIMA_LINE = "Members' own maximums also limit this group.";
+export const ASK_BUDGET_REVIEW_LABEL = 'Ask members to review their budgets';
+
+/** The raisesBoth trip-budget button's label. */
+export function raiseGroupBudgetText(newGroupCapInr: number): string {
+  return `Raise the group budget to ${formatInr(newGroupCapInr)}`;
+}
+
+/** "Members need to raise their maximum to ₹5,000 per person" (0004 c). */
+export function perPersonTargetText(newPerPersonMaxInr: number): string {
+  return `Members need to raise their maximum to ${formatInr(newPerPersonMaxInr)} per person`;
+}
+
+/** "Together with members' budgets, this adds Auli and Vrindavan." */
+export function togetherAddsText(
+  unlocks: readonly string[],
+  nearMisses: readonly DiagnosticEvaluation[],
+): string | null {
+  const adds = unlocksText(unlocks, nearMisses);
+  return adds ? `Together with members' budgets, this ${adds}.` : null;
+}
+
+/** The disabled ask button's line after a 201 or once a reload says wait. */
+export function budgetReviewAskedText(canRequestAgainAt: string): string {
+  return `Asked. You can ask again after ${indiaDateTime(new Date(canRequestAgainAt))}`;
 }
 
 /** The field a suggestion's PATCH changes, to read the server's 400 message for it. */

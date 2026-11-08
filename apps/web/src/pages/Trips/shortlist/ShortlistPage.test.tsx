@@ -36,13 +36,23 @@ interface Stub {
   patch?: Response;
   choose?: Response;
   reopen?: Response;
+  review?: Response;
 }
 
-function stubFetch({ trip, response, patch, choose, reopen }: Stub) {
+function stubFetch({ trip, response, patch, choose, reopen, review }: Stub) {
   fetchMock.mockImplementation((url, init) => {
     if (url === TRIP_URL && !init?.method) return Promise.resolve(Response.json(trip));
     if (url === TRIP_URL && init?.method === 'PATCH') {
       return Promise.resolve(patch ?? Response.json(trip));
+    }
+    if (url === `${TRIP_URL}/budget-review` && init?.method === 'POST') {
+      return Promise.resolve(
+        review ??
+          Response.json(
+            { requestedAt: '2026-11-09T04:00:00Z', canRequestAgainAt: '2026-11-10T04:00:00Z' },
+            { status: 201 },
+          ),
+      );
     }
     if (url === `${TRIP_URL}/recommendations/latest`) {
       return Promise.resolve(Response.json(response));
@@ -908,5 +918,213 @@ describe('voting (R18)', () => {
     await screen.findByText('3 of 3 voted');
     const text = document.body.textContent ?? '';
     for (const name of ['Rohan', 'Meera']) expect(text).not.toContain(name);
+  });
+});
+
+// #163 (option A): a diagnostic suggestion that needs both caps to move gives
+// the organiser two actions — raise the trip budget, ask members to review
+// theirs — and members the reason plus a link to their own preferences.
+describe('a raisesBoth suggestion (both caps must move)', () => {
+  const bothRun = (memberCount = 3) =>
+    diagnosticRun({
+      bindingConstraint: 'F5',
+      groupProfile: memberCount === 2 ? profileTwoMembers() : profileReady(),
+      diagnostic: {
+        feasible: ['place-1'],
+        nearMisses: [nearMiss('alwar', 'Alwar'), nearMiss('vrindavan', 'Vrindavan')],
+        alternatives: [nearMiss('alwar', 'Alwar')],
+        suggestions: [
+          memberCount === 2
+            ? { constraint: 'F5', raisesBoth: true }
+            : {
+                constraint: 'F5',
+                raisesBoth: true,
+                newGroupCapInr: 54000,
+                capSource: 'trip',
+                unlocks: ['alwar', 'vrindavan'],
+              },
+        ],
+        incomplete: [],
+      },
+    });
+  const bothTrip = (over: Partial<TripDetail> = {}, memberCount = 3) =>
+    collecting(bothRun(memberCount), over);
+
+  it('organiser, trip cap: the raise button, the together line and the ask button', async () => {
+    stubFetch({ trip: bothTrip(), response: latest(bothRun()) });
+    const user = userEvent.setup();
+    renderPage();
+    const raise = await screen.findByRole('button', { name: 'Raise the group budget to ₹54,000' });
+    expect(
+      screen.getByRole('button', { name: 'Ask members to review their budgets' }),
+    ).toBeEnabled();
+    expect(
+      screen.getByText("Together with members' budgets, this adds Alwar and Vrindavan."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Members' own maximums also limit this group.")).toBeInTheDocument();
+    expect(screen.queryByText(/This adds /)).not.toBeInTheDocument();
+    await user.click(raise);
+    expect(fetchMock).toHaveBeenCalledWith(
+      TRIP_URL,
+      expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ budgetTotalInr: 54000 }) }),
+    );
+    expect(
+      await screen.findByText('Saved. Now mark the trip ready again and get recommendations.'),
+    ).toBeInTheDocument();
+  });
+
+  it('organiser, member cap with 3+ members: the per-person target line stays', async () => {
+    const r = diagnosticRun({
+      bindingConstraint: 'F5',
+      diagnostic: {
+        ...diagnosticRun().diagnostic!,
+        suggestions: [
+          {
+            constraint: 'F5',
+            raisesBoth: true,
+            newGroupCapInr: 54000,
+            capSource: 'members',
+            newPerPersonMaxInr: 18000,
+            unlocks: ['vrindavan'],
+          },
+        ],
+      },
+    });
+    stubFetch({ trip: collecting(r), response: latest(r) });
+    renderPage();
+    expect(
+      await screen.findByRole('button', { name: 'Raise the group budget to ₹54,000' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Members need to raise their maximum to ₹18,000 per person'),
+    ).toBeInTheDocument();
+  });
+
+  it('organiser, 2-member stripped shape: the line and its button only', async () => {
+    stubFetch({ trip: bothTrip({}, 2), response: latest(bothRun(2)) });
+    renderPage();
+    expect(
+      await screen.findByText("Members' own maximums also limit this group."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Ask members to review their budgets' }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: /Raise the group budget/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/adds /)).not.toBeInTheDocument();
+    // No figure anywhere near the suggestion.
+    expect(screen.queryByText(/₹/)).not.toBeInTheDocument();
+  });
+
+  it('the ask button: 201 shows the again line and disables, 429 and 409 show the sentence', async () => {
+    stubFetch({ trip: bothTrip(), response: latest(bothRun()) });
+    const user = userEvent.setup();
+    renderPage();
+    const ask = await screen.findByRole('button', { name: 'Ask members to review their budgets' });
+    await user.click(ask);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `${TRIP_URL}/budget-review`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(await screen.findByText(/^Asked\. You can ask again after /)).toBeInTheDocument();
+    expect(ask).toBeDisabled();
+  });
+
+  it('a 429 shows the server’s sentence, a 409 its message', async () => {
+    stubFetch({
+      trip: bothTrip(),
+      response: latest(bothRun()),
+      review: Response.json(
+        {
+          error: {
+            code: 'TOO_MANY_REQUESTS',
+            message: 'You can ask everyone to review their budget again after 10 Nov, 9:30 am',
+          },
+        },
+        { status: 429 },
+      ),
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Ask members to review their budgets' }),
+    );
+    expect(
+      await screen.findByText(
+        'You can ask everyone to review their budget again after 10 Nov, 9:30 am',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('a 409 shows the server’s message', async () => {
+    stubFetch({
+      trip: bothTrip(),
+      response: latest(bothRun()),
+      review: Response.json(
+        {
+          error: {
+            code: 'ILLEGAL_TRANSITION',
+            message: 'Members can no longer review their budgets.',
+          },
+        },
+        { status: 409 },
+      ),
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(
+      await screen.findByRole('button', { name: 'Ask members to review their budgets' }),
+    );
+    expect(
+      await screen.findByText('Members can no longer review their budgets.'),
+    ).toBeInTheDocument();
+  });
+
+  it('after a reload, canRequestBudgetReviewAt disables the button with the same line', async () => {
+    stubFetch({
+      trip: bothTrip({ canRequestBudgetReviewAt: '2026-11-10T04:00:00.000Z' }),
+      response: latest(bothRun()),
+    });
+    renderPage();
+    const ask = await screen.findByRole('button', { name: 'Ask members to review their budgets' });
+    expect(ask).toBeDisabled();
+    expect(await screen.findByText(/^Asked\. You can ask again after /)).toBeInTheDocument();
+  });
+
+  it('a member sees the reason line and Edit your preferences, never the buttons', async () => {
+    stubFetch({
+      trip: collecting(bothRun(), { myRole: 'member' }),
+      response: latest(bothRun()),
+    });
+    renderPage();
+    expect(
+      await screen.findByText("Members' own maximums also limit this group."),
+    ).toBeInTheDocument();
+    // The suggestion text itself still names the raise; the buttons stay the organiser's.
+    expect(
+      screen.getByText(
+        'Raise the group budget to ₹54,000 and ask members to review their budgets',
+        {
+          exact: false,
+        },
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Raise the group budget/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Ask members to review their budgets' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Edit your preferences' })).toHaveAttribute(
+      'href',
+      `/trips/${TRIP_ID}/preferences`,
+    );
+    // No member name sits next to any budget wording, and nobody's maximum shows.
+    const text = document.body.textContent ?? '';
+    for (const name of ['Rohan', 'Meera']) {
+      const near = text.indexOf(name);
+      if (near >= 0) expect(text.slice(Math.max(0, near - 80), near + 80)).not.toMatch(/₹|budget/i);
+    }
   });
 });
