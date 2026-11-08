@@ -6,8 +6,10 @@ import type {
 } from '@bonvoyage/shared';
 import {
   alternativeText,
+  ASK_BUDGET_REVIEW_LABEL,
   bindingText,
   budgetBandText,
+  budgetReviewAskedText,
   climateText,
   costText,
   dateConflictText,
@@ -18,11 +20,15 @@ import {
   groupScoreText,
   lastRoundText,
   listWords,
+  MEMBERS_MAXIMA_LINE,
   moreInterestsText,
+  perPersonTargetText,
+  raiseGroupBudgetText,
   sharedText,
   suggestionField,
   suggestionPatch,
   suggestionText,
+  togetherAddsText,
   unlocksText,
   voteButtonText,
   voteCountText,
@@ -324,9 +330,9 @@ describe('diagnostic', () => {
     expect(unlocksText([], misses)).toBeNull();
   });
 
-  it('a raisesBoth suggestion reads cleanly in both shapes, and sends no one-tap PATCH', () => {
+  it('a raisesBoth suggestion: the block words, both shapes, and the trip-budget PATCH', () => {
     // 3+ members: the amount stays (it cannot leak a maximum; it comes from
-    // catalogue costs). A members-set raisesBoth names the trip budget too.
+    // catalogue costs). A members-set raisesBoth keeps the per-person target.
     const full = {
       constraint: 'F5' as const,
       raisesBoth: true as const,
@@ -336,6 +342,27 @@ describe('diagnostic', () => {
     };
     // Below 3 members the API strips every figure: the flag alone survives.
     const stripped = { constraint: 'F5' as const, raisesBoth: true as const };
+    expect(raiseGroupBudgetText(15000)).toBe('Raise the group budget to ₹15,000');
+    expect(
+      togetherAddsText(full.unlocks, [near('auli', 'Auli'), near('vrindavan', 'Vrindavan')]),
+    ).toBe("Together with members' budgets, this adds Auli.");
+    expect(togetherAddsText([], [near('auli', 'Auli')])).toBeNull();
+    expect(MEMBERS_MAXIMA_LINE).toBe("Members' own maximums also limit this group.");
+    expect(ASK_BUDGET_REVIEW_LABEL).toBe('Ask members to review their budgets');
+    expect(perPersonTargetText(5000)).toBe(
+      'Members need to raise their maximum to ₹5,000 per person',
+    );
+    expect(budgetReviewAskedText('2026-11-02T06:30:00Z')).toMatch(
+      /^Asked\. You can ask again after /,
+    );
+    // Whichever side set the cap, the button PATCHes the trip budget; the
+    // stripped shape sends nothing.
+    expect(suggestionPatch(full)).toEqual({ budgetTotalInr: 15000 });
+    expect(
+      suggestionPatch({ ...full, capSource: 'members' as const, newPerPersonMaxInr: 5000 }),
+    ).toEqual({ budgetTotalInr: 15000 });
+    expect(suggestionPatch(stripped)).toBeNull();
+    // The member-view text keeps the raisesBoth phrasing for both shapes.
     expect(suggestionText(full)).toBe(
       'Raise the group budget to ₹15,000 and ask members to review their budgets',
     );
@@ -348,7 +375,6 @@ describe('diagnostic', () => {
     for (const s of [full, stripped]) {
       expect(suggestionText(s)).not.toMatch(/undefined|NaN/);
       expect(suggestionText(s)).not.toMatch(/₹\s*(undefined|NaN|and|$)/);
-      expect(suggestionPatch(s)).toBeNull();
     }
   });
 

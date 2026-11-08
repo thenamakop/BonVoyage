@@ -11,13 +11,20 @@ import { Button, ButtonLink } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import {
   alternativeText,
+  ASK_BUDGET_REVIEW_LABEL,
   bindingText,
+  budgetReviewAskedText,
   fitHeading,
+  MEMBERS_MAXIMA_LINE,
+  perPersonTargetText,
+  raiseGroupBudgetText,
   suggestionField,
   suggestionPatch,
   suggestionText,
+  togetherAddsText,
   unlocksText,
 } from '../../../features/recommendations/wording';
+import { useRequestBudgetReview } from '../../../features/notifications/api';
 import { useUpdateTrip } from '../../../features/trips/api';
 import { ApiError } from '../../../lib/api';
 import { GetRecommendations } from '../dashboard/GetRecommendations';
@@ -74,6 +81,107 @@ function SuggestionButton({
         </p>
       ) : null}
       {message ? <Alert tone="error">{message}</Alert> : null}
+    </div>
+  );
+}
+
+// #163 (option A): a suggestion that needs both caps to move. The organiser
+// raises the trip budget in one tap and asks members to review theirs in
+// another; the message carries no figure, so nobody's maximum is shown.
+function AskBudgetReview({ trip }: { trip: TripDetail }) {
+  const ask = useRequestBudgetReview(trip.id);
+  // The server owns the limit: a 201 says when, and after a reload
+  // canRequestBudgetReviewAt says the same thing until that time passes.
+  const againAt = ask.data?.canRequestAgainAt ?? trip.canRequestBudgetReviewAt ?? null;
+  const err = ask.error;
+  const message =
+    err instanceof ApiError
+      ? err.message // The server's sentence as sent (429 and 409, amendment 11).
+      : err
+        ? 'Something went wrong. Try again.'
+        : null;
+  return (
+    <div className="space-y-1">
+      <Button
+        variant="secondary"
+        loading={ask.isPending}
+        disabled={againAt !== null}
+        aria-describedby={againAt ? 'budget-review-again' : undefined}
+        onClick={() => ask.mutate()}
+      >
+        {ASK_BUDGET_REVIEW_LABEL}
+      </Button>
+      {againAt ? (
+        <p id="budget-review-again" className="text-sm text-slate-600">
+          {budgetReviewAskedText(againAt)}
+        </p>
+      ) : null}
+      {message ? <Alert tone="error">{message}</Alert> : null}
+    </div>
+  );
+}
+
+function RaisesBothBlock({
+  trip,
+  suggestion,
+  nearMisses,
+  canEdit,
+  saved,
+  onSaved,
+}: {
+  trip: TripDetail;
+  suggestion: Extract<Suggestion, { constraint: 'F5' }>;
+  nearMisses: readonly DiagnosticEvaluation[];
+  canEdit: boolean;
+  saved: boolean;
+  onSaved: () => void;
+}) {
+  const update = useUpdateTrip(trip.id);
+  const unlocksId = useId();
+  // Below 3 contributing members the API strips every figure (D1, #116): only
+  // the flag arrives, so this block carries the line and the button alone.
+  const newGroupCapInr = suggestion.newGroupCapInr;
+  const full = newGroupCapInr !== undefined;
+  const together = full ? togetherAddsText(suggestion.unlocks ?? [], nearMisses) : null;
+  const err = update.error;
+  const message =
+    err instanceof ApiError
+      ? (err.fields?.['budgetTotalInr'] ?? err.message)
+      : err
+        ? 'Something went wrong. Try again.'
+        : null;
+  return (
+    <div className="space-y-1">
+      {full && canEdit ? (
+        <>
+          <Button
+            variant="secondary"
+            loading={update.isPending}
+            disabled={saved}
+            aria-describedby={together ? unlocksId : undefined}
+            onClick={() =>
+              update.mutate({ budgetTotalInr: newGroupCapInr }, { onSuccess: onSaved })
+            }
+          >
+            {raiseGroupBudgetText(newGroupCapInr)}
+          </Button>
+          {together ? (
+            <p id={unlocksId} className="text-sm text-slate-600">
+              {together}
+            </p>
+          ) : null}
+          {suggestion.capSource === 'members' && suggestion.newPerPersonMaxInr !== undefined ? (
+            <p className="text-sm text-slate-900">
+              {perPersonTargetText(suggestion.newPerPersonMaxInr)}
+            </p>
+          ) : null}
+          {message ? <Alert tone="error">{message}</Alert> : null}
+        </>
+      ) : full ? (
+        <SuggestionTextItem suggestion={suggestion} nearMisses={nearMisses} />
+      ) : null}
+      <p className="text-sm text-slate-900">{MEMBERS_MAXIMA_LINE}</p>
+      {trip.myRole === 'organiser' ? <AskBudgetReview trip={trip} /> : null}
     </div>
   );
 }
@@ -141,7 +249,17 @@ export function DiagnosticView({
               <p className="text-sm text-slate-900">Ask members to check their dates</p>
             ) : null}
             {suggestions.map((s) =>
-              canEdit && suggestionPatch(s) ? (
+              s.constraint === 'F5' && s.raisesBoth === true ? (
+                <RaisesBothBlock
+                  key={s.constraint}
+                  trip={trip}
+                  suggestion={s}
+                  nearMisses={nearMisses}
+                  canEdit={canEdit}
+                  saved={saved === s.constraint}
+                  onSaved={() => setSaved(s.constraint)}
+                />
+              ) : canEdit && suggestionPatch(s) ? (
                 <SuggestionButton
                   key={s.constraint}
                   trip={trip}
