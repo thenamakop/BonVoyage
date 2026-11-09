@@ -13,7 +13,7 @@ function Callout({ text, children }: { text: string; children?: ReactNode }) {
   return (
     <section
       aria-label="Next step"
-      className="mb-4 space-y-3 rounded-lg border-l-4 border-brand-700 bg-white p-4"
+      className="mb-6 space-y-3 rounded-3xl border-[2.5px] border-ink bg-white p-5 shadow-sticker-chip"
     >
       <p className="text-sm font-medium text-slate-900">{text}</p>
       {children}

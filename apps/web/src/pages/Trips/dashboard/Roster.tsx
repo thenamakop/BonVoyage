@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { MAX_MEMBERS, remindAgainText, type TripDetail, type TripMember } from '@bonvoyage/shared';
 import { Alert } from '../../../components/ui/Alert';
 import { Badge } from '../../../components/ui/Badge';
+import { panelClass } from '../../../components/ui/panel';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { useLeaveTrip, useRemoveMember } from '../../../features/invitations/api';
@@ -30,7 +31,7 @@ function ConfirmRow({
   onCancel: () => void;
 }) {
   return (
-    <div className="mt-2 space-y-2 rounded-md border border-slate-300 p-3">
+    <div className={`mt-2 space-y-2 ${panelClass}`}>
       <p className="text-sm text-slate-900">{text}</p>
       <div className="flex flex-wrap gap-2">
         <Button variant="danger" loading={busy} onClick={onConfirm}>

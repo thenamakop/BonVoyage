@@ -25,23 +25,30 @@ export function StepTracker({ status }: { status: TripStatus }) {
   const steps = planningSteps(status);
   if (!steps) return null;
   return (
-    <ol aria-label={stepLine(status)} className="mb-4 flex flex-wrap gap-2">
-      {steps.map((step, i) => (
-        <li
-          key={step.label}
-          aria-current={step.state === 'current' ? 'step' : undefined}
-          className={`flex min-h-9 items-center gap-2 rounded-full py-1 pl-1 pr-3 text-sm font-bold ${pill[step.state].box}`}
-        >
-          <span
-            aria-hidden="true"
-            className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-ink text-xs ${pill[step.state].number}`}
+    // Below sm all seven stay on one row: only the current pill shows its label; the
+    // others show their number, with the label kept for screen readers.
+    <ol aria-label={stepLine(status)} className="mb-4 flex gap-1 sm:flex-wrap sm:gap-2">
+      {steps.map((step, i) => {
+        const current = step.state === 'current';
+        return (
+          <li
+            key={step.label}
+            aria-current={current ? 'step' : undefined}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full text-xs font-bold sm:min-h-9 sm:gap-2 sm:py-1 sm:pl-1 sm:pr-3 sm:text-sm ${
+              current ? 'pr-2.5' : ''
+            } ${pill[step.state].box}`}
           >
-            {i + 1}
-          </span>
-          {step.label}
-          {step.state === 'done' ? <span className="sr-only">, done</span> : null}
-        </li>
-      ))}
+            <span
+              aria-hidden="true"
+              className={`flex h-6 w-6 items-center justify-center rounded-full border-2 border-ink text-[11px] sm:h-7 sm:w-7 sm:text-xs ${pill[step.state].number}`}
+            >
+              {i + 1}
+            </span>
+            <span className={current ? '' : 'sr-only sm:not-sr-only'}>{step.label}</span>
+            {step.state === 'done' ? <span className="sr-only">, done</span> : null}
+          </li>
+        );
+      })}
     </ol>
   );
 }

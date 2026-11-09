@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { MAX_MEMBERS, type TripDetail } from '@bonvoyage/shared';
 import { Alert } from '../../components/ui/Alert';
+import { panelClass } from '../../components/ui/panel';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -122,7 +123,7 @@ export function InvitePanel({ trip }: { trip: TripDetail }) {
           )}
         </div>
         {confirmOff ? (
-          <div className="space-y-2 rounded-md border border-slate-300 p-3">
+          <div className={`space-y-2 ${panelClass}`}>
             <p className="text-sm text-slate-900">
               Turn off this link? Nobody new can join with it.
             </p>

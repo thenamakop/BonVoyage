@@ -7,7 +7,7 @@ export function NotConsidered({ slugs }: { slugs: readonly string[] }) {
   const destinations = useDestinations();
   const names = new Map((destinations.data?.destinations ?? []).map((d) => [d.slug, d.name]));
   return (
-    <details className="rounded-lg border border-slate-300 bg-white p-4 text-sm">
+    <details className="rounded-3xl border-[2.5px] border-ink bg-white p-6 text-sm shadow-sticker">
       <summary className="flex min-h-11 cursor-pointer items-center font-semibold text-slate-900">
         Not considered ({slugs.length})
       </summary>

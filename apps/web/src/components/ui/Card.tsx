@@ -1,11 +1,22 @@
-import type { ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 
-export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
+/** The sticker card. `as` keeps a caller's own landmark (an article, a day section). */
+export function Card({
+  as: Tag = 'section',
+  children,
+  className = '',
+  ...rest
+}: HTMLAttributes<HTMLElement> & {
+  as?: 'section' | 'article' | 'div' | 'details';
+  children: ReactNode;
+  className?: string;
+}) {
   return (
-    <section
+    <Tag
+      {...rest}
       className={`rounded-3xl border-[2.5px] border-ink bg-white p-6 shadow-sticker ${className}`}
     >
       {children}
-    </section>
+    </Tag>
   );
 }
