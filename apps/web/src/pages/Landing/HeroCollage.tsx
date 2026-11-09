@@ -12,7 +12,7 @@ export function HeroCollage() {
   return (
     <div aria-hidden="true" className="relative flex flex-col gap-5 lg:block lg:h-[30rem]">
       <div
-        className={`${sticker} animate-float bg-white p-5 [animation-duration:6s] lg:absolute lg:left-0 lg:top-6 lg:w-[22rem] lg:-rotate-3`}
+        className={`${sticker} animate-float bg-white p-5 [animation-duration:6s] lg:absolute lg:left-0 lg:top-8 lg:w-[17rem] lg:-rotate-3 xl:w-[20rem]`}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -41,7 +41,7 @@ export function HeroCollage() {
       </div>
 
       <div
-        className={`${sticker} animate-float bg-mint p-4 [animation-delay:-2s] [animation-duration:5s] lg:absolute lg:right-0 lg:top-0 lg:w-56 lg:rotate-6`}
+        className={`${sticker} animate-float bg-mint p-4 [animation-delay:-2s] [animation-duration:5s] lg:absolute lg:-top-6 lg:right-2 lg:w-48 xl:-right-4 lg:rotate-6 xl:w-56`}
       >
         <p className="text-xs font-bold uppercase tracking-wider">Voting</p>
         <p className="font-display text-2xl font-extrabold tracking-tight">2 of 3 voted</p>
