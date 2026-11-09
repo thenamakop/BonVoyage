@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,6 +79,44 @@ describe('LandingPage', () => {
       await screen.findByRole('heading', { name: 'Group trips, decided together.' }),
     ).toBeVisible();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('introduces BonVoyage in four sections, with links to sign up and sign in', async () => {
+    signedIn(false);
+    renderAt('/');
+    const hero = await screen.findByRole('region', { name: 'Group trips, decided together.' });
+    expect(within(hero).getByRole('link', { name: 'Plan a group trip' })).toHaveAttribute(
+      'href',
+      '/sign-up',
+    );
+    expect(within(hero).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in');
+    const how = screen.getByRole('region', {
+      name: 'From group chat chaos to a booked plan in four steps.',
+    });
+    expect(how).toHaveAttribute('id', 'how');
+    expect(
+      within(how)
+        .getAllByRole('listitem')
+        .map((li) => li.querySelector('h3')?.textContent),
+    ).toEqual(['Start a trip', 'Everyone answers', 'Shortlist and vote', 'Packages and a plan']);
+    const fair = screen.getByRole('region', {
+      name: 'Nobody gets steamrolled. Not even the quiet one.',
+    });
+    expect(fair).toHaveAttribute('id', 'fair');
+    expect(within(fair).getByText('Raise the group budget to ₹15,500')).toBeInTheDocument();
+    // The example is a picture of the diagnostic, not a control.
+    expect(within(fair).queryByRole('button')).not.toBeInTheDocument();
+    const cta = screen.getByRole('region', { name: 'Your group chat has argued long enough.' });
+    expect(within(cta).getByRole('link', { name: 'Create an account' })).toHaveAttribute(
+      'href',
+      '/sign-up',
+    );
+    expect(within(cta).getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in');
+    // Without IntersectionObserver (jsdom) every section is revealed at once.
+    for (const section of [how, fair, cta]) expect(section).toHaveAttribute('data-revealed');
+    // The destination band is read once; its repeat for the loop is hidden.
+    expect(screen.getByRole('list', { name: 'Some of the destinations' })).toBeInTheDocument();
+    expect(screen.getAllByText('Rishikesh')).toHaveLength(2);
   });
 
   it('sends a signed-in user to their trips', async () => {

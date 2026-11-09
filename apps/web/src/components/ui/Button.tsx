@@ -5,12 +5,15 @@ import { Spinner } from './Spinner';
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
 const base =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60';
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-5 text-sm font-bold transition-[translate,box-shadow,background-color] duration-150 disabled:cursor-not-allowed disabled:opacity-60';
+// Sticker buttons lift on hover and press on click; a disabled one stays put.
+const sticker =
+  'border-[2.5px] border-ink shadow-sticker-button not-disabled:hover:-translate-x-0.5 not-disabled:hover:-translate-y-0.5 not-disabled:hover:shadow-sticker-lift not-disabled:active:translate-x-0.5 not-disabled:active:translate-y-0.5 not-disabled:active:shadow-sticker-press';
 const variants: Record<Variant, string> = {
-  primary: 'bg-accent text-slate-900 hover:bg-accent-strong',
-  secondary: 'border border-slate-300 bg-white text-slate-900 hover:bg-slate-100',
-  ghost: 'text-slate-900 hover:bg-slate-100',
-  danger: 'bg-danger text-white hover:bg-red-800',
+  primary: `${sticker} bg-accent text-ink`,
+  secondary: `${sticker} bg-white text-ink`,
+  ghost: 'text-ink not-disabled:hover:bg-ink/5',
+  danger: 'border-[2.5px] border-danger bg-white text-danger not-disabled:hover:bg-red-50',
 };
 
 type ButtonProps = ComponentProps<'button'> & {

@@ -3,6 +3,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
+// Self-hosted fonts, weight axis only; no font CDN.
+import '@fontsource-variable/bricolage-grotesque/wght.css';
+import '@fontsource-variable/dm-sans/wght.css';
 import './index.css';
 import { routes } from './routes';
 

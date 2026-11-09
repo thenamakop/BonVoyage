@@ -66,7 +66,7 @@ export function PackagesPage() {
         </ButtonLink>
       </div>
       <header>
-        <h1 className="text-xl font-semibold text-slate-900">Packages for {destination.name}</h1>
+        <h1 className="text-3xl text-ink">Packages for {destination.name}</h1>
         <p className="mt-1 text-sm text-slate-700">
           From {trip.data.originHub.name} · {trip.data.durationNights}{' '}
           {trip.data.durationNights === 1 ? 'night' : 'nights'} · {n}{' '}

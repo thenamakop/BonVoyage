@@ -1,6 +1,7 @@
 import { useId, useState } from 'react';
 import type { TripAction, TripDetail } from '@bonvoyage/shared';
 import { Alert } from '../../../components/ui/Alert';
+import { panelClass } from '../../../components/ui/panel';
 import { Button, ButtonLink } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { useCancelTrip, useCloseSubmissions } from '../../../features/trips/api';
@@ -31,7 +32,7 @@ function Confirm({
   onKeep: () => void;
 }) {
   return (
-    <div className="space-y-2 rounded-md border border-slate-300 p-3">
+    <div className={`space-y-2 ${panelClass}`}>
       <p className="text-sm text-slate-900">{text}</p>
       <div className="flex flex-wrap gap-2">
         <Button variant="danger" loading={busy} onClick={onConfirm}>

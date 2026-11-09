@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   exclusionWarning,
   packageChosenLine,
+  planningSteps,
   PACKAGES_NEXT_STEP,
   progressText,
   stepLine,
@@ -16,6 +17,28 @@ describe('dashboard wording', () => {
     expect(stepLine('collecting_preferences')).toBe('Step 2 of 7: Collecting preferences');
     expect(stepLine('cancelled')).toBe('This trip was cancelled, so planning has stopped.');
     expect(stepLine('completed')).toBe('This trip is over.');
+  });
+
+  it('the step tracker has one pill per planning status, current at stepLine’s step', () => {
+    const states = (status: Parameters<typeof planningSteps>[0]) =>
+      planningSteps(status)?.map((s) => s.state);
+    expect(planningSteps('shortlisted')?.map((s) => s.label)).toEqual([
+      'Draft',
+      'Preferences',
+      'Ready',
+      'Shortlist',
+      'Packages',
+      'Package chosen',
+      'Day plan',
+    ]);
+    expect(states('draft')).toEqual(['current', ...Array<string>(6).fill('todo')]);
+    // stepLine('package_selected') is "Step 6 of 7".
+    expect(states('package_selected')?.indexOf('current')).toBe(5);
+    expect(states('itinerary_proposed')?.indexOf('current')).toBe(6);
+    expect(states('finalised')).toEqual(Array<string>(7).fill('done'));
+    expect(planningSteps('cancelled')).toBeNull();
+    expect(planningSteps('in_progress')).toBeNull();
+    expect(planningSteps('completed')).toBeNull();
   });
 
   it('progress repeats the bar as text', () => {

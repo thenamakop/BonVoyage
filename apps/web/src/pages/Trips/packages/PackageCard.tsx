@@ -8,7 +8,9 @@ import type {
 } from '@bonvoyage/shared';
 import { TRANSPORT_MODE_LABELS } from '@bonvoyage/shared';
 import { Badge } from '../../../components/ui/Badge';
+import { panelClass } from '../../../components/ui/panel';
 import { Button } from '../../../components/ui/Button';
+import { Card } from '../../../components/ui/Card';
 import { Select } from '../../../components/ui/Select';
 import { ApiError } from '../../../lib/api';
 import { formatDate, formatDuration, formatInr } from '../../../lib/format';
@@ -45,7 +47,7 @@ function Confirm({
   onCancel: () => void;
 }) {
   return (
-    <div className="space-y-2 rounded-md border border-slate-300 p-3">
+    <div className={`space-y-2 ${panelClass}`}>
       <p className="text-sm text-slate-900">{text}</p>
       <div className="flex flex-wrap gap-2">
         <Button variant="danger" loading={busy} onClick={onConfirm}>
@@ -79,7 +81,7 @@ function ChangeForm({
   const validTier = tiers.includes(tier) ? tier : (tiers[0] ?? tier);
 
   return (
-    <div className="space-y-3 rounded-md border border-slate-300 p-3">
+    <div className={`space-y-3 ${panelClass}`}>
       <Select
         label="Transport mode"
         value={mode}
@@ -157,12 +159,9 @@ export function PackageCard({
   const changeAction = actions.changePackage;
 
   return (
-    <article
-      aria-label={`${pkg.label} package`}
-      className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4"
-    >
+    <Card as="article" aria-label={`${pkg.label} package`} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-lg font-semibold text-slate-900">{pkg.label}</h3>
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted">{pkg.label}</h3>
         {chosen ? <Badge tone="success">Chosen</Badge> : null}
       </div>
       <p className="text-sm text-slate-700">
@@ -178,10 +177,10 @@ export function PackageCard({
         {formatDate(pkg.startDate)} – {formatDate(pkg.endDate)}
       </p>
       <div>
-        <p className="text-base font-medium text-slate-900">
+        <p className="font-display text-3xl font-extrabold leading-tight tracking-tight text-balance text-ink sm:text-4xl">
           {formatInr(pkg.totalInr)} for the group
         </p>
-        <p className="text-sm text-slate-700">about {formatInr(pkg.perPersonInr)} each</p>
+        <p className="mb-1 text-sm text-muted">about {formatInr(pkg.perPersonInr)} each</p>
         <Badge tone="info">estimate</Badge>
       </div>
       {pkg.overBudget ? (
@@ -193,9 +192,9 @@ export function PackageCard({
         </p>
       ) : null}
 
-      <details className="rounded-md border border-slate-200 px-3">
+      <details className="rounded-xl border-2 border-ink bg-cream px-3">
         {/* #120: as tall as a Button (44 px); the whole row toggles. */}
-        <summary className="flex min-h-11 cursor-pointer items-center rounded-md text-sm font-medium text-slate-900">
+        <summary className="flex min-h-11 cursor-pointer items-center rounded-xl text-sm font-semibold text-ink">
           What it costs
         </summary>
         <ul className="mb-3 space-y-1">
@@ -224,7 +223,7 @@ export function PackageCard({
               variant="secondary"
               aria-pressed={pkg.mine === 'accept'}
               data-state={pkg.mine === 'accept' ? 'on' : 'off'}
-              className="data-[state=on]:border-2 data-[state=on]:border-brand-700 data-[state=on]:bg-mint/40"
+              className="data-[state=on]:bg-mint"
               loading={opinion.isPending && opinion.variables?.decision === 'accept'}
               onClick={() => opinion.mutate({ packageId: pkg.id, decision: 'accept' })}
             >
@@ -239,7 +238,7 @@ export function PackageCard({
               variant="secondary"
               aria-pressed={pkg.mine === 'reject'}
               data-state={pkg.mine === 'reject' ? 'on' : 'off'}
-              className="data-[state=on]:border-2 data-[state=on]:border-brand-700 data-[state=on]:bg-mint/40"
+              className="data-[state=on]:bg-mint"
               loading={opinion.isPending && opinion.variables?.decision === 'reject'}
               onClick={() => opinion.mutate({ packageId: pkg.id, decision: 'reject' })}
             >
@@ -338,6 +337,6 @@ export function PackageCard({
           ) : null}
         </div>
       ) : null}
-    </article>
+    </Card>
   );
 }

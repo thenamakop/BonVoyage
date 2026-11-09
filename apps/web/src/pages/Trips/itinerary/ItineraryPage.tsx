@@ -66,7 +66,7 @@ export function ItineraryPage() {
         Back to the trip
       </ButtonLink>
       <header className="space-y-2">
-        <h1 className="text-xl font-semibold">
+        <h1 className="text-3xl text-ink">
           {trip.data.selectedDestination?.name}:{' '}
           {view.days
             .map((d) => formatDate(d.date))
@@ -93,14 +93,14 @@ export function ItineraryPage() {
         <section
           key={day.day}
           aria-label={`Day ${day.day}`}
-          className="space-y-3 rounded-lg border border-slate-200 bg-white p-4"
+          className="space-y-3 rounded-3xl border-[2.5px] border-ink bg-white p-6 shadow-sticker"
         >
-          <h2 className="font-semibold">
+          <h2 className="text-xl text-ink">
             Day {day.day} · {formatDate(day.date)}
           </h2>
           <ol className="space-y-3">
             {day.items.map((item) => (
-              <li key={item.id} className="space-y-1 border-t border-slate-100 pt-3">
+              <li key={item.id} className="space-y-1 border-t border-ink/15 pt-3">
                 <p className="font-medium">
                   {item.start}–{item.end} · {KIND[item.kind]}
                   {item.legId ? ` · ${item.legId === 'onward' ? 'Onward' : 'Return'}` : ''}

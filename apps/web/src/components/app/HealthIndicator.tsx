@@ -13,7 +13,7 @@ export function HealthIndicator() {
   const { ok, text } = describeHealth(health.isPending, health.isSuccess);
 
   return (
-    <p role="status" className="flex items-center gap-2 text-xs text-slate-500">
+    <p role="status" className="flex items-center gap-2 text-xs text-muted">
       <span
         aria-hidden="true"
         className={`inline-block h-2 w-2 rounded-full ${ok ? 'bg-success' : 'bg-danger'}`}

@@ -61,26 +61,34 @@ export function UserMenu({ user }: { user: MeResponse }) {
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
+        // The full name, also below sm where only the initial shows.
+        aria-label={user.name}
         onClick={() => {
           setError(false);
           setOpen((v) => !v);
         }}
-        className="flex min-h-11 max-w-full items-center gap-2 rounded-md px-3 text-sm font-medium text-white hover:bg-brand-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="flex min-h-11 max-w-full items-center gap-2 rounded-xl px-3 text-sm font-semibold text-white hover:bg-ink/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
-        {/* At 360 px the bell leaves little room: two lines at most, and a long word breaks. */}
-        <span className="line-clamp-2 min-w-0 [overflow-wrap:anywhere]">{user.name}</span>
+        {/* Phones show the initial only; from sm up, the name in two lines at most. */}
+        <span
+          aria-hidden="true"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-accent font-display font-extrabold text-ink sm:hidden"
+        >
+          {user.name.trim().charAt(0).toUpperCase() || '?'}
+        </span>
+        <span className="hidden min-w-0 [overflow-wrap:anywhere] sm:line-clamp-2">{user.name}</span>
         <span aria-hidden="true">▾</span>
       </button>
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-10 mt-1 w-44 rounded-md border border-slate-200 bg-white p-1 shadow-lg"
+          className="absolute right-0 top-full z-10 mt-2 w-44 rounded-2xl border-[2.5px] border-ink bg-white p-1 shadow-sticker"
         >
           <Link
             to="/me"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="flex min-h-11 w-full items-center rounded px-3 text-left text-sm text-slate-900 hover:bg-slate-100"
+            className="flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm text-ink hover:bg-cream"
           >
             Your profile
           </Link>
@@ -89,7 +97,7 @@ export function UserMenu({ user }: { user: MeResponse }) {
               to="/admin/catalogue"
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="flex min-h-11 w-full items-center rounded px-3 text-left text-sm text-slate-900 hover:bg-slate-100"
+              className="flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm text-ink hover:bg-cream"
             >
               Catalogue
             </Link>
@@ -99,14 +107,14 @@ export function UserMenu({ user }: { user: MeResponse }) {
             role="menuitem"
             disabled={busy}
             onClick={() => void onSignOut()}
-            className="flex min-h-11 w-full items-center rounded px-3 text-left text-sm text-slate-900 hover:bg-slate-100"
+            className="flex min-h-11 w-full items-center rounded-xl px-3 text-left text-sm text-ink hover:bg-cream"
           >
             Sign out
           </button>
         </div>
       ) : null}
       {error ? (
-        <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-md border border-slate-200 bg-white p-3 shadow-lg">
+        <div className="absolute right-0 top-full z-10 mt-2 w-44 rounded-2xl border-[2.5px] border-ink bg-white p-3 shadow-sticker">
           <Alert tone="error">Could not sign out. Try again.</Alert>
         </div>
       ) : null}

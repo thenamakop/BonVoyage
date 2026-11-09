@@ -9,13 +9,13 @@ export function StatusBanner({ trip }: { trip: TripDetail }) {
   return (
     <section
       aria-labelledby="trip-status-heading"
-      className="mb-4 rounded-lg border border-slate-300 bg-white p-4"
+      className="mb-6 rounded-3xl border-[2.5px] border-ink bg-ink p-6 text-white shadow-sticker-accent"
     >
-      <h2 id="trip-status-heading" className="text-lg font-semibold text-slate-900">
+      <h2 id="trip-status-heading" className="text-2xl text-white">
         {labels.label}
       </h2>
-      <p className="mt-1 text-sm text-slate-700">{labels.explanation}</p>
-      <p className="mt-2 text-sm font-medium text-slate-900">{stepLine(trip.status)}</p>
+      <p className="mt-1 text-sm text-white/85">{labels.explanation}</p>
+      <p className="mt-3 text-sm font-semibold text-mint">{stepLine(trip.status)}</p>
     </section>
   );
 }

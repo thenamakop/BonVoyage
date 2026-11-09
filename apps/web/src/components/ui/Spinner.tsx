@@ -3,7 +3,7 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
     <span role="status" className="inline-flex items-center gap-2">
       <span
         aria-hidden="true"
-        className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-brand-700"
+        className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-ink/25 border-t-ink"
       />
       <span className="sr-only">{label}</span>
     </span>

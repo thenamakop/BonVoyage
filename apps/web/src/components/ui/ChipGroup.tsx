@@ -21,17 +21,15 @@ export function ChipGroup({ legend, options, selected, onChange, hint, error }: 
 
   return (
     <fieldset aria-describedby={describedBy || undefined}>
-      <legend className="mb-1 text-sm font-medium text-slate-900">{legend}</legend>
+      <legend className="mb-1 text-sm font-semibold text-ink">{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {options.map((opt) => {
           const checked = selected.includes(opt.value);
           return (
             <label
               key={opt.value}
-              className={`flex min-h-11 cursor-pointer items-center rounded-full border px-4 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-[#808080] ${
-                checked
-                  ? 'border-brand-700 bg-brand-700 text-white'
-                  : 'border-slate-300 bg-white text-slate-900'
+              className={`flex min-h-11 cursor-pointer items-center rounded-full border-2 border-ink px-4 text-sm font-semibold text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-solid has-[:focus-visible]:outline-[#808080] ${
+                checked ? 'gap-1.5 bg-mint pl-3' : 'bg-white'
               }`}
             >
               <input
@@ -40,13 +38,23 @@ export function ChipGroup({ legend, options, selected, onChange, hint, error }: 
                 checked={checked}
                 onChange={(e) => toggle(opt.value, e.target.checked)}
               />
+              {/* A tick as well as the fill, so selection is not shown by colour alone. */}
+              {checked ? (
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 16 16"
+                  className="h-4 w-4 fill-none stroke-ink stroke-[2.5]"
+                >
+                  <path d="M3 8.5l3.2 3L13 4.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : null}
               {opt.label}
             </label>
           );
         })}
       </div>
       {hint ? (
-        <p id={hintId} className="mt-1 text-xs text-slate-600">
+        <p id={hintId} className="mt-1 text-xs text-muted">
           {hint}
         </p>
       ) : null}

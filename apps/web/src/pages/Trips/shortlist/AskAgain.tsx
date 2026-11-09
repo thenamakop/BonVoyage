@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Alert } from '../../../components/ui/Alert';
+import { panelClass } from '../../../components/ui/panel';
 import { Button } from '../../../components/ui/Button';
 import { useReopenShortlist } from '../../../features/recommendations/api';
 import { ASK_AGAIN_CONFIRM } from '../../../features/recommendations/wording';
@@ -20,7 +21,7 @@ export function AskAgain({ tripId }: { tripId: string }) {
     <div className="space-y-2">
       {reopen.error ? <Alert tone="error">{errorText(reopen.error)}</Alert> : null}
       {confirming ? (
-        <div className="space-y-2 rounded-md border border-slate-300 p-3">
+        <div className={`space-y-2 ${panelClass}`}>
           <p className="text-sm text-slate-900">{ASK_AGAIN_CONFIRM}</p>
           <div className="flex flex-wrap gap-2">
             <Button

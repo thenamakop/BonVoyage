@@ -18,6 +18,33 @@ export function stepLine(status: TripStatus): string {
   return 'Planning is done.';
 }
 
+/** The step tracker's short names, one per planning status, in stepLine's order. */
+const STEP_LABELS: Record<(typeof PLANNING_STATUSES)[number], string> = {
+  draft: 'Draft',
+  collecting_preferences: 'Preferences',
+  ready_for_recommendation: 'Ready',
+  shortlisted: 'Shortlist',
+  packages_proposed: 'Packages',
+  package_selected: 'Package chosen',
+  itinerary_proposed: 'Day plan',
+};
+
+export type StepState = 'done' | 'current' | 'todo';
+
+/**
+ * The tracker's pills: the current one is stepLine's "Step N" (Maulik, 9 November:
+ * one pill per planning status). A finalised trip has every step done. Null when
+ * planning has stopped or ended (cancelled, in progress, completed): no tracker.
+ */
+export function planningSteps(status: TripStatus): { label: string; state: StepState }[] | null {
+  const current = status === 'finalised' ? PLANNING_STATUSES.length : PLANNING.indexOf(status);
+  if (current < 0) return null;
+  return PLANNING_STATUSES.map((s, i) => ({
+    label: STEP_LABELS[s],
+    state: i < current ? 'done' : i === current ? 'current' : 'todo',
+  }));
+}
+
 /** "2 of 3 members have submitted" (wireframe 06, note 1). */
 export function progressText(submitted: number, active: number): string {
   return `${submitted} of ${active} ${active === 1 ? 'member has' : 'members have'} submitted`;
