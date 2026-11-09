@@ -61,14 +61,22 @@ export function UserMenu({ user }: { user: MeResponse }) {
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
+        // The full name, also below sm where only the initial shows.
+        aria-label={user.name}
         onClick={() => {
           setError(false);
           setOpen((v) => !v);
         }}
         className="flex min-h-11 max-w-full items-center gap-2 rounded-xl px-3 text-sm font-semibold text-white hover:bg-ink/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
-        {/* At 360 px the bell leaves little room: two lines at most, and a long word breaks. */}
-        <span className="line-clamp-2 min-w-0 [overflow-wrap:anywhere]">{user.name}</span>
+        {/* Phones show the initial only; from sm up, the name in two lines at most. */}
+        <span
+          aria-hidden="true"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 border-ink bg-accent font-display font-extrabold text-ink sm:hidden"
+        >
+          {user.name.trim().charAt(0).toUpperCase() || '?'}
+        </span>
+        <span className="hidden min-w-0 [overflow-wrap:anywhere] sm:line-clamp-2">{user.name}</span>
         <span aria-hidden="true">▾</span>
       </button>
       {open ? (

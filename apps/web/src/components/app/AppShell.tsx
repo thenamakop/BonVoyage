@@ -41,7 +41,12 @@ export function AppShell() {
       </a>
       {/* relative: the notification panel spans this header on narrow screens. */}
       <header className="relative border-b-[2.5px] border-ink bg-brand-700 text-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-2">
+        <div
+          className={`mx-auto flex items-center justify-between gap-2 px-4 py-2 ${
+            // On / the logo lines up with the homepage sections (max-w-6xl px-4).
+            fullWidth ? 'max-w-6xl' : 'max-w-5xl'
+          }`}
+        >
           <Link
             to={signedIn ? '/trips' : '/'}
             className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl pr-2 font-display text-xl font-extrabold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
