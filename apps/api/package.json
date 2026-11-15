@@ -11,13 +11,13 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@better-auth/drizzle-adapter": "1.7.17",
+    "@better-auth/drizzle-adapter": "1.7.21",
     "@bonvoyage/db": "workspace:*",
     "@bonvoyage/engine": "workspace:*",
     "@bonvoyage/integrations": "workspace:*",
     "@bonvoyage/shared": "workspace:*",
-    "@vercel/functions": "^3.10.6",
-    "better-auth": "1.7.17",
+    "@vercel/functions": "^3.11.1",
+    "better-auth": "1.7.21",
     "drizzle-orm": "0.45.4",
     "express": "^5.3.0",
     "helmet": "^8.3.0",
@@ -30,6 +30,6 @@
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "pino-pretty": "^13.2.0",
-    "supertest": "^7.3.1"
+    "supertest": "^7.3.2"
   }
 }
